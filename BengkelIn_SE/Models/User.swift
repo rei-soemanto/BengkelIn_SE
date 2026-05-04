@@ -15,6 +15,10 @@ struct User: Codable, Identifiable {
     var email: String?
     var phoneNumber: String?
     var role: String
+    
+    // Multi-role flags (mock-only for now, backend TBD)
+    var isMechanic: Bool?
+    var isProvider: Bool?
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -22,5 +26,7 @@ struct User: Codable, Identifiable {
         case profileImageUrl = "profile_image_url"
         case balance
         case role
+        case isMechanic = "is_mechanic"
+        case isProvider = "is_provider"
     }
 }

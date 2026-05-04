@@ -235,4 +235,43 @@ class BengkelViewModel: ObservableObject {
             return false
         }
     }
+    
+    // MARK: - Mechanic Management (Mock Data — No Backend)
+    
+    @Published var availableMechanics: [Mechanic] = [
+        Mechanic(
+            id: "mech-001",
+            name: "Budi Santoso",
+            status: .available,
+            linkedBengkelId: nil
+        ),
+        Mechanic(
+            id: "mech-002",
+            name: "Dimas Prasetyo",
+            status: .available,
+            linkedBengkelId: nil
+        ),
+        Mechanic(
+            id: "mech-003",
+            name: "Eko Wijaya",
+            status: .busy,
+            linkedBengkelId: nil
+        )
+    ]
+    
+    /// Stub: Assigns a mechanic to an order by setting their status to busy.
+    /// In production, this will call the Supabase backend.
+    func assignMechanic(to orderId: String, mechanicId: String) {
+        print("[BengkelVM] assignMechanic called — order: \(orderId), mechanic: \(mechanicId)")
+        
+        if let index = availableMechanics.firstIndex(where: { $0.id == mechanicId }) {
+            withAnimation(.easeInOut) {
+                availableMechanics[index].status = .busy
+            }
+            print("[BengkelVM] Mechanic \(mechanicId) is now busy (mock).")
+            successMessage = "Mechanic assigned successfully!"
+        } else {
+            errorMessage = "Mechanic not found."
+        }
+    }
 }
