@@ -96,6 +96,38 @@ struct DashboardView: View {
                     .shadow(color: Color.primary.opacity(0.15), radius: 10, x: 0, y: 5)
                 }
                 
+                NavigationLink(destination: VoucherListView(voucherVM: VoucherViewModel())) {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("My Vouchers")
+                                .font(.subheadline)
+                                .foregroundColor(Color(.systemBackground).opacity(0.8))
+                            
+                            Text("View & Claim Promos")
+                                .font(.headline)
+                                .fontWeight(.bold)
+                                .foregroundColor(Color(.systemBackground))
+                        }
+                        Spacer()
+                        Image(systemName: "ticket.fill")
+                            .font(.title2)
+                            .foregroundColor(Color(.systemBackground))
+                    }
+                    .padding()
+                    .background(
+                        LinearGradient(
+                            gradient: Gradient(colors: [
+                                Color.blue.opacity(0.9),
+                                Color.blue.opacity(0.7)
+                            ]),
+                            startPoint: .leading,
+                            endPoint: .trailing
+                        )
+                    )
+                    .cornerRadius(16)
+                    .shadow(color: Color.blue.opacity(0.3), radius: 10, x: 0, y: 5)
+                }
+                
                 VStack(alignment: .leading, spacing: 16) {
                     Text("Latest Orders")
                         .font(.title2)
