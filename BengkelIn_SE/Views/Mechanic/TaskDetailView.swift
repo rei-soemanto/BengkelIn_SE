@@ -52,7 +52,7 @@ struct TaskDetailView: View {
                     detailRow(icon: "car.fill", title: "Vehicle", value: task.vehicleInfo)
                     detailRow(icon: "location.fill", title: "Location", value: task.location)
                     detailRow(icon: "arrow.triangle.swap", title: "Distance", value: String(format: "%.1f km", task.distanceKm))
-                    detailRow(icon: "banknote.fill", title: "Est. Price", value: formatToRupiah(task.estimatedPrice))
+                    detailRow(icon: "banknote.fill", title: "Est. Price", value: task.estimatedPrice.toRupiah())
                 }
                 .padding()
                 .background(Color(.systemGray6))
@@ -139,22 +139,10 @@ struct TaskDetailView: View {
     
     private func completeTask() {
         isUploading = true
-        
-        // Simulate a brief upload delay
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
-            mechanicVM.uploadProofOfWork(for: task.id)
+        mechanicVM.completeTask(taskId: task.id) {
             isUploading = false
             dismiss()
         }
-    }
-    
-    private func formatToRupiah(_ amount: Double) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = "IDR"
-        formatter.locale = Locale(identifier: "id_ID")
-        formatter.maximumFractionDigits = 0
-        return formatter.string(from: NSNumber(value: amount)) ?? "Rp 0"
     }
 }
 

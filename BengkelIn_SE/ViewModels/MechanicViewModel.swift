@@ -71,4 +71,13 @@ class MechanicViewModel: ObservableObject {
         successMessage = "Job completed successfully! Proof uploaded."
         print("[MechanicVM] Task \(taskId) removed from assigned list.")
     }
+    
+    /// Orchestrates the full task completion flow: simulates upload delay,
+    /// calls uploadProofOfWork, then invokes the completion callback for UI cleanup.
+    func completeTask(taskId: String, completion: @escaping () -> Void) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) { [weak self] in
+            self?.uploadProofOfWork(for: taskId)
+            completion()
+        }
+    }
 }

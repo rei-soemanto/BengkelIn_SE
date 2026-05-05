@@ -12,15 +12,6 @@ struct BengkelDashboardView: View {
     
     @StateObject private var bengkelViewModel = BengkelViewModel()
     
-    @State private var hasActiveJob: Bool = false
-    @State private var todaysEarnings: Double = 0.0
-    @State private var pendingRequestsCount: Int = 1
-    
-    @State private var incomingJobTitle: String = "Flat Tire - Honda Brio"
-    @State private var incomingJobDistance: Double = 2.4
-    @State private var activeJobTitle: String = "Fixing Flat Tire - Honda Brio"
-    @State private var activeJobStatus: String = "Job is currently in progress..."
-    
     var realShopRating: Double {
         bengkelViewModel.myBengkel?.averageRating ?? 0.0
     }
@@ -79,7 +70,7 @@ struct BengkelDashboardView: View {
                             .foregroundColor(.green)
                             .font(.title2)
                         
-                        Text(formatToRupiah(todaysEarnings))
+                        Text(bengkelViewModel.todaysEarnings.toRupiah())
                             .font(.title)
                             .fontWeight(.bold)
                             .foregroundColor(.primary)
@@ -94,43 +85,36 @@ struct BengkelDashboardView: View {
                 
                 VStack(alignment: .leading, spacing: 16) {
                     HStack {
-                        Text(hasActiveJob ? "Current Active Job" : "Incoming Requests")
+                        Text(bengkelViewModel.hasActiveJob ? "Current Active Job" : "Incoming Requests")
                             .font(.title2)
                             .fontWeight(.bold)
                         
                         Spacer()
                         
-                        if !hasActiveJob && pendingRequestsCount > 0 {
-                            Text("\(pendingRequestsCount) Pending")
+                        if !bengkelViewModel.hasActiveJob && bengkelViewModel.pendingRequestsCount > 0 {
+                            Text("\(bengkelViewModel.pendingRequestsCount) Pending")
                                 .font(.subheadline)
                                 .foregroundColor(.red)
                                 .fontWeight(.semibold)
                         }
                     }
                     
-                    if hasActiveJob {
+                    if bengkelViewModel.hasActiveJob {
                         VStack(spacing: 12) {
                             Image(systemName: "wrench.and.screwdriver.fill")
                                 .font(.largeTitle)
                                 .foregroundColor(.blue)
                                 .padding(.bottom, 4)
                             
-                            Text(activeJobTitle)
+                            Text(bengkelViewModel.activeJobTitle)
                                 .font(.headline)
                             
-                            Text(activeJobStatus)
+                            Text(bengkelViewModel.activeJobStatus)
                                 .font(.subheadline)
                                 .foregroundColor(.gray)
                             
                             Button("Finish Job") {
-                                // ADD LOGIC TO FINISH JOB
-                                withAnimation {
-                                    hasActiveJob = false
-                                    if pendingRequestsCount > 0 {
-                                        pendingRequestsCount -= 1
-                                    }
-                                    todaysEarnings += 150000
-                                }
+                                bengkelViewModel.finishJob()
                             }
                             .buttonStyle(.borderedProminent)
                             .tint(.green)
@@ -146,23 +130,22 @@ struct BengkelDashboardView: View {
                         )
                         
                     } else {
-                        if pendingRequestsCount > 0 {
+                        if bengkelViewModel.pendingRequestsCount > 0 {
                             VStack(spacing: 12) {
                                 Image(systemName: "exclamationmark.triangle.fill")
                                     .font(.largeTitle)
                                     .foregroundColor(.orange)
                                     .padding(.bottom, 4)
                                 
-                                Text(incomingJobTitle)
+                                Text(bengkelViewModel.incomingJobTitle)
                                     .font(.headline)
                                 
-                                Text(String(format: "Distance: %.1f km away", incomingJobDistance))
+                                Text(String(format: "Distance: %.1f km away", bengkelViewModel.incomingJobDistance))
                                     .font(.subheadline)
                                     .foregroundColor(.gray)
                                 
                                 Button("Accept Job Offer") {
-                                    //ADD LOGIC TO BID PRICE
-                                    withAnimation { hasActiveJob = true }
+                                    bengkelViewModel.acceptJob()
                                 }
                                 .buttonStyle(.borderedProminent)
                                 .padding(.top, 12)
@@ -197,15 +180,6 @@ struct BengkelDashboardView: View {
                 await bengkelViewModel.fetchMyBengkel(uid: uid)
             }
         }
-    }
-    
-    private func formatToRupiah(_ amount: Double) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = "IDR"
-        formatter.locale = Locale(identifier: "id_ID")
-        formatter.maximumFractionDigits = 0
-        return formatter.string(from: NSNumber(value: amount)) ?? "Rp 0"
     }
 }
 

@@ -17,6 +17,33 @@ class BengkelViewModel: ObservableObject {
     @Published var errorMessage: String?
     @Published var successMessage: String?
     
+    // MARK: - Provider Job State (Mock Data — will be replaced by backend)
+    @Published var hasActiveJob: Bool = false
+    @Published var todaysEarnings: Double = 0.0
+    @Published var pendingRequestsCount: Int = 1
+    @Published var incomingJobTitle: String = "Flat Tire - Honda Brio"
+    @Published var incomingJobDistance: Double = 2.4
+    @Published var activeJobTitle: String = "Fixing Flat Tire - Honda Brio"
+    @Published var activeJobStatus: String = "Job is currently in progress..."
+    
+    /// Accepts an incoming job offer. Transitions the dashboard to active job state.
+    func acceptJob() {
+        withAnimation {
+            hasActiveJob = true
+        }
+    }
+    
+    /// Finishes the current active job. Awards earnings and decrements the pending count.
+    func finishJob() {
+        withAnimation {
+            hasActiveJob = false
+            if pendingRequestsCount > 0 {
+                pendingRequestsCount -= 1
+            }
+            todaysEarnings += 150_000
+        }
+    }
+    
     struct BengkelUpdateRequest: Encodable {
         let name: String
         let address: String
