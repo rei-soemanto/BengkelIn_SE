@@ -78,7 +78,7 @@ struct UpdateBengkelView: View {
         .navigationBarTitleDisplayMode(.inline)
         .onAppear {
             self.name = bengkel.name
-            self.address = bengkel.address
+            self.address = bengkel.address ?? ""
         }
     }
 }

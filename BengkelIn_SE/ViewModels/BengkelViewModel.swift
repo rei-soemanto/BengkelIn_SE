@@ -318,7 +318,11 @@ class BengkelViewModel: ObservableObject {
                 isActive: isActive
             )
             
-            currentBengkel.offeredServices.append(newService)
+            if currentBengkel.offeredServices != nil {
+                currentBengkel.offeredServices?.append(newService)
+            } else {
+                currentBengkel.offeredServices = [newService]
+            }
             
             try await supabase.from("bengkels").update(currentBengkel).eq("id", value: bengkelId).execute()
             
@@ -340,10 +344,10 @@ class BengkelViewModel: ObservableObject {
         do {
             guard var currentBengkel = self.myBengkel else { return false }
             
-            if let index = currentBengkel.offeredServices.firstIndex(where: { $0.id == serviceId }) {
-                currentBengkel.offeredServices[index].serviceName = serviceName
-                currentBengkel.offeredServices[index].description = description
-                currentBengkel.offeredServices[index].isActive = isActive
+            if let index = currentBengkel.offeredServices?.firstIndex(where: { $0.id == serviceId }) {
+                currentBengkel.offeredServices?[index].serviceName = serviceName
+                currentBengkel.offeredServices?[index].description = description
+                currentBengkel.offeredServices?[index].isActive = isActive
                 
                 try await supabase.from("bengkels").update(currentBengkel).eq("id", value: bengkelId).execute()
                 
@@ -366,7 +370,7 @@ class BengkelViewModel: ObservableObject {
         do {
             guard var currentBengkel = self.myBengkel else { return false }
             
-            currentBengkel.offeredServices.removeAll { $0.id == serviceId }
+            currentBengkel.offeredServices?.removeAll { $0.id == serviceId }
             
             try await supabase.from("bengkels").update(currentBengkel).eq("id", value: bengkelId).execute()
             

@@ -73,14 +73,24 @@ class MechanicViewModel: ObservableObject {
         errorMessage = nil
         
         do {
-            let bengkels: [Bengkel] = try await supabase.from("bengkels")
+            // DEBUG VERSION: Fetch raw data first to see what the database is actually returning
+            let response = try await supabase.from("bengkels")
                 .select()
                 .eq("status", value: "Verified")
                 .order("average_rating", ascending: false)
                 .execute()
-                .value
             
+            // Print the raw JSON string
+            if let jsonString = String(data: response.data, encoding: .utf8) {
+                print("================ RAW BENGKEL JSON ================")
+                print(jsonString)
+                print("==================================================")
+            }
+            
+            // Now attempt to decode
+            let bengkels = try ServiceRequest.decoder.decode([Bengkel].self, from: response.data)
             self.availableBengkels = bengkels
+            
         } catch {
             self.errorMessage = "Failed to load available bengkels: \(error.localizedDescription)"
             print("[MechanicVM] fetchAvailableBengkels error: \(error)")

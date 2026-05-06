@@ -62,7 +62,7 @@ struct BengkelProfileView: View {
                                 .font(.title)
                                 .fontWeight(.bold)
                             
-                            Text(bengkel.status.uppercased())
+                            Text((bengkel.status ?? "Pending").uppercased())
                                 .font(.caption)
                                 .fontWeight(.bold)
                                 .padding(.horizontal, 12)
@@ -83,7 +83,7 @@ struct BengkelProfileView: View {
                                 Image(systemName: "mappin.and.ellipse")
                                     .foregroundColor(.gray)
                                     .frame(width: 24)
-                                Text(bengkel.address)
+                                Text(bengkel.address ?? "No address provided")
                                     .font(.subheadline)
                             }
                             
@@ -91,7 +91,7 @@ struct BengkelProfileView: View {
                                 Image(systemName: "star.fill")
                                     .foregroundColor(.yellow)
                                     .frame(width: 24)
-                                Text("\(bengkel.averageRating, specifier: "%.1f") (\(bengkel.totalReviews) Reviews)")
+                                Text("\(bengkel.averageRating ?? 0.0, specifier: "%.1f") (\(bengkel.totalReviews ?? 0) Reviews)")
                                     .font(.subheadline)
                             }
                         }
@@ -112,13 +112,13 @@ struct BengkelProfileView: View {
                                 }
                             }
                             
-                            if bengkel.offeredServices.isEmpty {
+                            if bengkel.offeredServices?.isEmpty ?? true {
                                 Text("You haven't added any services yet.")
                                     .font(.subheadline)
                                     .foregroundColor(.gray)
                                     .padding(.vertical, 8)
                             } else {
-                                ForEach(bengkel.offeredServices) { service in
+                                ForEach(bengkel.offeredServices ?? []) { service in
                                     HStack(alignment: .top) {
                                         VStack(alignment: .leading, spacing: 4) {
                                             Text(service.serviceName)
