@@ -399,13 +399,13 @@ class BengkelViewModel: ObservableObject {
             }
             
             let users: [User] = try await supabase.from("users")
-                .select("id, name")
+                .select("id, name, email")
                 .in("id", values: uids)
                 .execute()
                 .value
             
             self.availableMechanics = users.map { 
-                Mechanic(id: $0.id, name: $0.name, status: .available, linkedBengkelId: bengkelId) 
+                Mechanic(id: $0.id, name: $0.name, email: $0.email, status: .available, linkedBengkelId: bengkelId) 
             }
         } catch {
             print("[BengkelVM] fetchMechanics error: \(error)")

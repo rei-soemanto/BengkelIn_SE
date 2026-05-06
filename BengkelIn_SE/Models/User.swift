@@ -23,6 +23,7 @@ struct User: Codable, Identifiable {
     enum CodingKeys: String, CodingKey {
         case id
         case name
+        case email
         case profileImageUrl = "profile_image_url"
         case balance
         case role

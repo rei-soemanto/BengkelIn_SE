@@ -15,12 +15,14 @@ enum MechanicStatus: String, Codable, CaseIterable {
 struct Mechanic: Codable, Identifiable {
     var id: String
     var name: String
+    var email: String?
     var status: MechanicStatus
     var linkedBengkelId: String?
     
     enum CodingKeys: String, CodingKey {
         case id
         case name
+        case email
         case status
         case linkedBengkelId = "linked_bengkel_id"
     }

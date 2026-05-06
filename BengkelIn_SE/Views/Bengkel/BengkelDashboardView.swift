@@ -91,33 +91,46 @@ struct BengkelDashboardView: View {
                 .background(Color(.systemGray6))
                 .cornerRadius(12)
                 
-                // MARK: - Staff Management
+                // MARK: - My Mechanics
                 VStack(alignment: .leading, spacing: 16) {
                     HStack {
-                        Text("Staff Management")
+                        Text("My Mechanics")
                             .font(.title2)
                             .fontWeight(.bold)
                         Spacer()
-                        Button(action: {
-                            showingAddMechanic = true
-                        }) {
-                            Image(systemName: "person.badge.plus")
-                                .font(.title3)
-                        }
+                        Text("Manage Staffing (Coming Soon)")
+                            .font(.caption)
+                            .fontWeight(.semibold)
+                            .foregroundColor(.gray)
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 6)
+                            .background(Color(.systemGray5))
+                            .cornerRadius(12)
                     }
                     
                     if bengkelViewModel.availableMechanics.isEmpty {
-                        Text("No mechanics added yet. Add someone by User ID.")
+                        Text("No mechanics found.")
                             .foregroundColor(.gray)
                             .font(.subheadline)
                     } else {
                         ForEach(bengkelViewModel.availableMechanics) { mechanic in
-                            HStack {
+                            HStack(spacing: 12) {
                                 Image(systemName: "person.circle.fill")
-                                    .font(.title2)
+                                    .font(.system(size: 32))
                                     .foregroundColor(.gray)
-                                Text(mechanic.name)
+                                
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(mechanic.name)
+                                        .font(.headline)
+                                    if let email = mechanic.email {
+                                        Text(email)
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                    }
+                                }
+                                
                                 Spacer()
+                                
                                 Text(mechanic.status.rawValue)
                                     .font(.caption)
                                     .padding(.horizontal, 8)
