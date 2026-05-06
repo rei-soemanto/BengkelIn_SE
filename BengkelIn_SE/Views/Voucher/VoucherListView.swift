@@ -11,20 +11,12 @@ import SwiftUI
 struct VoucherListView: View {
     @StateObject var voucherVM = VoucherViewModel()
     
-    @State private var showCodeEntry = false
-    @State private var selectedTab = 0
     @State private var manualCode = ""
     
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                // MARK: - Tab Picker
-                Picker("Voucher View", selection: $selectedTab) {
-                    Text("Available").tag(0)
-                    Text("My Vouchers").tag(1)
-                }
-                .pickerStyle(.segmented)
-                .padding()
+                Spacer().frame(height: 16)
                 
                 // MARK: - Manual Code Entry
                 HStack {
@@ -68,67 +60,21 @@ struct VoucherListView: View {
                     Spacer()
                     ProgressView("Loading vouchers...")
                     Spacer()
-                } else if selectedTab == 0 {
-                    availableVouchersTab
                 } else {
-                    myVouchersTab
+                    vouchersList
                 }
             }
-            .animation(.easeInOut, value: selectedTab)
             .navigationTitle("Vouchers")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        showCodeEntry = true
-                    } label: {
-                        Image(systemName: "keyboard")
-                            .foregroundColor(.primary)
-                    }
-                }
-            }
-            .sheet(isPresented: $showCodeEntry) {
-                VoucherEntryView(voucherVM: voucherVM)
-                    .presentationDetents([.medium])
-            }
             .task {
-                await voucherVM.fetchAvailableVouchers()
                 await voucherVM.fetchMyWallet()
             }
         }
     }
     
-    // MARK: - Available Vouchers Tab
+    // MARK: - Claimed Vouchers List
     
-    private var availableVouchersTab: some View {
-        ScrollView {
-            LazyVStack(spacing: 16) {
-                let activeVouchers = voucherVM.availableVouchers.filter {
-                    voucherVM.isVoucherUsable($0)
-                }
-                
-                if activeVouchers.isEmpty {
-                    emptyState(
-                        icon: "ticket",
-                        title: "No Vouchers Available",
-                        subtitle: "Check back later for new promotions."
-                    )
-                } else {
-                    ForEach(activeVouchers) { voucher in
-                        NavigationLink(destination: VoucherDetailView(voucher: voucher, voucherVM: voucherVM)) {
-                            voucherCard(voucher, isClaimed: voucherVM.isVoucherClaimed(voucher))
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-            }
-            .padding()
-        }
-    }
-    
-    // MARK: - My Vouchers Tab
-    
-    private var myVouchersTab: some View {
+    private var vouchersList: some View {
         ScrollView {
             LazyVStack(spacing: 16) {
                 if voucherVM.myWallet.isEmpty {
