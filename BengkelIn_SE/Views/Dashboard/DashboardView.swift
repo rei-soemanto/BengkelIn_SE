@@ -85,7 +85,7 @@ struct DashboardView: View {
                     .shadow(color: Color.primary.opacity(0.15), radius: 10, x: 0, y: 5)
                 }
                 
-                NavigationLink(destination: VoucherListView(voucherVM: VoucherViewModel())) {
+                NavigationLink(destination: VoucherListView()) {
                     HStack {
                         VStack(alignment: .leading, spacing: 8) {
                             Text("My Vouchers")

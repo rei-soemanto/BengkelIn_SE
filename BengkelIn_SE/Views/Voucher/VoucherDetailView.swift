@@ -3,6 +3,7 @@
 //  BengkelIn_SE
 //
 //  Created for Voucher System on 06/05/26.
+//  Migrated to live Supabase backend on 07/05/26.
 //
 
 import SwiftUI
@@ -15,9 +16,7 @@ struct VoucherDetailView: View {
     @State private var showClaimConfirmation = false
     
     private var isClaimed: Bool {
-        voucherVM.userClaims.contains {
-            $0.voucherId == voucher.id && $0.status == .claimed
-        }
+        voucherVM.isVoucherClaimed(voucher)
     }
     
     private var isUsable: Bool {
@@ -32,9 +31,9 @@ struct VoucherDetailView: View {
                     Text(voucherVM.discountDisplayText(for: voucher))
                         .font(.title)
                         .fontWeight(.bold)
-                        .foregroundColor(voucher.discountType == .percentage ? .blue : .orange)
+                        .foregroundColor(.orange)
                     
-                    Text(voucher.code)
+                    Text(voucher.code ?? "—")
                         .font(.title3)
                         .fontDesign(.monospaced)
                         .fontWeight(.medium)
@@ -59,38 +58,19 @@ struct VoucherDetailView: View {
                     
                     Divider()
                     
-                    termRow(icon: "percent", title: "Discount",
-                            value: discountDescription)
+                    termRow(icon: "tag.fill", title: "Title",
+                            value: voucher.title ?? "Promotional Voucher")
                     
-                    if let maxCap = voucher.maximumDiscountAmount {
-                        termRow(icon: "arrow.up.to.line", title: "Maximum Discount",
-                                value: maxCap.toRupiah())
+                    termRow(icon: "banknote.fill", title: "Discount",
+                            value: voucherVM.discountDisplayText(for: voucher))
+                    
+                    if let validUntil = voucher.validUntil {
+                        termRow(icon: "calendar", title: "Valid Until",
+                                value: formatted(validUntil))
                     }
                     
-                    if let minOrder = voucher.minimumOrderValue {
-                        termRow(icon: "cart.fill", title: "Minimum Order",
-                                value: minOrder.toRupiah())
-                    }
-                    
-                    termRow(icon: "calendar", title: "Valid Period",
-                            value: "\(formatted(voucher.startDate)) – \(formatted(voucher.expiryDate))")
-                    
-                    termRow(icon: "person.2.fill", title: "Eligibility",
-                            value: eligibilityText)
-                    
-                    termRow(icon: "repeat", title: "Usage Per User",
-                            value: "\(voucher.perUserUsageLimit) time(s)")
-                    
-                    if let globalLimit = voucher.globalUsageLimit {
-                        termRow(icon: "chart.bar.fill", title: "Total Quota",
-                                value: "\(voucher.currentUsageCount)/\(globalLimit) used")
-                    }
-                    
-                    termRow(icon: "building.2.fill", title: "Scope",
-                            value: voucher.scope == .platformWide ? "Valid at all workshops" : "Specific workshop only")
-                    
-                    termRow(icon: "square.stack.fill", title: "Stackable",
-                            value: voucher.isStackable ? "Can combine with other vouchers" : "Cannot combine with other vouchers")
+                    termRow(icon: "clock", title: "Status",
+                            value: voucherVM.expiryText(for: voucher))
                 }
                 .padding()
                 .background(Color(.systemGray6))
@@ -115,6 +95,11 @@ struct VoucherDetailView: View {
                             showClaimConfirmation = true
                         } label: {
                             HStack {
+                                if voucherVM.isClaiming {
+                                    ProgressView()
+                                        .tint(.white)
+                                        .padding(.trailing, 4)
+                                }
                                 Image(systemName: "plus.circle.fill")
                                 Text("Claim Voucher")
                                     .fontWeight(.bold)
@@ -125,6 +110,7 @@ struct VoucherDetailView: View {
                             .background(Color.blue)
                             .cornerRadius(12)
                         }
+                        .disabled(voucherVM.isClaiming)
                     }
                 } else {
                     HStack {
@@ -149,7 +135,9 @@ struct VoucherDetailView: View {
         .alert("Claim Voucher?", isPresented: $showClaimConfirmation) {
             Button("Cancel", role: .cancel) {}
             Button("Claim") {
-                voucherVM.claimVoucher(voucherId: voucher.id, userId: "mock-user-001")
+                Task {
+                    _ = await voucherVM.claimVoucher(voucherId: voucher.id ?? "")
+                }
             }
         } message: {
             Text("This voucher will be added to your \"My Vouchers\" list. You can apply it during checkout.")
@@ -175,38 +163,10 @@ struct VoucherDetailView: View {
         }
     }
     
-    // MARK: - Display Strings
-    
-    private var discountDescription: String {
-        switch voucher.discountType {
-        case .percentage:
-            return "\(Int(voucher.discountValue))% off your order"
-        case .fixed:
-            return "\(voucher.discountValue.toRupiah()) off your order"
-        }
-    }
-    
-    private var eligibilityText: String {
-        switch voucher.userEligibility {
-        case .allUsers: return "All users"
-        case .newUsersOnly: return "New users only"
-        case .returningOnly: return "Returning customers only"
-        }
-    }
-    
     private func formatted(_ date: Date) -> String {
         let formatter = DateFormatter()
         formatter.dateStyle = .medium
         formatter.locale = Locale(identifier: "id_ID")
         return formatter.string(from: date)
-    }
-}
-
-#Preview {
-    NavigationStack {
-        VoucherDetailView(
-            voucher: VoucherViewModel().availableVouchers.first!,
-            voucherVM: VoucherViewModel()
-        )
     }
 }

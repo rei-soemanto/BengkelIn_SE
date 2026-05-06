@@ -3,82 +3,99 @@
 //  BengkelIn_SE
 //
 //  Created for Voucher System on 06/05/26.
+//  Migrated to live Supabase backend on 07/05/26.
 //
 
 import Foundation
 
-// MARK: - Voucher Enums
-
-enum DiscountType: String, Codable, CaseIterable {
-    case percentage
-    case fixed
-}
-
-enum VoucherScope: String, Codable, CaseIterable {
-    case bengkelSpecific = "bengkel_specific"
-    case platformWide = "platform_wide"
-}
-
-enum UserEligibility: String, Codable, CaseIterable {
-    case allUsers = "all_users"
-    case newUsersOnly = "new_users_only"
-    case returningOnly = "returning_only"
-}
-
-// MARK: - Voucher Model
+// MARK: - Voucher Model (maps to `vouchers` table)
 
 struct Voucher: Codable, Identifiable {
-    let id: String
-    let code: String
-
-    // Discount Configuration
-    let discountType: DiscountType
-    let discountValue: Double
-    let maximumDiscountAmount: Double?
-    let minimumOrderValue: Double?
-
-    // Scope & Targeting
-    let scope: VoucherScope
-    let issuedByBengkelId: String?
-    let applicableServiceIds: [String]?
-
-    // Usage Limits
-    let globalUsageLimit: Int?
-    let perUserUsageLimit: Int
-    var currentUsageCount: Int
-
-    // Time Window
-    let startDate: Date
-    let expiryDate: Date
-
-    // Controls
-    let isStackable: Bool
-    var isActive: Bool
-    let userEligibility: UserEligibility
-
-    // Metadata
-    let createdAt: Date
-    let createdByUserId: String
+    var id: String?
+    var code: String?
+    var title: String?
+    var discountAmount: Double?
+    var validUntil: Date?
+    var createdAt: Date?
 
     enum CodingKeys: String, CodingKey {
         case id
         case code
-        case discountType = "discount_type"
-        case discountValue = "discount_value"
-        case maximumDiscountAmount = "maximum_discount_amount"
-        case minimumOrderValue = "minimum_order_value"
-        case scope
-        case issuedByBengkelId = "issued_by_bengkel_id"
-        case applicableServiceIds = "applicable_service_ids"
-        case globalUsageLimit = "global_usage_limit"
-        case perUserUsageLimit = "per_user_usage_limit"
-        case currentUsageCount = "current_usage_count"
-        case startDate = "start_date"
-        case expiryDate = "expiry_date"
-        case isStackable = "is_stackable"
-        case isActive = "is_active"
-        case userEligibility = "user_eligibility"
+        case title
+        case discountAmount = "discount_amount"
+        case validUntil     = "valid_until"
+        case createdAt      = "created_at"
+    }
+}
+
+// MARK: - UserVoucher Model (maps to `user_vouchers` table)
+// Uses Supabase foreign key join to embed the related Voucher.
+
+struct UserVoucher: Codable, Identifiable {
+    var id: String?
+    var userId: String?
+    var voucherId: String?
+    var isUsed: Bool?
+    var createdAt: Date?
+    
+    /// Nested voucher details populated via Supabase join: .select("*, vouchers(*)")
+    var vouchers: Voucher?
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case userId    = "user_id"
+        case voucherId = "voucher_id"
+        case isUsed    = "is_used"
         case createdAt = "created_at"
-        case createdByUserId = "created_by_user_id"
+        case vouchers
+    }
+}
+
+// MARK: - Insert DTO (for claiming a voucher)
+
+struct UserVoucherInsert: Encodable {
+    let userId: String
+    let voucherId: String
+    let isUsed: Bool
+
+    enum CodingKeys: String, CodingKey {
+        case userId    = "user_id"
+        case voucherId = "voucher_id"
+        case isUsed    = "is_used"
+    }
+}
+
+// MARK: - Custom Decoder for Voucher date formats
+
+extension Voucher {
+    static var decoder: JSONDecoder {
+        let decoder = JSONDecoder()
+        let isoFormatter = ISO8601DateFormatter()
+        isoFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        decoder.dateDecodingStrategy = .custom { decoder in
+            let container = try decoder.singleValueContainer()
+            let dateString = try container.decode(String.self)
+            // Try with fractional seconds first
+            if let date = isoFormatter.date(from: dateString) {
+                return date
+            }
+            // Fallback without fractional seconds
+            isoFormatter.formatOptions = [.withInternetDateTime]
+            if let date = isoFormatter.date(from: dateString) {
+                return date
+            }
+            // Fallback: date-only format (e.g. "2026-06-30")
+            let dateOnly = DateFormatter()
+            dateOnly.dateFormat = "yyyy-MM-dd"
+            dateOnly.locale = Locale(identifier: "en_US_POSIX")
+            if let date = dateOnly.date(from: dateString) {
+                return date
+            }
+            throw DecodingError.dataCorruptedError(
+                in: container,
+                debugDescription: "Cannot decode date: \(dateString)"
+            )
+        }
+        return decoder
     }
 }

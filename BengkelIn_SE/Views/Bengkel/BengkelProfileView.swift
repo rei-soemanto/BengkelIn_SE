@@ -179,7 +179,7 @@ struct BengkelProfileView: View {
                                 ActionRow(icon: "pencil.circle", title: "Edit Bengkel Settings")
                             }
                             
-                            NavigationLink(destination: ManageVouchersView(voucherVM: VoucherViewModel(), authViewModel: authViewModel, bengkelId: bengkel.id ?? "bengkel-001")) {
+                            NavigationLink(destination: ManageVouchersView(authViewModel: authViewModel, bengkelId: bengkel.id ?? "bengkel-001")) {
                                 ActionRow(icon: "ticket.fill", title: "Manage Vouchers")
                             }
                         }

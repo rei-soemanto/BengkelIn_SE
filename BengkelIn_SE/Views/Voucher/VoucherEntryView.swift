@@ -3,6 +3,7 @@
 //  BengkelIn_SE
 //
 //  Created for Voucher System on 06/05/26.
+//  Migrated to live Supabase backend on 07/05/26.
 //
 
 import SwiftUI
@@ -102,7 +103,7 @@ struct VoucherEntryView: View {
                         HStack {
                             Text(voucherVM.discountDisplayText(for: voucher))
                                 .font(.headline)
-                                .foregroundColor(voucher.discountType == .percentage ? .blue : .orange)
+                                .foregroundColor(.orange)
                             
                             Spacer()
                             
@@ -127,17 +128,29 @@ struct VoucherEntryView: View {
                             }
                         }
                         
-                        Text(voucher.code)
+                        Text(voucher.title ?? "Promo")
+                            .font(.subheadline)
+                        
+                        Text(voucher.code ?? "")
                             .font(.caption)
                             .fontDesign(.monospaced)
                             .foregroundColor(.gray)
                         
-                        if voucherVM.isVoucherUsable(voucher) {
+                        if voucherVM.isVoucherUsable(voucher) && !voucherVM.isVoucherClaimed(voucher) {
                             Button {
-                                voucherVM.claimVoucher(voucherId: voucher.id, userId: "mock-user-001")
-                                dismiss()
+                                Task {
+                                    let success = await voucherVM.claimVoucher(voucherId: voucher.id ?? "")
+                                    if success {
+                                        dismiss()
+                                    }
+                                }
                             } label: {
                                 HStack {
+                                    if voucherVM.isClaiming {
+                                        ProgressView()
+                                            .tint(.white)
+                                            .padding(.trailing, 4)
+                                    }
                                     Image(systemName: "plus.circle.fill")
                                     Text("Claim This Voucher")
                                         .fontWeight(.bold)
@@ -148,6 +161,19 @@ struct VoucherEntryView: View {
                                 .background(Color.green)
                                 .cornerRadius(12)
                             }
+                            .disabled(voucherVM.isClaiming)
+                        } else if voucherVM.isVoucherClaimed(voucher) {
+                            HStack {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .foregroundColor(.green)
+                                Text("Already Claimed")
+                                    .fontWeight(.semibold)
+                                    .foregroundColor(.green)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding()
+                            .background(Color.green.opacity(0.1))
+                            .cornerRadius(12)
                         }
                     }
                     .padding()

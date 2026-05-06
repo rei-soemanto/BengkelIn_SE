@@ -3,12 +3,13 @@
 //  BengkelIn_SE
 //
 //  Created for Voucher System on 06/05/26.
+//  Migrated to live Supabase backend on 07/05/26.
 //
 
 import SwiftUI
 
 struct VoucherListView: View {
-    @ObservedObject var voucherVM: VoucherViewModel
+    @StateObject var voucherVM = VoucherViewModel()
     
     @State private var showCodeEntry = false
     @State private var selectedTab = 0
@@ -41,7 +42,11 @@ struct VoucherListView: View {
                 }
                 
                 // MARK: - Content
-                if selectedTab == 0 {
+                if voucherVM.isLoading {
+                    Spacer()
+                    ProgressView("Loading vouchers...")
+                    Spacer()
+                } else if selectedTab == 0 {
                     availableVouchersTab
                 } else {
                     myVouchersTab
@@ -64,6 +69,10 @@ struct VoucherListView: View {
                 VoucherEntryView(voucherVM: voucherVM)
                     .presentationDetents([.medium])
             }
+            .task {
+                await voucherVM.fetchAvailableVouchers()
+                await voucherVM.fetchMyWallet()
+            }
         }
     }
     
@@ -85,7 +94,7 @@ struct VoucherListView: View {
                 } else {
                     ForEach(activeVouchers) { voucher in
                         NavigationLink(destination: VoucherDetailView(voucher: voucher, voucherVM: voucherVM)) {
-                            voucherCard(voucher)
+                            voucherCard(voucher, isClaimed: voucherVM.isVoucherClaimed(voucher))
                         }
                         .buttonStyle(.plain)
                     }
@@ -100,18 +109,20 @@ struct VoucherListView: View {
     private var myVouchersTab: some View {
         ScrollView {
             LazyVStack(spacing: 16) {
-                if voucherVM.claimedVouchers.isEmpty {
+                if voucherVM.myWallet.isEmpty {
                     emptyState(
                         icon: "ticket.fill",
                         title: "No Claimed Vouchers",
                         subtitle: "Browse available vouchers or enter a code to get started."
                     )
                 } else {
-                    ForEach(voucherVM.claimedVouchers) { voucher in
-                        NavigationLink(destination: VoucherDetailView(voucher: voucher, voucherVM: voucherVM)) {
-                            voucherCard(voucher, isClaimed: true)
+                    ForEach(voucherVM.myWallet) { userVoucher in
+                        if let voucher = userVoucher.vouchers {
+                            NavigationLink(destination: VoucherDetailView(voucher: voucher, voucherVM: voucherVM)) {
+                                voucherCard(voucher, isClaimed: true)
+                            }
+                            .buttonStyle(.plain)
                         }
-                        .buttonStyle(.plain)
                     }
                 }
             }
@@ -125,7 +136,7 @@ struct VoucherListView: View {
         HStack(spacing: 0) {
             // Left accent strip
             Rectangle()
-                .fill(accentColor(for: voucher))
+                .fill(Color.orange)
                 .frame(width: 6)
             
             VStack(alignment: .leading, spacing: 8) {
@@ -133,7 +144,7 @@ struct VoucherListView: View {
                     Text(voucherVM.discountDisplayText(for: voucher))
                         .font(.headline)
                         .fontWeight(.bold)
-                        .foregroundColor(accentColor(for: voucher))
+                        .foregroundColor(.orange)
                     
                     Spacer()
                     
@@ -149,29 +160,19 @@ struct VoucherListView: View {
                     }
                 }
                 
-                Text(voucher.code)
+                Text(voucher.title ?? "Promo")
+                    .font(.subheadline)
+                    .foregroundColor(.primary)
+                
+                Text(voucher.code ?? "")
                     .font(.caption)
                     .fontDesign(.monospaced)
                     .foregroundColor(.gray)
                 
                 HStack(spacing: 16) {
-                    if let minOrder = voucher.minimumOrderValue {
-                        Label("Min. \(minOrder.toRupiah())", systemImage: "cart.fill")
-                            .font(.caption2)
-                            .foregroundColor(.secondary)
-                    }
-                    
-                    Label(expiryText(voucher.expiryDate), systemImage: "clock")
+                    Label(voucherVM.expiryText(for: voucher), systemImage: "clock")
                         .font(.caption2)
-                        .foregroundColor(isExpiringSoon(voucher.expiryDate) ? .orange : .secondary)
-                }
-                
-                HStack {
-                    if voucher.scope == .bengkelSpecific {
-                        Label("Specific Bengkel", systemImage: "building.2")
-                            .font(.caption2)
-                            .foregroundColor(.secondary)
-                    }
+                        .foregroundColor(voucherVM.isExpiringSoon(voucher) ? .orange : .secondary)
                     
                     Spacer()
                     
@@ -222,36 +223,14 @@ struct VoucherListView: View {
         .cornerRadius(12)
         .padding(.horizontal)
     }
-    
-    // MARK: - Helpers (View-only — returns View or display strings)
-    
-    private func accentColor(for voucher: Voucher) -> Color {
-        switch voucher.discountType {
-        case .percentage: return .blue
-        case .fixed: return .orange
-        }
-    }
-    
-    private func expiryText(_ date: Date) -> String {
-        let days = Calendar.current.dateComponents([.day], from: Date(), to: date).day ?? 0
-        if days < 0 { return "Expired" }
-        if days == 0 { return "Expires today" }
-        if days == 1 { return "Expires tomorrow" }
-        return "Expires in \(days) days"
-    }
-    
-    private func isExpiringSoon(_ date: Date) -> Bool {
-        let days = Calendar.current.dateComponents([.day], from: Date(), to: date).day ?? 0
-        return days >= 0 && days <= 3
-    }
 }
 
 #Preview("Light") {
-    VoucherListView(voucherVM: VoucherViewModel())
+    VoucherListView()
         .preferredColorScheme(.light)
 }
 
 #Preview("Dark") {
-    VoucherListView(voucherVM: VoucherViewModel())
+    VoucherListView()
         .preferredColorScheme(.dark)
 }
