@@ -13,17 +13,8 @@ struct DashboardView: View {
     
     var body: some View {
         NavigationStack {
-            VStack(spacing: 0) {
-                if authViewModel.currentUser?.role == "PROVIDER" {
-                    Picker("App Mode", selection: $authViewModel.appMode) {
-                        Text("Customer").tag(AppMode.customer)
-                        Text("Bengkel").tag(AppMode.bengkel)
-                    }
-                    .pickerStyle(.segmented)
-                    .padding()
-                }
-                
-                if authViewModel.appMode == .customer || authViewModel.currentUser?.role != "PROVIDER" {
+            Group {
+                if authViewModel.appMode == .customer || !authViewModel.isBengkelProvider {
                     customerDashboard
                 } else {
                     BengkelDashboardView(authViewModel: authViewModel)
@@ -47,9 +38,7 @@ struct DashboardView: View {
                     Spacer()
                 }
 
-                Button {
-                    // LINK CREATE ORDER PAGE
-                } label: {
+                NavigationLink(destination: CreateOrderView()) {
                     HStack {
                         Image(systemName: "wrench.and.screwdriver.fill")
                             .font(.largeTitle)

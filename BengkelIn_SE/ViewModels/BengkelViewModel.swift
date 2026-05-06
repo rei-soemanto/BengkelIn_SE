@@ -393,15 +393,79 @@ class BengkelViewModel: ObservableObject {
     /// Mechanics are users with `is_mechanic = true`.
     func fetchMechanics(bengkelId: String) async {
         do {
-            let mechanics: [Mechanic] = try await supabase.from("users")
-                .select("id, name, is_mechanic")
-                .eq("is_mechanic", value: true)
+            guard let uids = self.myBengkel?.mechanicUids, !uids.isEmpty else {
+                self.availableMechanics = []
+                return
+            }
+            
+            let users: [User] = try await supabase.from("users")
+                .select("id, name")
+                .in("id", values: uids)
                 .execute()
                 .value
             
-            self.availableMechanics = mechanics
+            self.availableMechanics = users.map { 
+                Mechanic(id: $0.id, name: $0.name, status: .available, linkedBengkelId: bengkelId) 
+            }
         } catch {
             print("[BengkelVM] fetchMechanics error: \(error)")
+        }
+    }
+    
+    struct BengkelMechanicsUpdate: Encodable {
+        let mechanic_uids: [String]
+    }
+    
+    /// Adds a mechanic to the bengkel by User ID
+    func addMechanic(userId: String) async -> Bool {
+        isLoading = true
+        errorMessage = nil
+        
+        do {
+            // 1. Verify user exists
+            let _: User = try await supabase.from("users")
+                .select("id, name")
+                .eq("id", value: userId)
+                .single()
+                .execute()
+                .value
+            
+            guard var currentBengkel = self.myBengkel, let bengkelId = currentBengkel.id else { 
+                isLoading = false
+                return false 
+            }
+            
+            var uids = currentBengkel.mechanicUids ?? []
+            if uids.contains(userId) {
+                self.errorMessage = "Mechanic is already added."
+                isLoading = false
+                return false
+            }
+            
+            uids.append(userId)
+            
+            // 2. Update DB
+            let updatePayload = BengkelMechanicsUpdate(mechanic_uids: uids)
+            try await supabase.from("bengkels")
+                .update(updatePayload)
+                .eq("id", value: bengkelId)
+                .execute()
+            
+            // 3. Update Local State
+            currentBengkel.mechanicUids = uids
+            self.myBengkel = currentBengkel
+            
+            // 4. Refresh Mechanics List
+            await fetchMechanics(bengkelId: bengkelId)
+            
+            self.successMessage = "Mechanic added successfully!"
+            isLoading = false
+            return true
+            
+        } catch {
+            self.errorMessage = "Failed to add mechanic: Please ensure the User ID is correct."
+            isLoading = false
+            return false
         }
     }
     

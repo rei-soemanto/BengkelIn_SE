@@ -12,6 +12,13 @@ struct BengkelDashboardView: View {
     @ObservedObject var authViewModel: AuthViewModel
     
     @StateObject private var bengkelViewModel = BengkelViewModel()
+    @StateObject private var mechanicViewModel = MechanicViewModel()
+    
+    @State private var showingMechanicPicker = false
+    @State private var selectedRequestId: String? = nil
+    
+    @State private var showingAddMechanic = false
+    @State private var newMechanicId: String = ""
     
     var realShopRating: Double {
         bengkelViewModel.myBengkel?.averageRating ?? 0.0
@@ -77,6 +84,50 @@ struct BengkelDashboardView: View {
                             .foregroundColor(.primary)
                         
                         Spacer()
+                    }
+                }
+                .padding()
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Color(.systemGray6))
+                .cornerRadius(12)
+                
+                // MARK: - Staff Management
+                VStack(alignment: .leading, spacing: 16) {
+                    HStack {
+                        Text("Staff Management")
+                            .font(.title2)
+                            .fontWeight(.bold)
+                        Spacer()
+                        Button(action: {
+                            showingAddMechanic = true
+                        }) {
+                            Image(systemName: "person.badge.plus")
+                                .font(.title3)
+                        }
+                    }
+                    
+                    if bengkelViewModel.availableMechanics.isEmpty {
+                        Text("No mechanics added yet. Add someone by User ID.")
+                            .foregroundColor(.gray)
+                            .font(.subheadline)
+                    } else {
+                        ForEach(bengkelViewModel.availableMechanics) { mechanic in
+                            HStack {
+                                Image(systemName: "person.circle.fill")
+                                    .font(.title2)
+                                    .foregroundColor(.gray)
+                                Text(mechanic.name)
+                                Spacer()
+                                Text(mechanic.status.rawValue)
+                                    .font(.caption)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 4)
+                                    .background(mechanic.status == .available ? Color.green.opacity(0.2) : Color.red.opacity(0.2))
+                                    .foregroundColor(mechanic.status == .available ? .green : .red)
+                                    .cornerRadius(8)
+                            }
+                            .padding(.vertical, 4)
+                        }
                     }
                 }
                 .padding()
@@ -166,11 +217,10 @@ struct BengkelDashboardView: View {
                                         .cornerRadius(6)
                                 }
                                 
-                                Button("Accept Job Offer") {
+                                Button("Accept & Dispatch Mechanic") {
                                     if let requestId = firstPending.id {
-                                        Task {
-                                            await bengkelViewModel.acceptJob(requestId: requestId)
-                                        }
+                                        selectedRequestId = requestId
+                                        showingMechanicPicker = true
                                     }
                                 }
                                 .buttonStyle(.borderedProminent)
@@ -205,12 +255,89 @@ struct BengkelDashboardView: View {
             if let uid = authViewModel.currentUser?.id {
                 await bengkelViewModel.fetchMyBengkel(uid: uid)
                 
-                // Once we have the bengkel, fetch its service requests & earnings
                 if let bengkelId = bengkelViewModel.myBengkel?.id {
                     await bengkelViewModel.fetchServiceRequests(bengkelId: bengkelId)
                     await bengkelViewModel.fetchTodaysEarnings(bengkelId: bengkelId)
+                    await bengkelViewModel.fetchMechanics(bengkelId: bengkelId)
                 }
             }
+        }
+        .sheet(isPresented: $showingAddMechanic) {
+            NavigationStack {
+                Form {
+                    Section(header: Text("Mechanic Details")) {
+                        TextField("Enter User ID", text: $newMechanicId)
+                    }
+                    Button("Add Mechanic") {
+                        Task {
+                            let success = await bengkelViewModel.addMechanic(userId: newMechanicId)
+                            if success {
+                                newMechanicId = ""
+                                showingAddMechanic = false
+                            }
+                        }
+                    }
+                    .disabled(newMechanicId.isEmpty || bengkelViewModel.isLoading)
+                    
+                    if let error = bengkelViewModel.errorMessage {
+                        Text(error).foregroundColor(.red).font(.caption)
+                    }
+                }
+                .navigationTitle("Add Mechanic")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        Button("Cancel") { showingAddMechanic = false }
+                    }
+                }
+            }
+            .presentationDetents([.medium])
+        }
+        .sheet(isPresented: $showingMechanicPicker) {
+            NavigationStack {
+                List(bengkelViewModel.availableMechanics) { mechanic in
+                    Button(action: {
+                        if let reqId = selectedRequestId {
+                            Task {
+                                let success = await mechanicViewModel.assignMechanic(requestId: reqId, mechanicId: mechanic.id)
+                                if success {
+                                    if let bengkelId = bengkelViewModel.myBengkel?.id {
+                                        await bengkelViewModel.fetchServiceRequests(bengkelId: bengkelId)
+                                    }
+                                    showingMechanicPicker = false
+                                }
+                            }
+                        }
+                    }) {
+                        HStack {
+                            Text(mechanic.name)
+                            Spacer()
+                            if mechanic.status == .available {
+                                Text("Dispatch").fontWeight(.bold).foregroundColor(.blue)
+                            } else {
+                                Text("Busy").foregroundColor(.gray)
+                            }
+                        }
+                    }
+                    .disabled(mechanic.status != .available)
+                }
+                .navigationTitle("Dispatch Mechanic")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        Button("Cancel") { showingMechanicPicker = false }
+                    }
+                }
+                .overlay {
+                    if mechanicViewModel.isLoading {
+                        ProgressView()
+                    } else if bengkelViewModel.availableMechanics.isEmpty {
+                        Text("No mechanics available. Please add one first.")
+                            .foregroundColor(.gray)
+                    }
+                }
+            }
+            .presentationDetents([.medium])
         }
     }
 }

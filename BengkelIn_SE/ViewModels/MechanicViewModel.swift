@@ -257,7 +257,23 @@ class MechanicViewModel: ObservableObject {
             requestId: requestId,
             newStatus: .accepted,
             notes: nil,
+            mechanicId: nil,
             successMsg: "Request accepted! Customer has been notified."
+        )
+    }
+    
+    /// Assigns a specific mechanic to a job and marks it as accepted.
+    /// - Parameters:
+    ///   - requestId: The UUID of the service request.
+    ///   - mechanicId: The UUID of the chosen mechanic.
+    /// - Returns: `true` on success.
+    func assignMechanic(requestId: String, mechanicId: String) async -> Bool {
+        return await updateRequestStatus(
+            requestId: requestId,
+            newStatus: .accepted,
+            notes: nil,
+            mechanicId: mechanicId,
+            successMsg: "Job accepted and mechanic dispatched!"
         )
     }
     
@@ -273,6 +289,7 @@ class MechanicViewModel: ObservableObject {
             requestId: requestId,
             newStatus: .inProgress,
             notes: nil,
+            mechanicId: nil,
             successMsg: "Job started. Work in progress..."
         )
     }
@@ -292,6 +309,7 @@ class MechanicViewModel: ObservableObject {
             requestId: requestId,
             newStatus: .completed,
             notes: notes,
+            mechanicId: nil,
             successMsg: "Job completed successfully! Proof uploaded."
         )
         
@@ -320,6 +338,7 @@ class MechanicViewModel: ObservableObject {
             requestId: requestId,
             newStatus: .cancelled,
             notes: nil,
+            mechanicId: nil,
             successMsg: "Service request cancelled."
         )
         
@@ -423,6 +442,7 @@ class MechanicViewModel: ObservableObject {
         requestId: String,
         newStatus: ServiceRequestStatus,
         notes: String?,
+        mechanicId: String?,
         successMsg: String
     ) async -> Bool {
         isLoading = true
@@ -432,11 +452,12 @@ class MechanicViewModel: ObservableObject {
         let isoFormatter = ISO8601DateFormatter()
         isoFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         
-        let updatePayload = ServiceRequestStatusUpdate(
+        var updatePayload = ServiceRequestStatusUpdate(
             status: newStatus.rawValue,
             mechanicNotes: notes,
             updatedAt: isoFormatter.string(from: Date())
         )
+        updatePayload.mechanicId = mechanicId
         
         do {
             try await supabase.from("service_requests")

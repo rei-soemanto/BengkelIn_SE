@@ -37,6 +37,7 @@ struct ServiceRequest: Codable, Identifiable {
     var longitude: Double?
     var estimatedPrice: Double?
     var mechanicNotes: String?
+    var mechanicId: String?
     var createdAt: Date?
     var updatedAt: Date?
 
@@ -54,6 +55,7 @@ struct ServiceRequest: Codable, Identifiable {
         case longitude
         case estimatedPrice = "estimated_price"
         case mechanicNotes  = "mechanic_notes"
+        case mechanicId     = "mechanic_id"
         case createdAt      = "created_at"
         case updatedAt      = "updated_at"
     }
@@ -97,11 +99,13 @@ struct ServiceRequestInsert: Encodable {
 struct ServiceRequestStatusUpdate: Encodable {
     let status: String
     let mechanicNotes: String?
+    var mechanicId: String? = nil
     let updatedAt: String // ISO 8601 string for the `updated_at` column
 
     enum CodingKeys: String, CodingKey {
         case status
         case mechanicNotes = "mechanic_notes"
+        case mechanicId    = "mechanic_id"
         case updatedAt     = "updated_at"
     }
 }

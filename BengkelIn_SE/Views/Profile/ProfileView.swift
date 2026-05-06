@@ -24,23 +24,14 @@ struct ProfileView: View {
     
     var body: some View {
         NavigationStack {
-            VStack(spacing: 0) {
-                if authViewModel.currentUser?.role == "PROVIDER" {
-                    Picker("App Mode", selection: $authViewModel.appMode) {
-                        Text("Customer").tag(AppMode.customer)
-                        Text("Bengkel").tag(AppMode.bengkel)
-                    }
-                    .pickerStyle(.segmented)
-                    .padding()
-                }
-                
-                if authViewModel.appMode == .customer || authViewModel.currentUser?.role != "PROVIDER" {
+            Group {
+                if authViewModel.appMode == .customer || !authViewModel.isBengkelProvider {
                     customerProfileContent
                 } else {
                     BengkelProfileView(authViewModel: authViewModel)
                 }
             }
-            .navigationTitle(authViewModel.appMode == .customer || authViewModel.currentUser?.role != "PROVIDER" ? "Profile" : "Bengkel Profile")
+            .navigationTitle(authViewModel.appMode == .customer || !authViewModel.isBengkelProvider ? "Profile" : "Bengkel Profile")
             .navigationBarTitleDisplayMode(.inline)
             
             .task {
@@ -196,7 +187,15 @@ struct ProfileView: View {
                             ActionRow(icon: "person.text.rectangle", title: "Profile Settings")
                         }
                         
-                        if authViewModel.currentUser?.role != "PROVIDER" {
+                        if authViewModel.isBengkelProvider {
+                            Button(action: {
+                                withAnimation {
+                                    authViewModel.appMode = .bengkel
+                                }
+                            }) {
+                                ActionRow(icon: "briefcase.fill", title: "Manage My Bengkel")
+                            }
+                        } else if authViewModel.currentUser?.role != "PROVIDER" {
                             NavigationLink(destination: RegisterBengkelView()) {
                                 ActionRow(icon: "wrench.and.screwdriver", title: "Register as Bengkel")
                             }

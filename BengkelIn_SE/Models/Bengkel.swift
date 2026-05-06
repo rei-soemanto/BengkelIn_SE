@@ -27,6 +27,8 @@ struct Bengkel: Codable, Identifiable {
     var averageRating: Double?
     var totalReviews: Int?
     
+    var mechanicUids: [String]?
+    
     var createdAt: Date?
     
     enum CodingKeys: String, CodingKey {
@@ -40,6 +42,7 @@ struct Bengkel: Codable, Identifiable {
         case offeredServices = "offered_services"
         case averageRating = "average_rating"
         case totalReviews = "total_reviews"
+        case mechanicUids = "mechanic_uids"
         case createdAt = "created_at"
     }
 }

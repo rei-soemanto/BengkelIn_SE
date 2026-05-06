@@ -75,6 +75,8 @@ class AuthViewModel: ObservableObject {
         isLoading = false
     }
 
+    @Published var isBengkelProvider = false
+
     func fetchUser() async {
         guard let sessionUser = self.userSession else { return }
         let uid = sessionUser.id.uuidString.lowercased()
@@ -95,6 +97,22 @@ class AuthViewModel: ObservableObject {
             }
             
             self.currentUser = fetchedUser
+            
+            // Check if user is a bengkel provider
+            do {
+                let count: Int = try await supabase.from("bengkels")
+                    .select("id", head: true, count: .exact)
+                    .eq("provider_uid", value: uid)
+                    .execute()
+                    .count ?? 0
+                
+                self.isBengkelProvider = (count > 0)
+                
+                // Keep the app mode in sync if they were a provider and switched back and forth
+            } catch {
+                self.isBengkelProvider = false
+            }
+            
         } catch {
             self.errorMessage = error.localizedDescription
         }
