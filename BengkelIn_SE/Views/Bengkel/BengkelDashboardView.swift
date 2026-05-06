@@ -3,6 +3,7 @@
 //  BengkelIn
 //
 //  Created by Rei Soemanto on 25/04/26.
+//  Phase 1 Backend Migration — Live Supabase Integration on 07/05/26.
 //
 
 import SwiftUI
@@ -99,22 +100,30 @@ struct BengkelDashboardView: View {
                         }
                     }
                     
-                    if bengkelViewModel.hasActiveJob {
+                    if bengkelViewModel.hasActiveJob, let active = bengkelViewModel.activeServiceRequest {
                         VStack(spacing: 12) {
                             Image(systemName: "wrench.and.screwdriver.fill")
                                 .font(.largeTitle)
                                 .foregroundColor(.blue)
                                 .padding(.bottom, 4)
                             
-                            Text(bengkelViewModel.activeJobTitle)
+                            Text(active.serviceType)
                                 .font(.headline)
                             
-                            Text(bengkelViewModel.activeJobStatus)
+                            Text("Status: \(active.status.rawValue.replacingOccurrences(of: "_", with: " ").capitalized)")
                                 .font(.subheadline)
                                 .foregroundColor(.gray)
                             
+                            if let location = active.location {
+                                Label(location, systemImage: "mappin.and.ellipse")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
+                            
                             Button("Finish Job") {
-                                bengkelViewModel.finishJob()
+                                Task {
+                                    await bengkelViewModel.finishJob()
+                                }
                             }
                             .buttonStyle(.borderedProminent)
                             .tint(.green)
@@ -130,22 +139,39 @@ struct BengkelDashboardView: View {
                         )
                         
                     } else {
-                        if bengkelViewModel.pendingRequestsCount > 0 {
+                        if let firstPending = bengkelViewModel.pendingRequests.first {
                             VStack(spacing: 12) {
-                                Image(systemName: "exclamationmark.triangle.fill")
+                                Image(systemName: firstPending.isEmergency ? "exclamationmark.triangle.fill" : "bell.badge.fill")
                                     .font(.largeTitle)
-                                    .foregroundColor(.orange)
+                                    .foregroundColor(firstPending.isEmergency ? .red : .orange)
                                     .padding(.bottom, 4)
                                 
-                                Text(bengkelViewModel.incomingJobTitle)
+                                Text(firstPending.serviceType)
                                     .font(.headline)
                                 
-                                Text(String(format: "Distance: %.1f km away", bengkelViewModel.incomingJobDistance))
-                                    .font(.subheadline)
-                                    .foregroundColor(.gray)
+                                if let location = firstPending.location {
+                                    Label(location, systemImage: "mappin.and.ellipse")
+                                        .font(.subheadline)
+                                        .foregroundColor(.gray)
+                                }
+                                
+                                if firstPending.isEmergency {
+                                    Text("EMERGENCY")
+                                        .font(.caption)
+                                        .fontWeight(.bold)
+                                        .foregroundColor(.white)
+                                        .padding(.horizontal, 8)
+                                        .padding(.vertical, 4)
+                                        .background(Color.red)
+                                        .cornerRadius(6)
+                                }
                                 
                                 Button("Accept Job Offer") {
-                                    bengkelViewModel.acceptJob()
+                                    if let requestId = firstPending.id {
+                                        Task {
+                                            await bengkelViewModel.acceptJob(requestId: requestId)
+                                        }
+                                    }
                                 }
                                 .buttonStyle(.borderedProminent)
                                 .padding(.top, 12)
@@ -178,6 +204,12 @@ struct BengkelDashboardView: View {
         .task {
             if let uid = authViewModel.currentUser?.id {
                 await bengkelViewModel.fetchMyBengkel(uid: uid)
+                
+                // Once we have the bengkel, fetch its service requests & earnings
+                if let bengkelId = bengkelViewModel.myBengkel?.id {
+                    await bengkelViewModel.fetchServiceRequests(bengkelId: bengkelId)
+                    await bengkelViewModel.fetchTodaysEarnings(bengkelId: bengkelId)
+                }
             }
         }
     }

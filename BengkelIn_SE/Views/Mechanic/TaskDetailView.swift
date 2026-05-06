@@ -3,23 +3,25 @@
 //  BengkelIn_SE
 //
 //  Created for Mechanic feature on 05/05/26.
+//  Phase 1 Backend Migration — Live Supabase Integration on 07/05/26.
 //
 
 import SwiftUI
 
 struct TaskDetailView: View {
-    let task: MechanicTask
+    let request: ServiceRequest
     @ObservedObject var mechanicVM: MechanicViewModel
     
     @Environment(\.dismiss) private var dismiss
     @State private var showConfirmation = false
-    @State private var isUploading = false
+    @State private var isProcessing = false
+    @State private var mechanicNotes = ""
     
     var body: some View {
         ScrollView {
             VStack(spacing: 24) {
                 // MARK: - Emergency Badge
-                if task.isEmergency {
+                if request.isEmergency {
                     HStack {
                         Image(systemName: "exclamationmark.triangle.fill")
                             .foregroundColor(.white)
@@ -33,30 +35,58 @@ struct TaskDetailView: View {
                     .cornerRadius(12)
                 }
                 
-                // MARK: - Order Info
+                // MARK: - Status Banner
+                statusBanner
+                
+                // MARK: - Request Info
                 VStack(alignment: .leading, spacing: 16) {
-                    HStack {
-                        Text("Order ID")
-                            .font(.subheadline)
-                            .foregroundColor(.gray)
-                        Spacer()
-                        Text(task.orderId)
-                            .font(.subheadline)
-                            .fontDesign(.monospaced)
+                    if let id = request.id {
+                        HStack {
+                            Text("Request ID")
+                                .font(.subheadline)
+                                .foregroundColor(.gray)
+                            Spacer()
+                            Text(String(id.prefix(12)).uppercased())
+                                .font(.subheadline)
+                                .fontDesign(.monospaced)
+                        }
+                        
+                        Divider()
                     }
                     
-                    Divider()
+                    detailRow(icon: "wrench.and.screwdriver.fill", title: "Service", value: request.serviceType)
                     
-                    detailRow(icon: "wrench.and.screwdriver.fill", title: "Service", value: task.serviceType)
-                    detailRow(icon: "person.fill", title: "Customer", value: task.customerName)
-                    detailRow(icon: "car.fill", title: "Vehicle", value: task.vehicleInfo)
-                    detailRow(icon: "location.fill", title: "Location", value: task.location)
-                    detailRow(icon: "arrow.triangle.swap", title: "Distance", value: String(format: "%.1f km", task.distanceKm))
-                    detailRow(icon: "banknote.fill", title: "Est. Price", value: task.estimatedPrice.toRupiah())
+                    if let location = request.location {
+                        detailRow(icon: "location.fill", title: "Location", value: location)
+                    }
+                    
+                    if let price = request.estimatedPrice {
+                        detailRow(icon: "banknote.fill", title: "Est. Price", value: price.toRupiah())
+                    }
+                    
+                    if let desc = request.description, !desc.isEmpty {
+                        detailRow(icon: "text.alignleft", title: "Notes", value: desc)
+                    }
+                    
+                    if let notes = request.mechanicNotes, !notes.isEmpty {
+                        detailRow(icon: "note.text", title: "Mechanic Notes", value: notes)
+                    }
                 }
                 .padding()
                 .background(Color(.systemGray6))
                 .cornerRadius(12)
+                
+                // MARK: - Mechanic Notes Input (for completion)
+                if request.status == .inProgress {
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Completion Notes")
+                            .font(.headline)
+                        
+                        TextField("Add notes about the work done...", text: $mechanicNotes, axis: .vertical)
+                            .textFieldStyle(.roundedBorder)
+                            .lineLimit(3...6)
+                    }
+                }
                 
                 // MARK: - Photo Upload Placeholder
                 VStack(spacing: 16) {
@@ -68,7 +98,7 @@ struct TaskDetailView: View {
                         .font(.subheadline)
                         .foregroundColor(.gray)
                     
-                    Text("Photo upload will be available\nwhen backend is integrated.")
+                    Text("Photo upload will be available\nin a future update (Supabase Storage).")
                         .font(.caption)
                         .foregroundColor(.gray.opacity(0.7))
                         .multilineTextAlignment(.center)
@@ -81,26 +111,8 @@ struct TaskDetailView: View {
                         .foregroundColor(.gray.opacity(0.3))
                 )
                 
-                // MARK: - Complete Button
-                Button {
-                    showConfirmation = true
-                } label: {
-                    HStack {
-                        if isUploading {
-                            ProgressView()
-                                .tint(.white)
-                        }
-                        Image(systemName: "checkmark.circle.fill")
-                        Text("Complete Job & Upload Photo")
-                            .fontWeight(.bold)
-                    }
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(Color.green)
-                    .cornerRadius(12)
-                }
-                .disabled(isUploading)
+                // MARK: - Action Buttons
+                actionButtons
                 
                 Spacer()
             }
@@ -115,6 +127,113 @@ struct TaskDetailView: View {
             }
         } message: {
             Text("This will mark the job as completed and notify the customer. This action cannot be undone.")
+        }
+    }
+    
+    // MARK: - Status Banner
+    private var statusBanner: some View {
+        let (icon, text, color): (String, String, Color) = {
+            switch request.status {
+            case .pending:    return ("clock.fill", "Awaiting Confirmation", .orange)
+            case .accepted:   return ("checkmark.circle.fill", "Accepted — Ready to Start", .blue)
+            case .inProgress: return ("wrench.fill", "Work in Progress", .purple)
+            case .completed:  return ("checkmark.seal.fill", "Completed", .green)
+            case .cancelled:  return ("xmark.circle.fill", "Cancelled", .gray)
+            }
+        }()
+        
+        return HStack {
+            Image(systemName: icon)
+            Text(text)
+                .fontWeight(.semibold)
+        }
+        .foregroundColor(color)
+        .frame(maxWidth: .infinity)
+        .padding()
+        .background(color.opacity(0.1))
+        .cornerRadius(12)
+    }
+    
+    // MARK: - Action Buttons
+    @ViewBuilder
+    private var actionButtons: some View {
+        if isProcessing {
+            ProgressView("Processing...")
+                .padding()
+        } else {
+            switch request.status {
+            case .pending:
+                // Provider can accept
+                Button {
+                    acceptRequest()
+                } label: {
+                    HStack {
+                        Image(systemName: "checkmark.circle.fill")
+                        Text("Accept Request")
+                            .fontWeight(.bold)
+                    }
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(Color.blue)
+                    .cornerRadius(12)
+                }
+                
+            case .accepted:
+                // Mechanic can start work
+                Button {
+                    startWork()
+                } label: {
+                    HStack {
+                        Image(systemName: "play.circle.fill")
+                        Text("Start Work")
+                            .fontWeight(.bold)
+                    }
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(Color.purple)
+                    .cornerRadius(12)
+                }
+                
+            case .inProgress:
+                // Mechanic can complete
+                Button {
+                    showConfirmation = true
+                } label: {
+                    HStack {
+                        Image(systemName: "checkmark.circle.fill")
+                        Text("Complete Job & Upload Photo")
+                            .fontWeight(.bold)
+                    }
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(Color.green)
+                    .cornerRadius(12)
+                }
+                
+            case .completed, .cancelled:
+                EmptyView()
+            }
+            
+            // Cancel option for non-terminal states
+            if request.status == .pending || request.status == .accepted {
+                Button(role: .destructive) {
+                    cancelRequest()
+                } label: {
+                    HStack {
+                        Image(systemName: "xmark.circle.fill")
+                        Text("Cancel Request")
+                            .fontWeight(.medium)
+                    }
+                    .foregroundColor(.red)
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(Color.red.opacity(0.1))
+                    .cornerRadius(12)
+                }
+            }
         }
     }
     
@@ -137,11 +256,52 @@ struct TaskDetailView: View {
         }
     }
     
+    private func acceptRequest() {
+        guard let requestId = request.id else { return }
+        isProcessing = true
+        Task {
+            let success = await mechanicVM.acceptServiceRequest(requestId: requestId)
+            isProcessing = false
+            if success {
+                dismiss()
+            }
+        }
+    }
+    
+    private func startWork() {
+        guard let requestId = request.id else { return }
+        isProcessing = true
+        Task {
+            let success = await mechanicVM.startWork(requestId: requestId)
+            isProcessing = false
+            if success {
+                dismiss()
+            }
+        }
+    }
+    
     private func completeTask() {
-        isUploading = true
-        mechanicVM.completeTask(taskId: task.id) {
-            isUploading = false
-            dismiss()
+        guard let requestId = request.id else { return }
+        isProcessing = true
+        Task {
+            let notes = mechanicNotes.isEmpty ? nil : mechanicNotes
+            let success = await mechanicVM.completeServiceRequest(requestId: requestId, notes: notes)
+            isProcessing = false
+            if success {
+                dismiss()
+            }
+        }
+    }
+    
+    private func cancelRequest() {
+        guard let requestId = request.id else { return }
+        isProcessing = true
+        Task {
+            let success = await mechanicVM.cancelServiceRequest(requestId: requestId)
+            isProcessing = false
+            if success {
+                dismiss()
+            }
         }
     }
 }
@@ -149,16 +309,22 @@ struct TaskDetailView: View {
 #Preview {
     NavigationStack {
         TaskDetailView(
-            task: MechanicTask(
-                id: "preview-1",
-                orderId: "ORD-PREVIEW-001",
-                customerName: "Ahmad Yusuf",
-                vehicleInfo: "Honda Brio 2022 — B 1234 ABC",
+            request: ServiceRequest(
+                id: "preview-001",
+                customerId: "user-001",
+                vehicleId: "vehicle-001",
+                bengkelId: "bengkel-001",
                 serviceType: "Flat Tire Repair",
-                location: "Jl. Sudirman No. 45, Jakarta",
+                description: "Front left tire is completely flat",
+                status: .inProgress,
                 isEmergency: true,
-                distanceKm: 2.4,
-                estimatedPrice: 150_000
+                location: "Jl. Sudirman No. 45, Jakarta",
+                latitude: -6.2088,
+                longitude: 106.8456,
+                estimatedPrice: 150_000,
+                mechanicNotes: nil,
+                createdAt: Date(),
+                updatedAt: nil
             ),
             mechanicVM: MechanicViewModel()
         )

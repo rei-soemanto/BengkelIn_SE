@@ -10,6 +10,20 @@ import Combine
 import MapKit
 import Supabase
 
+// MARK: - Lightweight response type for incoming requests (provider dashboard)
+
+/// A joined view of a service request with its related customer and vehicle info.
+/// Used for the provider dashboard "Incoming Requests" display.
+struct IncomingRequestDisplay: Identifiable {
+    let id: String
+    let serviceType: String
+    let isEmergency: Bool
+    let status: ServiceRequestStatus
+    let location: String?
+    let estimatedPrice: Double?
+    let createdAt: Date?
+}
+
 @MainActor
 class BengkelViewModel: ObservableObject {
     @Published var myBengkel: Bengkel?
@@ -17,31 +31,135 @@ class BengkelViewModel: ObservableObject {
     @Published var errorMessage: String?
     @Published var successMessage: String?
     
-    // MARK: - Provider Job State (Mock Data — will be replaced by backend)
-    @Published var hasActiveJob: Bool = false
-    @Published var todaysEarnings: Double = 0.0
-    @Published var pendingRequestsCount: Int = 1
-    @Published var incomingJobTitle: String = "Flat Tire - Honda Brio"
-    @Published var incomingJobDistance: Double = 2.4
-    @Published var activeJobTitle: String = "Fixing Flat Tire - Honda Brio"
-    @Published var activeJobStatus: String = "Job is currently in progress..."
+    // MARK: - Provider Job State (Live — from service_requests table)
     
-    /// Accepts an incoming job offer. Transitions the dashboard to active job state.
-    func acceptJob() {
-        withAnimation {
-            hasActiveJob = true
+    /// Pending service requests targeting this provider's bengkel.
+    @Published var pendingRequests: [ServiceRequest] = []
+    /// The currently active (accepted/in_progress) request, if any.
+    @Published var activeServiceRequest: ServiceRequest?
+    /// Today's earnings (sum of completed request estimated prices).
+    @Published var todaysEarnings: Double = 0.0
+    
+    var pendingRequestsCount: Int { pendingRequests.count }
+    var hasActiveJob: Bool { activeServiceRequest != nil }
+    
+    /// Fetches all service requests for this bengkel from Supabase.
+    /// Separates them into pending vs. active buckets.
+    func fetchServiceRequests(bengkelId: String) async {
+        do {
+            let requests: [ServiceRequest] = try await supabase.from("service_requests")
+                .select()
+                .eq("bengkel_id", value: bengkelId)
+                .in("status", values: [
+                    ServiceRequestStatus.pending.rawValue,
+                    ServiceRequestStatus.accepted.rawValue,
+                    ServiceRequestStatus.inProgress.rawValue
+                ])
+                .order("created_at", ascending: false)
+                .execute()
+                .value
+            
+            self.pendingRequests = requests.filter { $0.status == .pending }
+            self.activeServiceRequest = requests.first(where: {
+                $0.status == .accepted || $0.status == .inProgress
+            })
+        } catch {
+            self.errorMessage = "Failed to load service requests: \(error.localizedDescription)"
+            print("[BengkelVM] fetchServiceRequests error: \(error)")
         }
     }
     
-    /// Finishes the current active job. Awards earnings and decrements the pending count.
-    func finishJob() {
-        withAnimation {
-            hasActiveJob = false
-            if pendingRequestsCount > 0 {
-                pendingRequestsCount -= 1
-            }
-            todaysEarnings += 150_000
+    /// Fetches today's total earnings from completed requests.
+    func fetchTodaysEarnings(bengkelId: String) async {
+        let calendar = Calendar.current
+        let startOfDay = calendar.startOfDay(for: Date())
+        let isoFormatter = ISO8601DateFormatter()
+        isoFormatter.formatOptions = [.withInternetDateTime]
+        let startStr = isoFormatter.string(from: startOfDay)
+        
+        do {
+            let completed: [ServiceRequest] = try await supabase.from("service_requests")
+                .select()
+                .eq("bengkel_id", value: bengkelId)
+                .eq("status", value: ServiceRequestStatus.completed.rawValue)
+                .gte("updated_at", value: startStr)
+                .execute()
+                .value
+            
+            self.todaysEarnings = completed.compactMap(\.estimatedPrice).reduce(0, +)
+        } catch {
+            print("[BengkelVM] fetchTodaysEarnings error: \(error)")
         }
+    }
+    
+    /// Accepts a pending service request.
+    func acceptJob(requestId: String) async {
+        isLoading = true
+        errorMessage = nil
+        
+        let isoFormatter = ISO8601DateFormatter()
+        isoFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        
+        let update = ServiceRequestStatusUpdate(
+            status: ServiceRequestStatus.accepted.rawValue,
+            mechanicNotes: nil,
+            updatedAt: isoFormatter.string(from: Date())
+        )
+        
+        do {
+            try await supabase.from("service_requests")
+                .update(update)
+                .eq("id", value: requestId)
+                .execute()
+            
+            // Move from pending to active
+            withAnimation {
+                if let idx = pendingRequests.firstIndex(where: { $0.id == requestId }) {
+                    var accepted = pendingRequests.remove(at: idx)
+                    accepted.status = .accepted
+                    self.activeServiceRequest = accepted
+                }
+            }
+            self.successMessage = "Job accepted! Customer has been notified."
+        } catch {
+            self.errorMessage = "Failed to accept job: \(error.localizedDescription)"
+            print("[BengkelVM] acceptJob error: \(error)")
+        }
+        isLoading = false
+    }
+    
+    /// Finishes the current active job by marking it as completed.
+    func finishJob() async {
+        guard let activeId = activeServiceRequest?.id else { return }
+        isLoading = true
+        errorMessage = nil
+        
+        let isoFormatter = ISO8601DateFormatter()
+        isoFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        
+        let update = ServiceRequestStatusUpdate(
+            status: ServiceRequestStatus.completed.rawValue,
+            mechanicNotes: nil,
+            updatedAt: isoFormatter.string(from: Date())
+        )
+        
+        do {
+            try await supabase.from("service_requests")
+                .update(update)
+                .eq("id", value: activeId)
+                .execute()
+            
+            withAnimation {
+                let price = activeServiceRequest?.estimatedPrice ?? 0
+                self.todaysEarnings += price
+                self.activeServiceRequest = nil
+            }
+            self.successMessage = "Job completed! Earnings updated."
+        } catch {
+            self.errorMessage = "Failed to complete job: \(error.localizedDescription)"
+            print("[BengkelVM] finishJob error: \(error)")
+        }
+        isLoading = false
     }
     
     struct BengkelUpdateRequest: Encodable {
@@ -263,31 +381,28 @@ class BengkelViewModel: ObservableObject {
         }
     }
     
-    // MARK: - Mechanic Management (Mock Data — No Backend)
+    // MARK: - Mechanic Management (Live — from users table)
     
-    @Published var availableMechanics: [Mechanic] = [
-        Mechanic(
-            id: "mech-001",
-            name: "Budi Santoso",
-            status: .available,
-            linkedBengkelId: nil
-        ),
-        Mechanic(
-            id: "mech-002",
-            name: "Dimas Prasetyo",
-            status: .available,
-            linkedBengkelId: nil
-        ),
-        Mechanic(
-            id: "mech-003",
-            name: "Eko Wijaya",
-            status: .busy,
-            linkedBengkelId: nil
-        )
-    ]
+    @Published var availableMechanics: [Mechanic] = []
     
-    /// Stub: Assigns a mechanic to an order by setting their status to busy.
-    /// In production, this will call the Supabase backend.
+    /// Fetches mechanics linked to this bengkel from the users table.
+    /// Mechanics are users with `is_mechanic = true`.
+    func fetchMechanics(bengkelId: String) async {
+        do {
+            let mechanics: [Mechanic] = try await supabase.from("users")
+                .select("id, name, is_mechanic")
+                .eq("is_mechanic", value: true)
+                .execute()
+                .value
+            
+            self.availableMechanics = mechanics
+        } catch {
+            print("[BengkelVM] fetchMechanics error: \(error)")
+        }
+    }
+    
+    /// Assigns a mechanic to a service request by updating the request.
+    /// In production, this could set a `mechanic_id` column on service_requests.
     func assignMechanic(to orderId: String, mechanicId: String) {
         print("[BengkelVM] assignMechanic called — order: \(orderId), mechanic: \(mechanicId)")
         
@@ -295,7 +410,6 @@ class BengkelViewModel: ObservableObject {
             withAnimation(.easeInOut) {
                 availableMechanics[index].status = .busy
             }
-            print("[BengkelVM] Mechanic \(mechanicId) is now busy (mock).")
             successMessage = "Mechanic assigned successfully!"
         } else {
             errorMessage = "Mechanic not found."

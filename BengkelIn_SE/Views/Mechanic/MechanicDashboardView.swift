@@ -3,6 +3,7 @@
 //  BengkelIn_SE
 //
 //  Created for Mechanic feature on 05/05/26.
+//  Phase 1 Backend Migration — Live Supabase Integration on 07/05/26.
 //
 
 import SwiftUI
@@ -31,17 +32,33 @@ struct MechanicDashboardView: View {
                     HStack(spacing: 12) {
                         StatBox(
                             title: "Active Tasks",
-                            value: "\(mechanicVM.assignedTasks.count)",
+                            value: "\(mechanicVM.myServiceRequests.filter { $0.status != .completed && $0.status != .cancelled }.count)",
                             icon: "wrench.and.screwdriver.fill",
                             color: .blue
                         )
                         
                         StatBox(
                             title: "Emergency",
-                            value: "\(mechanicVM.assignedTasks.filter(\.isEmergency).count)",
+                            value: "\(mechanicVM.myServiceRequests.filter(\.isEmergency).count)",
                             icon: "exclamationmark.triangle.fill",
                             color: .orange
                         )
+                    }
+                    
+                    // MARK: - Error Banner
+                    if let error = mechanicVM.errorMessage {
+                        HStack {
+                            Image(systemName: "exclamationmark.circle.fill")
+                                .foregroundColor(.red)
+                            Text(error)
+                                .font(.subheadline)
+                                .foregroundColor(.red)
+                        }
+                        .padding()
+                        .frame(maxWidth: .infinity)
+                        .background(Color.red.opacity(0.1))
+                        .cornerRadius(12)
+                        .transition(.move(edge: .top).combined(with: .opacity))
                     }
                     
                     // MARK: - Success Banner
@@ -60,13 +77,23 @@ struct MechanicDashboardView: View {
                         .transition(.move(edge: .top).combined(with: .opacity))
                     }
                     
+                    // MARK: - Loading
+                    if mechanicVM.isLoading {
+                        ProgressView("Loading tasks...")
+                            .padding()
+                    }
+                    
                     // MARK: - Assigned Tasks
                     VStack(alignment: .leading, spacing: 16) {
                         Text("Assigned Tasks")
                             .font(.title2)
                             .fontWeight(.bold)
                         
-                        if mechanicVM.assignedTasks.isEmpty {
+                        let activeTasks = mechanicVM.myServiceRequests.filter {
+                            $0.status != .completed && $0.status != .cancelled
+                        }
+                        
+                        if activeTasks.isEmpty && !mechanicVM.isLoading {
                             VStack(spacing: 12) {
                                 Image(systemName: "checkmark.circle.fill")
                                     .font(.largeTitle)
@@ -83,9 +110,9 @@ struct MechanicDashboardView: View {
                             .background(Color(.systemGray6))
                             .cornerRadius(12)
                         } else {
-                            ForEach(mechanicVM.assignedTasks) { task in
-                                NavigationLink(destination: TaskDetailView(task: task, mechanicVM: mechanicVM)) {
-                                    taskCard(task)
+                            ForEach(activeTasks) { request in
+                                NavigationLink(destination: TaskDetailView(request: request, mechanicVM: mechanicVM)) {
+                                    taskCard(request)
                                 }
                                 .buttonStyle(.plain)
                             }
@@ -97,15 +124,21 @@ struct MechanicDashboardView: View {
                 }
                 .padding()
             }
-            .animation(.easeInOut, value: mechanicVM.assignedTasks.count)
+            .animation(.easeInOut, value: mechanicVM.myServiceRequests.count)
+            .task {
+                await mechanicVM.fetchMyServiceRequests()
+            }
+            .refreshable {
+                await mechanicVM.fetchMyServiceRequests()
+            }
         }
     }
     
     // MARK: - Task Card
-    private func taskCard(_ task: MechanicTask) -> some View {
+    private func taskCard(_ request: ServiceRequest) -> some View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
-                if task.isEmergency {
+                if request.isEmergency {
                     Label("EMERGENCY", systemImage: "exclamationmark.triangle.fill")
                         .font(.caption)
                         .fontWeight(.bold)
@@ -116,42 +149,37 @@ struct MechanicDashboardView: View {
                         .cornerRadius(6)
                 }
                 
+                statusBadge(request.status)
+                
                 Spacer()
                 
-                Text(task.orderId)
-                    .font(.caption)
-                    .foregroundColor(.gray)
-                    .fontDesign(.monospaced)
+                if let id = request.id {
+                    Text(String(id.prefix(8)).uppercased())
+                        .font(.caption)
+                        .foregroundColor(.gray)
+                        .fontDesign(.monospaced)
+                }
             }
             
-            Text(task.serviceType)
+            Text(request.serviceType)
                 .font(.headline)
                 .foregroundColor(.primary)
             
             HStack(spacing: 16) {
-                Label(task.customerName, systemImage: "person.fill")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
+                if let location = request.location {
+                    Label(location, systemImage: "mappin.and.ellipse")
+                        .font(.caption)
+                        .foregroundColor(.gray)
+                        .lineLimit(1)
+                }
                 
                 Spacer()
                 
-                Label(String(format: "%.1f km", task.distanceKm), systemImage: "location.fill")
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
-            }
-            
-            Text(task.vehicleInfo)
-                .font(.caption)
-                .foregroundColor(.gray)
-            
-            HStack {
-                Image(systemName: "mappin.and.ellipse")
-                    .foregroundColor(.gray)
-                    .font(.caption)
-                Text(task.location)
-                    .font(.caption)
-                    .foregroundColor(.gray)
-                    .lineLimit(1)
+                if let price = request.estimatedPrice {
+                    Label(price.toRupiah(), systemImage: "banknote.fill")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
             }
             
             HStack {
@@ -166,8 +194,30 @@ struct MechanicDashboardView: View {
         .cornerRadius(12)
         .overlay(
             RoundedRectangle(cornerRadius: 12)
-                .stroke(task.isEmergency ? Color.red.opacity(0.3) : Color.clear, lineWidth: 2)
+                .stroke(request.isEmergency ? Color.red.opacity(0.3) : Color.clear, lineWidth: 2)
         )
+    }
+    
+    // MARK: - Status Badge
+    private func statusBadge(_ status: ServiceRequestStatus) -> some View {
+        let (text, color): (String, Color) = {
+            switch status {
+            case .pending:    return ("Pending", .orange)
+            case .accepted:   return ("Accepted", .blue)
+            case .inProgress: return ("In Progress", .purple)
+            case .completed:  return ("Completed", .green)
+            case .cancelled:  return ("Cancelled", .gray)
+            }
+        }()
+        
+        return Text(text)
+            .font(.caption2)
+            .fontWeight(.semibold)
+            .foregroundColor(color)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 2)
+            .background(color.opacity(0.15))
+            .cornerRadius(4)
     }
 }
 
