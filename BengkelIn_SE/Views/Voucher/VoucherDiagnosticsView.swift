@@ -149,6 +149,17 @@ private class DiagnosticsVM: ObservableObject {
             return
         }
 
+        // Cleanup Pre-step: Wipe the slate clean to make the test idempotent
+        do {
+            try await supabase.from("user_vouchers")
+                .delete()
+                .eq("user_id", value: uid)
+                .eq("voucher_id", value: vid)
+                .execute()
+        } catch {
+            print("[VoucherDiag] Cleanup pre-step failed (expected if no row existed): \(error)")
+        }
+
         let payload = DiagUserVoucherInsert(userId: uid, voucherId: vid, isUsed: false)
 
         do {
