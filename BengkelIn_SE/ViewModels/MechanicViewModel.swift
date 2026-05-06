@@ -114,7 +114,8 @@ class MechanicViewModel: ObservableObject {
         location: String? = nil,
         latitude: Double? = nil,
         longitude: Double? = nil,
-        estimatedPrice: Double? = nil
+        estimatedPrice: Double? = nil,
+        voucherId: String? = nil
     ) async -> Bool {
         isCreatingRequest = true
         errorMessage = nil
@@ -127,6 +128,39 @@ class MechanicViewModel: ObservableObject {
             return false
         }
         let uid = session.user.id.uuidString.lowercased()
+        
+        // Step 1.5: Validate Voucher if attached
+        if let vId = voucherId {
+            do {
+                // Fetch the voucher
+                let voucher: Voucher = try await supabase.from("vouchers")
+                    .select()
+                    .eq("id", value: vId)
+                    .single()
+                    .execute()
+                    .value
+                
+                // If it has a providerUid, it must match the target bengkel's providerUid
+                if let vProvider = voucher.providerUid {
+                    let bengkel: Bengkel = try await supabase.from("bengkels")
+                        .select()
+                        .eq("id", value: bengkelId)
+                        .single()
+                        .execute()
+                        .value
+                    
+                    if vProvider != bengkel.providerUid {
+                        self.errorMessage = "This promo code is not valid for this workshop."
+                        isCreatingRequest = false
+                        return false
+                    }
+                }
+            } catch {
+                self.errorMessage = "Failed to validate promo: \(error.localizedDescription)"
+                isCreatingRequest = false
+                return false
+            }
+        }
         
         // Step 2: Build the insert payload (DB manages id, created_at, updated_at)
         let insertPayload = ServiceRequestInsert(

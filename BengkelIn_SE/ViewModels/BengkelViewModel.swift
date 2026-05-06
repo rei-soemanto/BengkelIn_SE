@@ -483,4 +483,78 @@ class BengkelViewModel: ObservableObject {
             errorMessage = "Mechanic not found."
         }
     }
+    
+    // MARK: - Voucher / Promo Management
+    
+    @Published var providerVouchers: [Voucher] = []
+    
+    func fetchProviderPromos() async {
+        guard let session = try? await supabase.auth.session else { return }
+        let uid = session.user.id.uuidString.lowercased()
+        
+        do {
+            let fetched: [Voucher] = try await supabase.from("vouchers")
+                .select()
+                .eq("provider_uid", value: uid)
+                .order("created_at", ascending: false)
+                .execute()
+                .value
+            
+            self.providerVouchers = fetched
+        } catch {
+            print("[BengkelVM] fetchProviderPromos error: \(error)")
+        }
+    }
+    
+    struct VoucherInsert: Encodable {
+        let code: String
+        let title: String
+        let discountAmount: Double
+        let validUntil: String
+        let providerUid: String
+
+        enum CodingKeys: String, CodingKey {
+            case code, title
+            case discountAmount = "discount_amount"
+            case validUntil = "valid_until"
+            case providerUid = "provider_uid"
+        }
+    }
+    
+    func createPromo(code: String, title: String, discount: Double, validUntil: Date) async -> Bool {
+        isLoading = true
+        errorMessage = nil
+        successMessage = nil
+        
+        guard let session = try? await supabase.auth.session else {
+            self.errorMessage = "Not logged in."
+            isLoading = false
+            return false
+        }
+        let uid = session.user.id.uuidString.lowercased()
+        
+        let isoFormatter = ISO8601DateFormatter()
+        isoFormatter.formatOptions = [.withInternetDateTime]
+        let dateStr = isoFormatter.string(from: validUntil)
+        
+        let payload = VoucherInsert(
+            code: code,
+            title: title,
+            discountAmount: discount,
+            validUntil: dateStr,
+            providerUid: uid
+        )
+        
+        do {
+            try await supabase.from("vouchers").insert(payload).execute()
+            self.successMessage = "Promo created successfully!"
+            await fetchProviderPromos()
+            isLoading = false
+            return true
+        } catch {
+            self.errorMessage = "Failed to create promo: \(error.localizedDescription)"
+            isLoading = false
+            return false
+        }
+    }
 }

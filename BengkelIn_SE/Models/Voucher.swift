@@ -17,6 +17,7 @@ struct Voucher: Codable, Identifiable {
     var discountAmount: Double?
     var validUntil: Date?
     var createdAt: Date?
+    var providerUid: String?
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -25,6 +26,7 @@ struct Voucher: Codable, Identifiable {
         case discountAmount = "discount_amount"
         case validUntil     = "valid_until"
         case createdAt      = "created_at"
+        case providerUid    = "provider_uid"
     }
 }
 

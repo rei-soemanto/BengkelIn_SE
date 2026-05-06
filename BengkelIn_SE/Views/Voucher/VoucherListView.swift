@@ -13,6 +13,7 @@ struct VoucherListView: View {
     
     @State private var showCodeEntry = false
     @State private var selectedTab = 0
+    @State private var manualCode = ""
     
     var body: some View {
         NavigationStack {
@@ -24,6 +25,27 @@ struct VoucherListView: View {
                 }
                 .pickerStyle(.segmented)
                 .padding()
+                
+                // MARK: - Manual Code Entry
+                HStack {
+                    TextField("Enter Promo Code", text: $manualCode)
+                        .textInputAutocapitalization(.characters)
+                        .autocorrectionDisabled()
+                        .textFieldStyle(.roundedBorder)
+                    
+                    Button("Apply") {
+                        Task {
+                            await voucherVM.claimByCode(code: manualCode)
+                            if voucherVM.errorMessage == nil {
+                                manualCode = "" // Clear on success
+                            }
+                        }
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(manualCode.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || voucherVM.isLoading)
+                }
+                .padding(.horizontal)
+                .padding(.bottom, 8)
                 
                 // MARK: - Success/Error Banners
                 if let success = voucherVM.successMessage {
@@ -164,6 +186,8 @@ struct VoucherListView: View {
                     .font(.subheadline)
                     .foregroundColor(.primary)
                 
+                scopeText(for: voucher)
+                
                 Text(voucher.code ?? "")
                     .font(.caption)
                     .fontDesign(.monospaced)
@@ -192,6 +216,27 @@ struct VoucherListView: View {
     }
     
     // MARK: - Shared Sub-Views
+    
+    @ViewBuilder
+    private func scopeText(for voucher: Voucher) -> some View {
+        Group {
+            if let pUid = voucher.providerUid {
+                if let name = voucherVM.bengkelNames[pUid] {
+                    Text("Valid at: \(name)")
+                } else {
+                    Text("Valid at: Specific Shop")
+                        .task {
+                            await voucherVM.fetchBengkelName(providerUid: pUid)
+                        }
+                }
+            } else {
+                Text("Valid at: All Bengkels")
+            }
+        }
+        .font(.caption)
+        .foregroundColor(.secondary)
+        .padding(.top, 2)
+    }
     
     private func emptyState(icon: String, title: String, subtitle: String) -> some View {
         VStack(spacing: 12) {

@@ -20,6 +20,8 @@ struct BengkelDashboardView: View {
     @State private var showingAddMechanic = false
     @State private var newMechanicId: String = ""
     
+    @State private var showingCreatePromo = false
+    
     var realShopRating: Double {
         bengkelViewModel.myBengkel?.averageRating ?? 0.0
     }
@@ -260,6 +262,58 @@ struct BengkelDashboardView: View {
                     }
                 }
                 
+                // MARK: - Active Promotions
+                VStack(alignment: .leading, spacing: 16) {
+                    HStack {
+                        Text("Active Promotions")
+                            .font(.title2)
+                            .fontWeight(.bold)
+                        Spacer()
+                        Button {
+                            showingCreatePromo = true
+                        } label: {
+                            Text("Create New Promo")
+                                .font(.caption)
+                                .fontWeight(.semibold)
+                                .foregroundColor(.blue)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 6)
+                                .background(Color.blue.opacity(0.1))
+                                .cornerRadius(12)
+                        }
+                    }
+                    
+                    if bengkelViewModel.providerVouchers.isEmpty {
+                        Text("No active promotions.")
+                            .foregroundColor(.gray)
+                            .font(.subheadline)
+                    } else {
+                        ForEach(bengkelViewModel.providerVouchers) { voucher in
+                            HStack {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(voucher.code ?? "")
+                                        .font(.headline)
+                                    Text(voucher.title ?? "")
+                                        .font(.subheadline)
+                                        .foregroundColor(.secondary)
+                                }
+                                Spacer()
+                                Text("\(Int(voucher.discountAmount ?? 0)) IDR")
+                                    .fontWeight(.bold)
+                                    .foregroundColor(.orange)
+                            }
+                            .padding()
+                            .background(Color(.systemBackground))
+                            .cornerRadius(8)
+                            .shadow(color: Color.black.opacity(0.05), radius: 2)
+                        }
+                    }
+                }
+                .padding()
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Color(.systemGray6))
+                .cornerRadius(12)
+                
                 Spacer()
             }
             .padding()
@@ -267,6 +321,7 @@ struct BengkelDashboardView: View {
         .task {
             if let uid = authViewModel.currentUser?.id {
                 await bengkelViewModel.fetchMyBengkel(uid: uid)
+                await bengkelViewModel.fetchProviderPromos()
                 
                 if let bengkelId = bengkelViewModel.myBengkel?.id {
                     await bengkelViewModel.fetchServiceRequests(bengkelId: bengkelId)
@@ -274,6 +329,10 @@ struct BengkelDashboardView: View {
                     await bengkelViewModel.fetchMechanics(bengkelId: bengkelId)
                 }
             }
+        }
+        .sheet(isPresented: $showingCreatePromo) {
+            CreatePromoSheet(bengkelViewModel: bengkelViewModel)
+                .presentationDetents([.medium, .large])
         }
         .sheet(isPresented: $showingAddMechanic) {
             NavigationStack {
