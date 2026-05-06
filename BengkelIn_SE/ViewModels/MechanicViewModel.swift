@@ -56,7 +56,7 @@ class MechanicViewModel: ObservableObject {
         task?.cancel()
         Task { [channel] in
             if let channel = channel {
-                await supabase.realtime.removeChannel(channel)
+                await supabase.removeChannel(channel)
             }
         }
     }
@@ -352,7 +352,7 @@ class MechanicViewModel: ObservableObject {
         
         let channelName = "service_request_\(requestId)"
         
-        let channel = supabase.realtime.channel(channelName)
+        let channel = supabase.channel(channelName)
         self.realtimeChannel = channel
         
         // Listen for UPDATE events on service_requests filtered by ID
@@ -402,7 +402,7 @@ class MechanicViewModel: ObservableObject {
         
         if let channel = realtimeChannel {
             Task {
-                await supabase.realtime.removeChannel(channel)
+                await supabase.removeChannel(channel)
             }
             realtimeChannel = nil
         }
