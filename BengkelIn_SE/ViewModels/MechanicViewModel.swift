@@ -26,6 +26,9 @@ class MechanicViewModel: ObservableObject {
     /// The current user's service requests (customer-facing).
     @Published var myServiceRequests: [ServiceRequest] = []
     
+    /// The mechanic's assigned tasks (mechanic-facing).
+    @Published var assignedTasks: [ServiceRequest] = []
+    
     /// Incoming pending requests targeted at the provider's bengkel (provider-facing).
     @Published var incomingRequests: [ServiceRequest] = []
     
@@ -241,6 +244,47 @@ class MechanicViewModel: ObservableObject {
         } catch {
             self.errorMessage = "Failed to load your service requests: \(error.localizedDescription)"
             print("[MechanicVM] fetchMyServiceRequests error: \(error)")
+        }
+        
+        isLoading = false
+    }
+    
+    // ──────────────────────────────────────────────────────
+    // MARK: - 3.5 Fetch Assigned Tasks (Mechanic-Side)
+    // ──────────────────────────────────────────────────────
+    
+    /// Fetches all service requests assigned to the authenticated mechanic.
+    func fetchAssignedTasks() async {
+        isLoading = true
+        errorMessage = nil
+        
+        guard let session = try? await supabase.auth.session else {
+            self.errorMessage = "You must be logged in to view your tasks."
+            isLoading = false
+            return
+        }
+        let uid = session.user.id.uuidString.lowercased()
+        
+        do {
+            let requests: [ServiceRequest] = try await supabase.from("service_requests")
+                .select()
+                .eq("mechanic_id", value: uid)
+                .order("created_at", ascending: false)
+                .execute()
+                .value
+            
+            self.assignedTasks = requests
+            
+            // Set the first non-terminal request as the active one
+            if self.activeRequest == nil {
+                self.activeRequest = requests.first(where: {
+                    $0.status == .accepted || $0.status == .inProgress
+                })
+            }
+            
+        } catch {
+            self.errorMessage = "Failed to load your assigned tasks: \(error.localizedDescription)"
+            print("[MechanicVM] fetchAssignedTasks error: \(error)")
         }
         
         isLoading = false

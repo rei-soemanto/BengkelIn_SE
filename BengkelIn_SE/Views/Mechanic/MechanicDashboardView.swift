@@ -69,14 +69,14 @@ struct MechanicDashboardView: View {
                     HStack(spacing: 12) {
                         StatBox(
                             title: "Active Tasks",
-                            value: "\(mechanicVM.myServiceRequests.filter { $0.status != .completed && $0.status != .cancelled }.count)",
+                            value: "\(mechanicVM.assignedTasks.filter { $0.status != .completed && $0.status != .cancelled }.count)",
                             icon: "wrench.and.screwdriver.fill",
                             color: .blue
                         )
                         
                         StatBox(
                             title: "Emergency",
-                            value: "\(mechanicVM.myServiceRequests.filter(\.isEmergency).count)",
+                            value: "\(mechanicVM.assignedTasks.filter(\.isEmergency).count)",
                             icon: "exclamationmark.triangle.fill",
                             color: .orange
                         )
@@ -126,7 +126,7 @@ struct MechanicDashboardView: View {
                             .font(.title2)
                             .fontWeight(.bold)
                         
-                        let activeTasks = mechanicVM.myServiceRequests.filter {
+                        let activeTasks = mechanicVM.assignedTasks.filter {
                             $0.status != .completed && $0.status != .cancelled
                         }
                         
@@ -161,13 +161,13 @@ struct MechanicDashboardView: View {
                 }
                 .padding()
             }
-            .animation(.easeInOut, value: mechanicVM.myServiceRequests.count)
+            .animation(.easeInOut, value: mechanicVM.assignedTasks.count)
             .task {
-                await mechanicVM.fetchMyServiceRequests()
+                await mechanicVM.fetchAssignedTasks()
                 await invitationVM.fetchPendingInvitations()
             }
             .refreshable {
-                await mechanicVM.fetchMyServiceRequests()
+                await mechanicVM.fetchAssignedTasks()
                 await invitationVM.fetchPendingInvitations()
             }
             .toolbar {

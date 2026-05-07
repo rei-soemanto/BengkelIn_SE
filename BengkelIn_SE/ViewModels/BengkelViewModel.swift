@@ -390,10 +390,20 @@ class BengkelViewModel: ObservableObject {
     @Published var availableMechanics: [Mechanic] = []
     
     /// Fetches mechanics linked to this bengkel from the users table.
-    /// Mechanics are users with `is_mechanic = true`.
+    /// Mechanics are users with `is_mechanic = true` who have accepted an invitation.
     func fetchMechanics(bengkelId: String) async {
         do {
-            guard let uids = self.myBengkel?.mechanicUids, !uids.isEmpty else {
+            // Fetch accepted invitations for this bengkel
+            let acceptedInvites: [MechanicInvitation] = try await supabase.from("mechanic_invitations")
+                .select()
+                .eq("bengkel_id", value: bengkelId)
+                .eq("status", value: "accepted")
+                .execute()
+                .value
+            
+            let uids = acceptedInvites.map { $0.mechanicId }
+            
+            guard !uids.isEmpty else {
                 self.availableMechanics = []
                 return
             }
