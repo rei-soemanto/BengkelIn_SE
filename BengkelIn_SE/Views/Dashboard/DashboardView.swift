@@ -14,10 +14,12 @@ struct DashboardView: View {
     var body: some View {
         NavigationStack {
             Group {
-                if authViewModel.appMode == .customer || !authViewModel.isBengkelProvider {
-                    customerDashboard
-                } else {
+                if authViewModel.appMode == .bengkel && authViewModel.isBengkelProvider {
                     BengkelDashboardView(authViewModel: authViewModel)
+                } else if authViewModel.appMode == .mechanic && authViewModel.currentUser?.role == "MECHANIC" {
+                    MechanicDashboardView(authViewModel: authViewModel)
+                } else {
+                    customerDashboard
                 }
             }
         }

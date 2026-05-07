@@ -416,56 +416,129 @@ class BengkelViewModel: ObservableObject {
         let mechanic_uids: [String]
     }
     
-    /// Adds a mechanic to the bengkel by User ID
-    func addMechanic(userId: String) async -> Bool {
+    // MARK: - Mechanic Invitation (Email-Based Flow)
+    
+    /// Sent invitations tracked for the provider dashboard display.
+    @Published var sentInvitations: [MechanicInvitation] = []
+    
+    /// RPC response shape for `get_user_by_email`.
+    private struct RPCUserLookup: Decodable {
+        let user_id: String
+        let user_name: String
+    }
+    
+    /// Invites a mechanic by email using the secure RPC endpoint.
+    ///
+    /// Flow:
+    /// 1. Call `get_user_by_email` RPC → resolve email to user_id
+    /// 2. Check for duplicate (already a mechanic or already invited)
+    /// 3. INSERT into `mechanic_invitations` with status `pending`
+    func inviteMechanic(email: String) async -> Bool {
         isLoading = true
         errorMessage = nil
+        successMessage = nil
+        
+        guard let currentBengkel = self.myBengkel, let bengkelId = currentBengkel.id else {
+            self.errorMessage = "Bengkel data not found."
+            isLoading = false
+            return false
+        }
+        
+        // Step A: Resolve email → user_id via RPC
+        let resolvedUserId: String
+        let resolvedUserName: String
         
         do {
-            // 1. Verify user exists
-            let _: User = try await supabase.from("users")
-                .select("id, name")
-                .eq("id", value: userId)
-                .single()
+            let results: [RPCUserLookup] = try await supabase
+                .rpc("get_user_by_email", params: ["search_email": email])
                 .execute()
                 .value
             
-            guard var currentBengkel = self.myBengkel, let bengkelId = currentBengkel.id else { 
-                isLoading = false
-                return false 
-            }
-            
-            var uids = currentBengkel.mechanicUids ?? []
-            if uids.contains(userId) {
-                self.errorMessage = "Mechanic is already added."
+            guard let found = results.first else {
+                self.errorMessage = "User must create an MbengkelIn account first."
                 isLoading = false
                 return false
             }
             
-            uids.append(userId)
-            
-            // 2. Update DB
-            let updatePayload = BengkelMechanicsUpdate(mechanic_uids: uids)
-            try await supabase.from("bengkels")
-                .update(updatePayload)
-                .eq("id", value: bengkelId)
-                .execute()
-            
-            // 3. Update Local State
-            currentBengkel.mechanicUids = uids
-            self.myBengkel = currentBengkel
-            
-            // 4. Refresh Mechanics List
-            await fetchMechanics(bengkelId: bengkelId)
-            
-            self.successMessage = "Mechanic added successfully!"
-            isLoading = false
-            return true
-            
+            resolvedUserId = found.user_id
+            resolvedUserName = found.user_name
         } catch {
-            self.errorMessage = "Failed to add mechanic: Please ensure the User ID is correct."
+            self.errorMessage = "Failed to look up user: \(error.localizedDescription)"
+            print("[BengkelVM] RPC get_user_by_email error: \(error)")
             isLoading = false
             return false
+        }
+        
+        // Step B: Check if already a mechanic on this bengkel
+        let existingUids = currentBengkel.mechanicUids ?? []
+        if existingUids.contains(resolvedUserId) {
+            self.errorMessage = "\(resolvedUserName) is already a mechanic at your bengkel."
+            isLoading = false
+            return false
+        }
+        
+        // Step B2: Check if there's already a pending invitation
+        do {
+            let existingInvites: [MechanicInvitation] = try await supabase
+                .from("mechanic_invitations")
+                .select()
+                .eq("bengkel_id", value: bengkelId)
+                .eq("mechanic_id", value: resolvedUserId)
+                .eq("status", value: InvitationStatus.pending.rawValue)
+                .execute()
+                .value
+            
+            if !existingInvites.isEmpty {
+                self.errorMessage = "An invitation is already pending for \(resolvedUserName)."
+                isLoading = false
+                return false
+            }
+        } catch {
+            print("[BengkelVM] Duplicate invite check error: \(error)")
+            // Non-fatal — proceed with the insert and let DB constraints handle it
+        }
+        
+        // Step C: Insert invitation
+        do {
+            let payload = MechanicInvitationInsert(
+                bengkelId: bengkelId,
+                mechanicId: resolvedUserId,
+                status: InvitationStatus.pending.rawValue
+            )
+            
+            try await supabase.from("mechanic_invitations")
+                .insert(payload)
+                .execute()
+            
+            self.successMessage = "Invitation sent to \(resolvedUserName)!"
+            
+            // Refresh sent invitations
+            await fetchSentInvitations(bengkelId: bengkelId)
+            
+            isLoading = false
+            return true
+        } catch {
+            self.errorMessage = "Failed to send invitation: \(error.localizedDescription)"
+            print("[BengkelVM] insert mechanic_invitations error: \(error)")
+            isLoading = false
+            return false
+        }
+    }
+    
+    /// Fetches all invitations sent by this bengkel (for provider dashboard display).
+    func fetchSentInvitations(bengkelId: String) async {
+        do {
+            let invites: [MechanicInvitation] = try await supabase
+                .from("mechanic_invitations")
+                .select()
+                .eq("bengkel_id", value: bengkelId)
+                .order("created_at", ascending: false)
+                .execute()
+                .value
+            
+            self.sentInvitations = invites
+        } catch {
+            print("[BengkelVM] fetchSentInvitations error: \(error)")
         }
     }
     

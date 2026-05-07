@@ -13,6 +13,7 @@ struct ProfileView: View {
     
     @StateObject private var profileViewModel = ProfileViewModel()
     @StateObject private var vehicleViewModel = VehicleViewModel()
+    @StateObject private var invitationVM = InvitationViewModel()
     
     @State private var showDeleteAlert = false
     @State private var passwordForDeletion = ""
@@ -36,6 +37,7 @@ struct ProfileView: View {
             
             .task {
                 await vehicleViewModel.fetchVehicles()
+                await invitationVM.fetchPendingInvitations()
             }
             
             .alert("Password Reset Sent", isPresented: $showResetPasswordAlert) {
@@ -157,6 +159,37 @@ struct ProfileView: View {
                         }
                     }
                     .padding(.top, 20)
+                    
+                    VStack(alignment: .leading, spacing: 16) {
+                        Text("My Career")
+                            .font(.headline)
+                        
+                        NavigationLink(destination: InvitationsView(authViewModel: authViewModel)) {
+                            HStack {
+                                Image(systemName: "envelope.fill")
+                                    .frame(width: 30)
+                                    .foregroundColor(Color.primary)
+                                Text("Job Invitations")
+                                    .foregroundColor(Color.primary)
+                                Spacer()
+                                if !invitationVM.pendingInvitations.isEmpty {
+                                    Text("\(invitationVM.pendingInvitations.count)")
+                                        .font(.caption)
+                                        .fontWeight(.bold)
+                                        .foregroundColor(.white)
+                                        .padding(.horizontal, 8)
+                                        .padding(.vertical, 4)
+                                        .background(Color.red)
+                                        .clipShape(Capsule())
+                                }
+                                Image(systemName: "chevron.right")
+                                    .foregroundColor(.gray)
+                            }
+                            .padding()
+                            .background(Color(.systemGray6))
+                            .cornerRadius(12)
+                        }
+                    }
                     
                     VStack(alignment: .leading, spacing: 16) {
                         HStack {

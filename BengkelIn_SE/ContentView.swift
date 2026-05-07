@@ -35,15 +35,25 @@ struct ContentView: View {
                         }
                 }
                 .overlay(alignment: .topTrailing) {
-                    if authViewModel.isBengkelProvider {
-                        Button {
-                            withAnimation(.easeInOut) {
-                                authViewModel.appMode = (authViewModel.appMode == .customer) ? .bengkel : .customer
+                    if authViewModel.isBengkelProvider || authViewModel.currentUser?.role == "MECHANIC" {
+                        Menu {
+                            Button("Customer Mode") {
+                                withAnimation { authViewModel.appMode = .customer }
+                            }
+                            if authViewModel.isBengkelProvider {
+                                Button("Provider Mode") {
+                                    withAnimation { authViewModel.appMode = .bengkel }
+                                }
+                            }
+                            if authViewModel.currentUser?.role == "MECHANIC" {
+                                Button("Mechanic Mode") {
+                                    withAnimation { authViewModel.appMode = .mechanic }
+                                }
                             }
                         } label: {
-                            Image(systemName: authViewModel.appMode == .bengkel ? "hammer.circle.fill" : "hammer.circle")
+                            Image(systemName: "arrow.triangle.2.circlepath.circle.fill")
                                 .font(.title2)
-                                .foregroundColor(authViewModel.appMode == .bengkel ? .orange : .gray.opacity(0.8))
+                                .foregroundColor(.orange)
                                 .padding(10)
                                 .background(.ultraThinMaterial)
                                 .clipShape(Circle())

@@ -7,9 +7,12 @@
 //
 
 import SwiftUI
+import Combine
 
 struct MechanicDashboardView: View {
+    @ObservedObject var authViewModel: AuthViewModel
     @StateObject private var mechanicVM = MechanicViewModel()
+    @StateObject private var invitationVM = InvitationViewModel()
     
     var body: some View {
         NavigationStack {
@@ -26,6 +29,40 @@ struct MechanicDashboardView: View {
                                 .fontWeight(.bold)
                         }
                         Spacer()
+                    }
+                    
+                    // MARK: - Invitations Banner
+                    if !invitationVM.pendingInvitations.isEmpty {
+                        NavigationLink(destination: InvitationsView(authViewModel: authViewModel)) {
+                            HStack(spacing: 12) {
+                                Image(systemName: "envelope.badge.fill")
+                                    .font(.title2)
+                                    .foregroundColor(.blue)
+                                
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("You have \(invitationVM.pendingInvitations.count) pending invitation\(invitationVM.pendingInvitations.count > 1 ? "s" : "")")
+                                        .font(.subheadline)
+                                        .fontWeight(.semibold)
+                                        .foregroundColor(.primary)
+                                    Text("Tap to view and respond")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                                
+                                Spacer()
+                                
+                                Image(systemName: "chevron.right")
+                                    .foregroundColor(.gray)
+                            }
+                            .padding()
+                            .background(Color.blue.opacity(0.08))
+                            .cornerRadius(12)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .stroke(Color.blue.opacity(0.2), lineWidth: 1)
+                            )
+                        }
+                        .buttonStyle(.plain)
                     }
                     
                     // MARK: - Stats Row
@@ -127,9 +164,30 @@ struct MechanicDashboardView: View {
             .animation(.easeInOut, value: mechanicVM.myServiceRequests.count)
             .task {
                 await mechanicVM.fetchMyServiceRequests()
+                await invitationVM.fetchPendingInvitations()
             }
             .refreshable {
                 await mechanicVM.fetchMyServiceRequests()
+                await invitationVM.fetchPendingInvitations()
+            }
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    NavigationLink(destination: InvitationsView(authViewModel: authViewModel)) {
+                        Image(systemName: "envelope.fill")
+                            .foregroundColor(.primary)
+                            .overlay(alignment: .topTrailing) {
+                                if !invitationVM.pendingInvitations.isEmpty {
+                                    Text("\(invitationVM.pendingInvitations.count)")
+                                        .font(.system(size: 10, weight: .bold))
+                                        .foregroundColor(.white)
+                                        .frame(width: 16, height: 16)
+                                        .background(Color.red)
+                                        .clipShape(Circle())
+                                        .offset(x: 6, y: -6)
+                                }
+                            }
+                    }
+                }
             }
         }
     }
@@ -222,11 +280,11 @@ struct MechanicDashboardView: View {
 }
 
 #Preview("Light Mode") {
-    MechanicDashboardView()
+    MechanicDashboardView(authViewModel: AuthViewModel())
         .preferredColorScheme(.light)
 }
 
 #Preview("Dark Mode") {
-    MechanicDashboardView()
+    MechanicDashboardView(authViewModel: AuthViewModel())
         .preferredColorScheme(.dark)
 }

@@ -18,7 +18,7 @@ struct BengkelDashboardView: View {
     @State private var selectedRequestId: String? = nil
     
     @State private var showingAddMechanic = false
-    @State private var newMechanicId: String = ""
+    @State private var newMechanicEmail: String = ""
     
     @State private var showingCreatePromo = false
     
@@ -100,14 +100,18 @@ struct BengkelDashboardView: View {
                             .font(.title2)
                             .fontWeight(.bold)
                         Spacer()
-                        Text("Manage Staffing (Coming Soon)")
-                            .font(.caption)
-                            .fontWeight(.semibold)
-                            .foregroundColor(.gray)
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 6)
-                            .background(Color(.systemGray5))
-                            .cornerRadius(12)
+                        Button {
+                            showingAddMechanic = true
+                        } label: {
+                            Label("Invite Mechanic", systemImage: "person.badge.plus")
+                                .font(.caption)
+                                .fontWeight(.semibold)
+                                .foregroundColor(.blue)
+                                .padding(.horizontal, 10)
+                                .padding(.vertical, 6)
+                                .background(Color.blue.opacity(0.1))
+                                .cornerRadius(12)
+                        }
                     }
                     
                     if bengkelViewModel.availableMechanics.isEmpty {
@@ -142,6 +146,46 @@ struct BengkelDashboardView: View {
                                     .cornerRadius(8)
                             }
                             .padding(.vertical, 4)
+                        }
+                    }
+                    
+                    // MARK: - Pending Invitations
+                    let pendingInvites = bengkelViewModel.sentInvitations.filter { $0.status == .pending }
+                    if !pendingInvites.isEmpty {
+                        Divider()
+                        
+                        Text("Pending Invitations")
+                            .font(.subheadline)
+                            .fontWeight(.semibold)
+                            .foregroundColor(.secondary)
+                        
+                        ForEach(pendingInvites) { invite in
+                            HStack(spacing: 12) {
+                                Image(systemName: "envelope.badge.fill")
+                                    .font(.system(size: 24))
+                                    .foregroundColor(.orange)
+                                
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text("Mechanic ID: \(String(invite.mechanicId.prefix(8)))...")
+                                        .font(.subheadline)
+                                        .fontDesign(.monospaced)
+                                    Text("Awaiting response")
+                                        .font(.caption)
+                                        .foregroundColor(.orange)
+                                }
+                                
+                                Spacer()
+                                
+                                Text("Pending")
+                                    .font(.caption2)
+                                    .fontWeight(.semibold)
+                                    .foregroundColor(.orange)
+                                    .padding(.horizontal, 8)
+                                    .padding(.vertical, 4)
+                                    .background(Color.orange.opacity(0.15))
+                                    .cornerRadius(6)
+                            }
+                            .padding(.vertical, 2)
                         }
                     }
                 }
@@ -327,6 +371,7 @@ struct BengkelDashboardView: View {
                     await bengkelViewModel.fetchServiceRequests(bengkelId: bengkelId)
                     await bengkelViewModel.fetchTodaysEarnings(bengkelId: bengkelId)
                     await bengkelViewModel.fetchMechanics(bengkelId: bengkelId)
+                    await bengkelViewModel.fetchSentInvitations(bengkelId: bengkelId)
                 }
             }
         }
@@ -337,29 +382,62 @@ struct BengkelDashboardView: View {
         .sheet(isPresented: $showingAddMechanic) {
             NavigationStack {
                 Form {
-                    Section(header: Text("Mechanic Details")) {
-                        TextField("Enter User ID", text: $newMechanicId)
+                    Section(header: Text("Invite by Email")) {
+                        TextField("mechanic@example.com", text: $newMechanicEmail)
+                            .textContentType(.emailAddress)
+                            .keyboardType(.emailAddress)
+                            .autocapitalization(.none)
+                            .disableAutocorrection(true)
                     }
-                    Button("Add Mechanic") {
-                        Task {
-                            let success = await bengkelViewModel.addMechanic(userId: newMechanicId)
-                            if success {
-                                newMechanicId = ""
-                                showingAddMechanic = false
+                    
+                    Section {
+                        Button {
+                            Task {
+                                let success = await bengkelViewModel.inviteMechanic(email: newMechanicEmail)
+                                if success {
+                                    newMechanicEmail = ""
+                                    showingAddMechanic = false
+                                }
                             }
+                        } label: {
+                            HStack {
+                                if bengkelViewModel.isLoading {
+                                    ProgressView()
+                                        .padding(.trailing, 4)
+                                }
+                                Text(bengkelViewModel.isLoading ? "Sending..." : "Send Invitation")
+                                    .fontWeight(.semibold)
+                            }
+                            .frame(maxWidth: .infinity)
                         }
+                        .disabled(newMechanicEmail.isEmpty || bengkelViewModel.isLoading)
                     }
-                    .disabled(newMechanicId.isEmpty || bengkelViewModel.isLoading)
                     
                     if let error = bengkelViewModel.errorMessage {
-                        Text(error).foregroundColor(.red).font(.caption)
+                        Section {
+                            Label(error, systemImage: "exclamationmark.triangle.fill")
+                                .foregroundColor(.red)
+                                .font(.subheadline)
+                        }
+                    }
+                    
+                    if let success = bengkelViewModel.successMessage {
+                        Section {
+                            Label(success, systemImage: "checkmark.circle.fill")
+                                .foregroundColor(.green)
+                                .font(.subheadline)
+                        }
                     }
                 }
-                .navigationTitle("Add Mechanic")
+                .navigationTitle("Invite Mechanic")
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar {
                     ToolbarItem(placement: .navigationBarTrailing) {
-                        Button("Cancel") { showingAddMechanic = false }
+                        Button("Cancel") {
+                            bengkelViewModel.errorMessage = nil
+                            bengkelViewModel.successMessage = nil
+                            showingAddMechanic = false
+                        }
                     }
                 }
             }

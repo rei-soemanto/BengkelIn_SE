@@ -12,6 +12,7 @@ import Supabase
 enum AppMode {
     case customer
     case bengkel
+    case mechanic
 }
 
 @MainActor
