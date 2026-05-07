@@ -224,119 +224,63 @@ struct BengkelDashboardView: View {
                 .background(Color(.systemGray6))
                 .cornerRadius(12)
                 
-                VStack(alignment: .leading, spacing: 16) {
-                    HStack {
-                        Text(bengkelViewModel.hasActiveJob ? "Current Active Job" : "Incoming Requests")
-                            .font(.title2)
-                            .fontWeight(.bold)
-                        
-                        Spacer()
-                        
-                        if !bengkelViewModel.hasActiveJob && bengkelViewModel.pendingRequestsCount > 0 {
-                            Text("\(bengkelViewModel.pendingRequestsCount) Pending")
-                                .font(.subheadline)
-                                .foregroundColor(.red)
-                                .fontWeight(.semibold)
+                // MARK: - Job Management
+                VStack(spacing: 12) {
+                    NavigationLink(destination: ProviderIncomingRequestsView(
+                        bengkelViewModel: bengkelViewModel,
+                        selectedRequestId: $selectedRequestId,
+                        showingMechanicPicker: $showingMechanicPicker
+                    )) {
+                        HStack {
+                            Image(systemName: "bell.badge.fill")
+                                .font(.title2)
+                                .foregroundColor(.orange)
+                            Text("Incoming Requests")
+                                .font(.headline)
+                            Spacer()
+                            if bengkelViewModel.pendingRequestsCount > 0 {
+                                Text("\(bengkelViewModel.pendingRequestsCount)")
+                                    .font(.caption).bold()
+                                    .frame(width: 24, height: 24)
+                                    .background(Color.red)
+                                    .foregroundColor(.white)
+                                    .clipShape(Circle())
+                            }
+                            Image(systemName: "chevron.right")
+                                .foregroundColor(.gray)
                         }
+                        .padding()
+                        .background(Color(.systemGray6))
+                        .cornerRadius(12)
                     }
-                    
-                    if bengkelViewModel.hasActiveJob {
-                        ForEach(bengkelViewModel.activeServiceRequests) { active in
-                            VStack(spacing: 12) {
-                                Image(systemName: "wrench.and.screwdriver.fill")
-                                    .font(.largeTitle)
-                                    .foregroundColor(.blue)
-                                    .padding(.bottom, 4)
-                                
-                                Text(active.serviceType)
-                                    .font(.headline)
-                                
-                                Text("Status: \(active.status.rawValue.replacingOccurrences(of: "_", with: " ").capitalized)")
-                                    .font(.subheadline)
-                                    .foregroundColor(.gray)
-                                
-                                if let location = active.location {
-                                    Label(location, systemImage: "mappin.and.ellipse")
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
-                                }
-                                
-                                Button("Finish Job") {
-                                    if let id = active.id {
-                                        Task {
-                                            await bengkelViewModel.finishJob(requestId: id)
-                                        }
-                                    }
-                                }
-                                .buttonStyle(.borderedProminent)
-                                .tint(.green)
-                                .padding(.top, 12)
+                    .buttonStyle(.plain)
+
+                    NavigationLink(destination: ProviderActiveRequestsView(
+                        bengkelViewModel: bengkelViewModel
+                    )) {
+                        HStack {
+                            Image(systemName: "wrench.and.screwdriver.fill")
+                                .font(.title2)
+                                .foregroundColor(.blue)
+                            Text("Active Jobs")
+                                .font(.headline)
+                            Spacer()
+                            if !bengkelViewModel.activeServiceRequests.isEmpty {
+                                Text("\(bengkelViewModel.activeServiceRequests.count)")
+                                    .font(.caption).bold()
+                                    .frame(width: 24, height: 24)
+                                    .background(Color.blue)
+                                    .foregroundColor(.white)
+                                    .clipShape(Circle())
                             }
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 24)
-                            .background(Color(.systemGray6))
-                            .cornerRadius(12)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 12)
-                                    .stroke(Color.blue.opacity(0.3), lineWidth: 2)
-                            )
+                            Image(systemName: "chevron.right")
+                                .foregroundColor(.gray)
                         }
-                    } else {
-                        if let firstPending = bengkelViewModel.pendingRequests.first {
-                            VStack(spacing: 12) {
-                                Image(systemName: firstPending.isEmergency ? "exclamationmark.triangle.fill" : "bell.badge.fill")
-                                    .font(.largeTitle)
-                                    .foregroundColor(firstPending.isEmergency ? .red : .orange)
-                                    .padding(.bottom, 4)
-                                
-                                Text(firstPending.serviceType)
-                                    .font(.headline)
-                                
-                                if let location = firstPending.location {
-                                    Label(location, systemImage: "mappin.and.ellipse")
-                                        .font(.subheadline)
-                                        .foregroundColor(.gray)
-                                }
-                                
-                                if firstPending.isEmergency {
-                                    Text("EMERGENCY")
-                                        .font(.caption)
-                                        .fontWeight(.bold)
-                                        .foregroundColor(.white)
-                                        .padding(.horizontal, 8)
-                                        .padding(.vertical, 4)
-                                        .background(Color.red)
-                                        .cornerRadius(6)
-                                }
-                                
-                                Button("Accept & Dispatch Mechanic") {
-                                    if let requestId = firstPending.id {
-                                        selectedRequestId = requestId
-                                        showingMechanicPicker = true
-                                    }
-                                }
-                                .buttonStyle(.borderedProminent)
-                                .padding(.top, 12)
-                            }
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 24)
-                            .background(Color(.systemGray6))
-                            .cornerRadius(12)
-                        } else {
-                            VStack(spacing: 12) {
-                                Image(systemName: "checkmark.circle.fill")
-                                    .font(.largeTitle)
-                                    .foregroundColor(.gray)
-                                Text("No incoming requests")
-                                    .font(.subheadline)
-                                    .foregroundColor(.gray)
-                            }
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 30)
-                            .background(Color(.systemGray6))
-                            .cornerRadius(12)
-                        }
+                        .padding()
+                        .background(Color(.systemGray6))
+                        .cornerRadius(12)
                     }
+                    .buttonStyle(.plain)
                 }
                 
                 // MARK: - Active Promotions
@@ -530,4 +474,111 @@ struct BengkelDashboardView: View {
 #Preview ("Dark Mode") {
     BengkelDashboardView(authViewModel: AuthViewModel())
         .preferredColorScheme(.dark)
+}
+
+// MARK: - Provider Subviews
+
+struct ProviderIncomingRequestsView: View {
+    @ObservedObject var bengkelViewModel: BengkelViewModel
+    @Binding var selectedRequestId: String?
+    @Binding var showingMechanicPicker: Bool
+    
+    var body: some View {
+        List {
+            if bengkelViewModel.pendingRequests.isEmpty {
+                Text("No incoming requests at the moment.")
+                    .foregroundColor(.gray)
+            } else {
+                ForEach(bengkelViewModel.pendingRequests) { request in
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Text(request.serviceType)
+                                .font(.headline)
+                            Spacer()
+                            if request.isEmergency {
+                                Text("EMERGENCY")
+                                    .font(.caption)
+                                    .bold()
+                                    .foregroundColor(.white)
+                                    .padding(.horizontal, 6)
+                                    .padding(.vertical, 2)
+                                    .background(Color.red)
+                                    .cornerRadius(4)
+                            }
+                        }
+                        
+                        if let location = request.location {
+                            Label(location, systemImage: "mappin.and.ellipse")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                        }
+                        
+                        Button("Accept & Dispatch Mechanic") {
+                            if let requestId = request.id {
+                                selectedRequestId = requestId
+                                showingMechanicPicker = true
+                            }
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .padding(.top, 8)
+                    }
+                    .padding(.vertical, 8)
+                }
+            }
+        }
+        .navigationTitle("Incoming Requests")
+        .navigationBarTitleDisplayMode(.inline)
+    }
+}
+
+struct ProviderActiveRequestsView: View {
+    @ObservedObject var bengkelViewModel: BengkelViewModel
+    
+    var body: some View {
+        List {
+            if bengkelViewModel.activeServiceRequests.isEmpty {
+                Text("No active jobs right now.")
+                    .foregroundColor(.gray)
+            } else {
+                ForEach(bengkelViewModel.activeServiceRequests) { active in
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack {
+                            Text(active.serviceType)
+                                .font(.headline)
+                            Spacer()
+                            Text(active.status.rawValue.replacingOccurrences(of: "_", with: " ").capitalized)
+                                .font(.caption)
+                                .bold()
+                                .foregroundColor(.white)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(active.status == .inProgress ? Color.blue : Color.green)
+                                .cornerRadius(8)
+                        }
+                        
+                        if let location = active.location {
+                            Label(location, systemImage: "mappin.and.ellipse")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                        }
+                        
+                        if let mechanicId = active.mechanicId {
+                            let mechanicName = bengkelViewModel.teamMembers.first(where: { $0.id == mechanicId })?.name ?? "Unknown Mechanic"
+                            Label("Assigned to: \(mechanicName)", systemImage: "person.fill")
+                                .font(.subheadline)
+                                .foregroundColor(.blue)
+                        }
+                        
+                        Text("Only the assigned mechanic can finish this job.")
+                            .font(.caption)
+                            .foregroundColor(.gray)
+                            .padding(.top, 4)
+                    }
+                    .padding(.vertical, 8)
+                }
+            }
+        }
+        .navigationTitle("Active Jobs")
+        .navigationBarTitleDisplayMode(.inline)
+    }
 }
