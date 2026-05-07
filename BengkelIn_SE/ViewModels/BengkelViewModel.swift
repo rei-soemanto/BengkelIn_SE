@@ -35,13 +35,13 @@ class BengkelViewModel: ObservableObject {
     
     /// Pending service requests targeting this provider's bengkel.
     @Published var pendingRequests: [ServiceRequest] = []
-    /// The currently active (accepted/in_progress) request, if any.
-    @Published var activeServiceRequest: ServiceRequest?
+    /// The currently active (accepted/in_progress) requests.
+    @Published var activeServiceRequests: [ServiceRequest] = []
     /// Today's earnings (sum of completed request estimated prices).
     @Published var todaysEarnings: Double = 0.0
     
     var pendingRequestsCount: Int { pendingRequests.count }
-    var hasActiveJob: Bool { activeServiceRequest != nil }
+    var hasActiveJob: Bool { !activeServiceRequests.isEmpty }
     
     /// Fetches all service requests for this bengkel from Supabase.
     /// Separates them into pending vs. active buckets.
@@ -60,9 +60,9 @@ class BengkelViewModel: ObservableObject {
                 .value
             
             self.pendingRequests = requests.filter { $0.status == .pending }
-            self.activeServiceRequest = requests.first(where: {
+            self.activeServiceRequests = requests.filter {
                 $0.status == .accepted || $0.status == .inProgress
-            })
+            }
         } catch {
             self.errorMessage = "Failed to load service requests: \(error.localizedDescription)"
             print("[BengkelVM] fetchServiceRequests error: \(error)")
@@ -117,7 +117,7 @@ class BengkelViewModel: ObservableObject {
                 if let idx = pendingRequests.firstIndex(where: { $0.id == requestId }) {
                     var accepted = pendingRequests.remove(at: idx)
                     accepted.status = .accepted
-                    self.activeServiceRequest = accepted
+                    self.activeServiceRequests.append(accepted)
                 }
             }
             self.successMessage = "Job accepted! Customer has been notified."
@@ -128,9 +128,8 @@ class BengkelViewModel: ObservableObject {
         isLoading = false
     }
     
-    /// Finishes the current active job by marking it as completed.
-    func finishJob() async {
-        guard let activeId = activeServiceRequest?.id else { return }
+    /// Finishes the specified active job by marking it as completed.
+    func finishJob(requestId: String) async {
         isLoading = true
         errorMessage = nil
         
@@ -146,13 +145,13 @@ class BengkelViewModel: ObservableObject {
         do {
             try await supabase.from("service_requests")
                 .update(update)
-                .eq("id", value: activeId)
+                .eq("id", value: requestId)
                 .execute()
             
             withAnimation {
-                let price = activeServiceRequest?.estimatedPrice ?? 0
+                let price = self.activeServiceRequests.first(where: { $0.id == requestId })?.estimatedPrice ?? 0
                 self.todaysEarnings += price
-                self.activeServiceRequest = nil
+                self.activeServiceRequests.removeAll { $0.id == requestId }
             }
             self.successMessage = "Job completed! Earnings updated."
         } catch {
@@ -160,6 +159,39 @@ class BengkelViewModel: ObservableObject {
             print("[BengkelVM] finishJob error: \(error)")
         }
         isLoading = false
+    }
+    
+    /// Assigns a mechanic to a specific service request.
+    func dispatchMechanic(requestId: String, mechanicId: String) async -> Bool {
+        isLoading = true
+        errorMessage = nil
+        successMessage = nil
+        
+        let isoFormatter = ISO8601DateFormatter()
+        isoFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        
+        let updatePayload = ServiceRequestStatusUpdate(
+            status: ServiceRequestStatus.accepted.rawValue,
+            mechanicNotes: nil,
+            mechanicId: mechanicId,
+            updatedAt: isoFormatter.string(from: Date())
+        )
+        
+        do {
+            try await supabase.from("service_requests")
+                .update(updatePayload)
+                .eq("id", value: requestId)
+                .execute()
+            
+            self.successMessage = "Mechanic successfully dispatched!"
+            isLoading = false
+            return true
+        } catch {
+            self.errorMessage = "Dispatch failed: \(error.localizedDescription)"
+            print("[BengkelVM] dispatchMechanic error: \(error)")
+            isLoading = false
+            return false
+        }
     }
     
     struct BengkelUpdateRequest: Encodable {
@@ -387,39 +419,40 @@ class BengkelViewModel: ObservableObject {
     
     // MARK: - Mechanic Management (Live — from users table)
     
-    @Published var availableMechanics: [Mechanic] = []
+    @Published var teamMembers: [User] = []
+    @Published var availableMechanics: [Mechanic] = [] // Kept for backwards compatibility if needed elsewhere
     
-    /// Fetches mechanics linked to this bengkel from the users table.
-    /// Mechanics are users with `is_mechanic = true` who have accepted an invitation.
-    func fetchMechanics(bengkelId: String) async {
+    /// Fetches mechanics linked to this bengkel from the users table using the mechanic_uids array.
+    func fetchTeamProfiles() async {
         do {
-            // Fetch accepted invitations for this bengkel
-            let acceptedInvites: [MechanicInvitation] = try await supabase.from("mechanic_invitations")
-                .select()
-                .eq("bengkel_id", value: bengkelId)
-                .eq("status", value: "accepted")
-                .execute()
-                .value
-            
-            let uids = acceptedInvites.map { $0.mechanicId }
-            
-            guard !uids.isEmpty else {
-                self.availableMechanics = []
+            guard let uids = self.myBengkel?.mechanicUids, !uids.isEmpty else {
+                await MainActor.run {
+                    self.teamMembers = []
+                    self.availableMechanics = []
+                }
                 return
             }
             
             let users: [User] = try await supabase.from("users")
-                .select("id, name, email")
+                .select()
                 .in("id", values: uids)
                 .execute()
                 .value
             
-            self.availableMechanics = users.map { 
-                Mechanic(id: $0.id, name: $0.name, email: $0.email, status: .available, linkedBengkelId: bengkelId) 
+            await MainActor.run {
+                self.teamMembers = users
+                self.availableMechanics = users.map { 
+                    Mechanic(id: $0.id, name: $0.name, email: $0.email, status: .available, linkedBengkelId: self.myBengkel?.id ?? "") 
+                }
             }
         } catch {
-            print("[BengkelVM] fetchMechanics error: \(error)")
+            print("[BengkelVM] fetchTeamProfiles error: \(error)")
         }
+    }
+    
+    /// Legacy fetch Mechanics (redirects to fetchTeamProfiles)
+    func fetchMechanics(bengkelId: String) async {
+        await fetchTeamProfiles()
     }
     
     struct BengkelMechanicsUpdate: Encodable {

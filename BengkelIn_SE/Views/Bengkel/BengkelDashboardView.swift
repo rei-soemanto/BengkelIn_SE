@@ -42,6 +42,36 @@ struct BengkelDashboardView: View {
                     Spacer()
                 }
                 
+                // MARK: - Global Error Banner
+                if let error = bengkelViewModel.errorMessage {
+                    HStack {
+                        Image(systemName: "exclamationmark.circle.fill")
+                            .foregroundColor(.red)
+                        Text(error)
+                            .font(.subheadline)
+                            .foregroundColor(.red)
+                    }
+                    .padding()
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Color.red.opacity(0.1))
+                    .cornerRadius(12)
+                }
+                
+                // MARK: - Global Success Banner
+                if let success = bengkelViewModel.successMessage {
+                    HStack {
+                        Image(systemName: "checkmark.circle.fill")
+                            .foregroundColor(.green)
+                        Text(success)
+                            .font(.subheadline)
+                            .foregroundColor(.green)
+                    }
+                    .padding()
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .background(Color.green.opacity(0.1))
+                    .cornerRadius(12)
+                }
+                
                 VStack(alignment: .leading, spacing: 8) {
                     Text("Shop Rating")
                         .font(.subheadline)
@@ -114,21 +144,21 @@ struct BengkelDashboardView: View {
                         }
                     }
                     
-                    if bengkelViewModel.availableMechanics.isEmpty {
+                    if bengkelViewModel.teamMembers.isEmpty {
                         Text("No mechanics found.")
                             .foregroundColor(.gray)
                             .font(.subheadline)
                     } else {
-                        ForEach(bengkelViewModel.availableMechanics) { mechanic in
+                        ForEach(bengkelViewModel.teamMembers) { member in
                             HStack(spacing: 12) {
                                 Image(systemName: "person.circle.fill")
                                     .font(.system(size: 32))
                                     .foregroundColor(.gray)
                                 
                                 VStack(alignment: .leading, spacing: 2) {
-                                    Text(mechanic.name)
+                                    Text(member.name)
                                         .font(.headline)
-                                    if let email = mechanic.email {
+                                    if let email = member.email {
                                         Text(email)
                                             .font(.caption)
                                             .foregroundColor(.secondary)
@@ -137,12 +167,12 @@ struct BengkelDashboardView: View {
                                 
                                 Spacer()
                                 
-                                Text(mechanic.status.rawValue)
+                                Text("Available")
                                     .font(.caption)
                                     .padding(.horizontal, 8)
                                     .padding(.vertical, 4)
-                                    .background(mechanic.status == .available ? Color.green.opacity(0.2) : Color.red.opacity(0.2))
-                                    .foregroundColor(mechanic.status == .available ? .green : .red)
+                                    .background(Color.green.opacity(0.2))
+                                    .foregroundColor(.green)
                                     .cornerRadius(8)
                             }
                             .padding(.vertical, 4)
@@ -210,44 +240,47 @@ struct BengkelDashboardView: View {
                         }
                     }
                     
-                    if bengkelViewModel.hasActiveJob, let active = bengkelViewModel.activeServiceRequest {
-                        VStack(spacing: 12) {
-                            Image(systemName: "wrench.and.screwdriver.fill")
-                                .font(.largeTitle)
-                                .foregroundColor(.blue)
-                                .padding(.bottom, 4)
-                            
-                            Text(active.serviceType)
-                                .font(.headline)
-                            
-                            Text("Status: \(active.status.rawValue.replacingOccurrences(of: "_", with: " ").capitalized)")
-                                .font(.subheadline)
-                                .foregroundColor(.gray)
-                            
-                            if let location = active.location {
-                                Label(location, systemImage: "mappin.and.ellipse")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                            }
-                            
-                            Button("Finish Job") {
-                                Task {
-                                    await bengkelViewModel.finishJob()
+                    if bengkelViewModel.hasActiveJob {
+                        ForEach(bengkelViewModel.activeServiceRequests) { active in
+                            VStack(spacing: 12) {
+                                Image(systemName: "wrench.and.screwdriver.fill")
+                                    .font(.largeTitle)
+                                    .foregroundColor(.blue)
+                                    .padding(.bottom, 4)
+                                
+                                Text(active.serviceType)
+                                    .font(.headline)
+                                
+                                Text("Status: \(active.status.rawValue.replacingOccurrences(of: "_", with: " ").capitalized)")
+                                    .font(.subheadline)
+                                    .foregroundColor(.gray)
+                                
+                                if let location = active.location {
+                                    Label(location, systemImage: "mappin.and.ellipse")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
                                 }
+                                
+                                Button("Finish Job") {
+                                    if let id = active.id {
+                                        Task {
+                                            await bengkelViewModel.finishJob(requestId: id)
+                                        }
+                                    }
+                                }
+                                .buttonStyle(.borderedProminent)
+                                .tint(.green)
+                                .padding(.top, 12)
                             }
-                            .buttonStyle(.borderedProminent)
-                            .tint(.green)
-                            .padding(.top, 12)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 24)
+                            .background(Color(.systemGray6))
+                            .cornerRadius(12)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 12)
+                                    .stroke(Color.blue.opacity(0.3), lineWidth: 2)
+                            )
                         }
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 24)
-                        .background(Color(.systemGray6))
-                        .cornerRadius(12)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 12)
-                                .stroke(Color.blue.opacity(0.3), lineWidth: 2)
-                        )
-                        
                     } else {
                         if let firstPending = bengkelViewModel.pendingRequests.first {
                             VStack(spacing: 12) {
@@ -445,31 +478,28 @@ struct BengkelDashboardView: View {
         }
         .sheet(isPresented: $showingMechanicPicker) {
             NavigationStack {
-                List(bengkelViewModel.availableMechanics) { mechanic in
+                List(bengkelViewModel.teamMembers) { member in
                     Button(action: {
                         if let reqId = selectedRequestId {
                             Task {
-                                let success = await mechanicViewModel.assignMechanic(requestId: reqId, mechanicId: mechanic.id)
+                                let success = await bengkelViewModel.dispatchMechanic(requestId: reqId, mechanicId: member.id)
                                 if success {
                                     if let bengkelId = bengkelViewModel.myBengkel?.id {
                                         await bengkelViewModel.fetchServiceRequests(bengkelId: bengkelId)
                                     }
+                                    showingMechanicPicker = false
+                                } else {
                                     showingMechanicPicker = false
                                 }
                             }
                         }
                     }) {
                         HStack {
-                            Text(mechanic.name)
+                            Text(member.name)
                             Spacer()
-                            if mechanic.status == .available {
-                                Text("Dispatch").fontWeight(.bold).foregroundColor(.blue)
-                            } else {
-                                Text("Busy").foregroundColor(.gray)
-                            }
+                            Text("Dispatch").fontWeight(.bold).foregroundColor(.blue)
                         }
                     }
-                    .disabled(mechanic.status != .available)
                 }
                 .navigationTitle("Dispatch Mechanic")
                 .navigationBarTitleDisplayMode(.inline)
@@ -481,7 +511,7 @@ struct BengkelDashboardView: View {
                 .overlay {
                     if mechanicViewModel.isLoading {
                         ProgressView()
-                    } else if bengkelViewModel.availableMechanics.isEmpty {
+                    } else if bengkelViewModel.teamMembers.isEmpty {
                         Text("No mechanics available. Please add one first.")
                             .foregroundColor(.gray)
                     }

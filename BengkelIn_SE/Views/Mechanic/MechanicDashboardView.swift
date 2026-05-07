@@ -170,25 +170,7 @@ struct MechanicDashboardView: View {
                 await mechanicVM.fetchAssignedTasks()
                 await invitationVM.fetchPendingInvitations()
             }
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    NavigationLink(destination: InvitationsView(authViewModel: authViewModel)) {
-                        Image(systemName: "envelope.fill")
-                            .foregroundColor(.primary)
-                            .overlay(alignment: .topTrailing) {
-                                if !invitationVM.pendingInvitations.isEmpty {
-                                    Text("\(invitationVM.pendingInvitations.count)")
-                                        .font(.system(size: 10, weight: .bold))
-                                        .foregroundColor(.white)
-                                        .frame(width: 16, height: 16)
-                                        .background(Color.red)
-                                        .clipShape(Circle())
-                                        .offset(x: 6, y: -6)
-                                }
-                            }
-                    }
-                }
-            }
+
         }
     }
     

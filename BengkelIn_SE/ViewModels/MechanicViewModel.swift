@@ -269,6 +269,7 @@ class MechanicViewModel: ObservableObject {
             let requests: [ServiceRequest] = try await supabase.from("service_requests")
                 .select()
                 .eq("mechanic_id", value: uid)
+                .in("status", values: [ServiceRequestStatus.accepted.rawValue, ServiceRequestStatus.inProgress.rawValue])
                 .order("created_at", ascending: false)
                 .execute()
                 .value
