@@ -433,16 +433,28 @@ class BengkelViewModel: ObservableObject {
                 return
             }
             
-            let users: [User] = try await supabase.from("users")
+            print("Fetching profiles for UUIDs: \(uids)")
+            let uuidArray = uids.compactMap { UUID(uuidString: $0) }
+            print("Parsed Swift UUIDs for Query: \(uuidArray)")
+            
+            let response = try await supabase.from("users")
                 .select()
-                .in("id", values: uids)
+                .in("id", values: uuidArray)
                 .execute()
-                .value
+            
+            if let jsonString = String(data: response.data, encoding: .utf8) {
+                print("Raw JSON response from Supabase: \(jsonString)")
+            } else {
+                print("Raw JSON response from Supabase: Failed to decode data to UTF-8 String")
+            }
+            
+            let users = try JSONDecoder().decode([User].self, from: response.data)
+            print("Successfully decoded \(users.count) users")
             
             await MainActor.run {
                 self.teamMembers = users
                 self.availableMechanics = users.map { 
-                    Mechanic(id: $0.id, name: $0.name, email: $0.email, status: .available, linkedBengkelId: self.myBengkel?.id ?? "") 
+                    Mechanic(id: $0.id, name: $0.name, email: $0.email ?? "", status: .available, linkedBengkelId: self.myBengkel?.id ?? "") 
                 }
             }
         } catch {

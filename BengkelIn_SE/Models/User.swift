@@ -11,10 +11,10 @@ struct User: Codable, Identifiable {
     var id: String
     var name: String
     var profileImageUrl: String?
-    var balance: Double
+    var balance: Double?
     var email: String?
     var phoneNumber: String?
-    var role: String
+    var role: String?
     
     // Multi-role flags (mock-only for now, backend TBD)
     var isMechanic: Bool?
