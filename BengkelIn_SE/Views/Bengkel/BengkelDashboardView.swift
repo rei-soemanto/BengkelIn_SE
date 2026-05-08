@@ -218,6 +218,57 @@ struct BengkelDashboardView: View {
                             .padding(.vertical, 2)
                         }
                     }
+                    
+                    // MARK: - Resignation Requests
+                    if !bengkelViewModel.pendingResignations.isEmpty {
+                        Divider()
+                        
+                        Text("Resignation Requests")
+                            .font(.subheadline)
+                            .fontWeight(.semibold)
+                            .foregroundColor(.red)
+                        
+                        ForEach(bengkelViewModel.pendingResignations) { resignation in
+                            HStack(spacing: 12) {
+                                Image(systemName: "person.fill.xmark")
+                                    .font(.system(size: 24))
+                                    .foregroundColor(.red)
+                                
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(resignation.users?.name ?? "Unknown Mechanic")
+                                        .font(.headline)
+                                    Text("Wants to resign")
+                                        .font(.caption)
+                                        .foregroundColor(.red)
+                                }
+                                
+                                Spacer()
+                                
+                                Button {
+                                    Task {
+                                        await bengkelViewModel.approveResignation(resignationId: resignation.id)
+                                    }
+                                } label: {
+                                    if bengkelViewModel.isLoading {
+                                        ProgressView()
+                                            .padding(.horizontal, 8)
+                                            .padding(.vertical, 4)
+                                    } else {
+                                        Text("Approve")
+                                            .font(.caption2)
+                                            .fontWeight(.bold)
+                                            .foregroundColor(.white)
+                                            .padding(.horizontal, 12)
+                                            .padding(.vertical, 6)
+                                            .background(Color.red)
+                                            .cornerRadius(6)
+                                    }
+                                }
+                                .disabled(bengkelViewModel.isLoading)
+                            }
+                            .padding(.vertical, 4)
+                        }
+                    }
                 }
                 .padding()
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -349,6 +400,7 @@ struct BengkelDashboardView: View {
                     await bengkelViewModel.fetchTodaysEarnings(bengkelId: bengkelId)
                     await bengkelViewModel.fetchMechanics(bengkelId: bengkelId)
                     await bengkelViewModel.fetchSentInvitations(bengkelId: bengkelId)
+                    await bengkelViewModel.fetchPendingResignations(bengkelId: bengkelId)
                 }
             }
         }

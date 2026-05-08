@@ -476,6 +476,56 @@ class BengkelViewModel: ObservableObject {
     /// Sent invitations tracked for the provider dashboard display.
     @Published var sentInvitations: [MechanicInvitation] = []
     
+    // MARK: - Resignation Requests
+    @Published var pendingResignations: [MechanicResignation] = []
+    
+    func fetchPendingResignations(bengkelId: String) async {
+        do {
+            let resignations: [MechanicResignation] = try await supabase
+                .from("mechanic_resignations")
+                .select("*, users(name)")
+                .eq("bengkel_id", value: bengkelId)
+                .eq("status", value: "pending")
+                .execute()
+                .value
+            
+            await MainActor.run {
+                self.pendingResignations = resignations
+            }
+        } catch {
+            print("[BengkelVM] fetchPendingResignations error: \(error)")
+        }
+    }
+    
+    func approveResignation(resignationId: String) async -> Bool {
+        isLoading = true
+        errorMessage = nil
+        successMessage = nil
+        
+        do {
+            try await supabase
+                .rpc("approve_mechanic_resignation", params: ["resignation_id": resignationId])
+                .execute()
+            
+            self.successMessage = "Resignation approved. Mechanic has been removed."
+            
+            // Refresh team members roster
+            await fetchTeamProfiles()
+            
+            if let bengkelId = myBengkel?.id {
+                await fetchPendingResignations(bengkelId: bengkelId)
+            }
+            
+            isLoading = false
+            return true
+        } catch {
+            self.errorMessage = "Failed to approve resignation: \(error.localizedDescription)"
+            print("[BengkelVM] approveResignation error: \(error)")
+            isLoading = false
+            return false
+        }
+    }
+    
     /// RPC response shape for `get_user_by_email`.
     private struct RPCUserLookup: Decodable {
         let user_id: String
