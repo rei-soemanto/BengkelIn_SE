@@ -26,8 +26,10 @@ struct ProfileView: View {
     var body: some View {
         NavigationStack {
             Group {
-                if authViewModel.appMode == .customer || !authViewModel.isBengkelProvider {
+                if authViewModel.appMode == .customer {
                     customerProfileContent
+                } else if authViewModel.appMode == .mechanic { 
+                    MechanicProfileView(authViewModel: authViewModel)
                 } else {
                     BengkelProfileView(authViewModel: authViewModel)
                 }

@@ -283,6 +283,9 @@ class MechanicViewModel: ObservableObject {
                 })
             }
             
+        } catch is CancellationError {
+            // SILENT FAIL: SwiftUI cancelled this task because the user navigated away.
+            // Do not print anything or show an error message.
         } catch {
             self.errorMessage = "Failed to load your assigned tasks: \(error.localizedDescription)"
             print("[MechanicVM] fetchAssignedTasks error: \(error)")

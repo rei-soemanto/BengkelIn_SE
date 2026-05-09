@@ -50,8 +50,10 @@ class InvitationViewModel: ObservableObject {
                 .value
             
             self.pendingInvitations = invitations
+        } catch is CancellationError {
+            // SILENT FAIL: Task cancelled by SwiftUI navigation
         } catch {
-            self.errorMessage = "Failed to load invitations: \(error.localizedDescription)"
+            self.errorMessage = "Failed to load invitations."
             print("[InvitationVM] fetchPendingInvitations error: \(error)")
         }
         

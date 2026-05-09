@@ -4,12 +4,11 @@
 //
 
 import SwiftUI
-import Combine
 
 @MainActor
 struct MechanicProfileView: View {
     @ObservedObject var authViewModel: AuthViewModel
-    @StateObject var viewModel: MechanicProfileViewModel
+    @StateObject private var viewModel: MechanicProfileViewModel
     
     // Primary initializer
     init(authViewModel: AuthViewModel) {
@@ -17,10 +16,10 @@ struct MechanicProfileView: View {
         self._viewModel = StateObject(wrappedValue: MechanicProfileViewModel())
     }
     
-    // Initializer for injecting mocks (Previews)
-    init(authViewModel: AuthViewModel, viewModel: MechanicProfileViewModel) {
+    // Initializer for injecting mocks (Previews Only)
+    init(authViewModel: AuthViewModel, mockViewModel: MechanicProfileViewModel) {
         self.authViewModel = authViewModel
-        self._viewModel = StateObject(wrappedValue: viewModel)
+        self._viewModel = StateObject(wrappedValue: mockViewModel)
     }
     
     @State private var showResignSheet = false
@@ -122,7 +121,7 @@ struct MechanicProfileView: View {
         }
         .background(Color(.systemGray6).edgesIgnoringSafeArea(.all))
         .task {
-            // Only fetch if not in preview
+            // Only fetch if not in preview to prevent Supabase errors
             guard ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] != "1" else { return }
             await viewModel.fetchMyBengkel()
         }
@@ -150,6 +149,8 @@ struct MechanicProfileView: View {
                         .foregroundColor(.gray)
                     
                     SecureField("Enter your password", text: $passwordInput)
+                        .autocorrectionDisabled()
+                        .textInputAutocapitalization(.never)
                 }
                 
                 if let error = viewModel.errorMessage {
@@ -202,7 +203,6 @@ struct MechanicProfileView: View {
 class MockMechanicProfileViewModel: MechanicProfileViewModel {
     override init() {
         super.init()
-        // Use memberwise init with all fields to be safe
         self.myBengkel = Bengkel(
             id: "mock_id",
             providerUid: "mock_provider",
@@ -215,19 +215,27 @@ class MockMechanicProfileViewModel: MechanicProfileViewModel {
             averageRating: 5.0,
             totalReviews: 10,
             mechanicUids: [],
-            createdAt: Date()
+            createdAt: Date() // Note: If your app uses String for createdAt, change Date() to ""
         )
     }
     
     override func fetchMyBengkel() async {
-        // Do absolutely nothing to prevent loops
-        return
+        // Do nothing to prevent loops
+    }
+    
+    // Safely mock the network call so the preview doesn't crash when tapping the button
+    override func submitResignation(password: String) async -> Bool {
+        isSubmitting = true
+        try? await Task.sleep(nanoseconds: 1_000_000_000) // Simulate 1 sec network delay
+        isSubmitting = false
+        successMessage = "Mock resignation request sent to owner."
+        return true
     }
 }
 
 #Preview {
     MechanicProfileView(
         authViewModel: AuthViewModel(),
-        viewModel: MockMechanicProfileViewModel()
+        mockViewModel: MockMechanicProfileViewModel()
     )
 }

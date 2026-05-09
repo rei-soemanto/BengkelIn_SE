@@ -15,36 +15,28 @@ class MechanicProfileViewModel: ObservableObject {
     @Published var errorMessage: String?
     @Published var successMessage: String?
     
-    // STRICT RULE: Empty init to prevent recursion during initialization
     init() {}
     
     func fetchMyBengkel() async {
-        // IDEMPOTENCY GUARD: Prevents infinite loop if data exists
         guard self.myBengkel == nil else { return }
         
         isLoading = true
         errorMessage = nil
         
-        guard let session = try? await supabase.auth.session else {
-            self.errorMessage = "Authentication error. Please log in again."
-            self.isLoading = false
-            return
-        }
-        
-        let mechanicId = session.user.id.uuidString.lowercased()
-        
         do {
-            let results: [Bengkel] = try await supabase.from("bengkels")
-                .select()
-                .contains("mechanic_uids", value: [mechanicId])
+            let result: Bengkel = try await supabase
+                .rpc("get_my_bengkel")
+                .single()
                 .execute()
                 .value
             
-            self.myBengkel = results.first
+            self.myBengkel = result
+            print("✅ [MechanicProfileVM] Successfully loaded Bengkel: \(result.name)")
+            
         } catch {
-            self.errorMessage = "Failed to fetch linked bengkel: \(error.localizedDescription)"
-            print("[MechanicProfileVM] fetch error: \(error)")
+            print("⚠️ [MechanicProfileVM] User is not linked to a Bengkel or fetch failed: \(error)")
         }
+        
         isLoading = false
     }
     
@@ -69,8 +61,10 @@ class MechanicProfileViewModel: ObservableObject {
         }
         
         do {
+            // 1. Verify password to confirm intent
             _ = try await supabase.auth.signIn(email: email, password: password)
             
+            // 2. Submit payload
             let payload = MechanicResignationInsert(
                 bengkelId: bengkelId,
                 mechanicId: mechanicId,
@@ -84,6 +78,7 @@ class MechanicProfileViewModel: ObservableObject {
             self.successMessage = "Resignation request sent to owner."
             isSubmitting = false
             return true
+            
         } catch {
             self.errorMessage = "Resignation failed: \(error.localizedDescription)"
             isSubmitting = false
