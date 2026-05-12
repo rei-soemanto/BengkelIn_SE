@@ -118,16 +118,13 @@ struct BengkelProfileView: View {
                                     .foregroundColor(.gray)
                                     .padding(.vertical, 8)
                             } else {
-                                ForEach(bengkel.offeredServices ?? []) { service in
+                                 ForEach(bengkel.offeredServices) { service in
                                     HStack(alignment: .top) {
                                         VStack(alignment: .leading, spacing: 4) {
-                                            Text(service.serviceName)
+                                            Text(service.serviceType.rawValue)
                                                 .font(.body)
                                                 .fontWeight(service.isActive ? .semibold : .regular)
                                                 .foregroundColor(service.isActive ? .primary : .gray)
-                                            Text(service.description)
-                                                .font(.caption)
-                                                .foregroundColor(.gray)
                                             
                                             if !service.isActive {
                                                 Text("Inactive")
