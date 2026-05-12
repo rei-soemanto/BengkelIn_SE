@@ -333,7 +333,7 @@ class BengkelViewModel: ObservableObject {
         }
     }
     
-    func addService(bengkelId: String, serviceName: String, description: String, isActive: Bool) async -> Bool {
+    func addService(bengkelId: String, serviceType: ServiceType, isActive: Bool) async -> Bool {
         isLoading = true
         errorMessage = nil
         
@@ -345,16 +345,11 @@ class BengkelViewModel: ObservableObject {
             }
             
             let newService = BengkelService(
-                serviceName: serviceName,
-                description: description,
+                serviceType: serviceType,
                 isActive: isActive
             )
             
-            if currentBengkel.offeredServices != nil {
-                currentBengkel.offeredServices?.append(newService)
-            } else {
-                currentBengkel.offeredServices = [newService]
-            }
+            currentBengkel.offeredServices.append(newService)
             
             try await supabase.from("bengkels").update(currentBengkel).eq("id", value: bengkelId).execute()
             
@@ -369,17 +364,16 @@ class BengkelViewModel: ObservableObject {
         }
     }
     
-    func updateService(bengkelId: String, serviceId: String, serviceName: String, description: String, isActive: Bool) async -> Bool {
+    func updateService(bengkelId: String, serviceId: String, serviceType: ServiceType, isActive: Bool) async -> Bool {
         isLoading = true
         errorMessage = nil
         
         do {
             guard var currentBengkel = self.myBengkel else { return false }
             
-            if let index = currentBengkel.offeredServices?.firstIndex(where: { $0.id == serviceId }) {
-                currentBengkel.offeredServices?[index].serviceName = serviceName
-                currentBengkel.offeredServices?[index].description = description
-                currentBengkel.offeredServices?[index].isActive = isActive
+            if let index = currentBengkel.offeredServices.firstIndex(where: { $0.id == serviceId }) {
+                currentBengkel.offeredServices[index].serviceType = serviceType
+                currentBengkel.offeredServices[index].isActive = isActive
                 
                 try await supabase.from("bengkels").update(currentBengkel).eq("id", value: bengkelId).execute()
                 
