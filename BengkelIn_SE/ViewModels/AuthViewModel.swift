@@ -1,6 +1,6 @@
 //
 //  AuthViewModel.swift
-//  BengkelIn
+//  BengkelIn_SE
 //
 //  Created by Rei Soemanto on 23/04/26.
 //
@@ -22,13 +22,18 @@ class AuthViewModel: ObservableObject {
     @Published var isLoading = false
     @Published var errorMessage: String?
     @Published var successMessage: String?
-    
+
     @Published var appMode: AppMode = .customer
+    @Published var isBengkelProvider = false
+
+    private let authService = AuthService()
+    private let userRepository = UserRepository()
+    private let bengkelRepository = BengkelRepository()
 
     init() {
         Task {
             do {
-                let session = try await supabase.auth.session
+                let session = try await authService.getCurrentSession()
                 self.userSession = session.user
                 await fetchUser()
             } catch {
@@ -42,8 +47,8 @@ class AuthViewModel: ObservableObject {
         errorMessage = nil
         successMessage = nil
         do {
-            let result = try await supabase.auth.signIn(email: email, password: password)
-            self.userSession = result.user
+            let session = try await authService.signIn(email: email, password: password)
+            self.userSession = session.user
             await fetchUser()
         } catch {
             self.errorMessage = error.localizedDescription
@@ -55,97 +60,73 @@ class AuthViewModel: ObservableObject {
         isLoading = true
         errorMessage = nil
         successMessage = nil
-        
+
         do {
-            let result = try await supabase.auth.signUp(
+            let request = SignUpRequest(
                 email: email,
                 password: password,
-                data: [
-                    "name": .string(name),
-                    "phone_number": .string(phoneNumber)
-                ]
+                name: name,
+                phoneNumber: phoneNumber
             )
-            
-            try await supabase.auth.signOut()
+            try await authService.signUp(request: request)
+            try await authService.signOut()
             self.userSession = nil
             self.successMessage = "Registration successful! Please check your email to activate account."
-            
         } catch {
             self.errorMessage = error.localizedDescription
         }
         isLoading = false
     }
 
-    @Published var isBengkelProvider = false
-
     func fetchUser() async {
         guard let sessionUser = self.userSession else { return }
         let uid = sessionUser.id.uuidString.lowercased()
         do {
-            var fetchedUser: User = try await supabase.from("users")
-                .select()
-                .eq("id", value: uid)
-                .single()
-                .execute()
-                .value
-            
+            var fetchedUser = try await userRepository.fetchUser(uid: uid)
+
             fetchedUser.email = sessionUser.email
-            
+
             if case let .string(phoneString) = sessionUser.userMetadata["phone_number"] {
                 fetchedUser.phoneNumber = phoneString
             } else {
                 fetchedUser.phoneNumber = sessionUser.phone
             }
-            
+
             self.currentUser = fetchedUser
-            
-            // Check if user is a bengkel provider
+
+            // Detect if this user owns a bengkel
             do {
-                let count: Int = try await supabase.from("bengkels")
-                    .select("id", head: true, count: .exact)
-                    .eq("provider_uid", value: uid)
-                    .execute()
-                    .count ?? 0
-                
+                let count = try await bengkelRepository.countByProvider(uid: uid)
                 self.isBengkelProvider = (count > 0)
-                
-                // Keep the app mode in sync if they were a provider and switched back and forth
             } catch {
                 self.isBengkelProvider = false
             }
-            
         } catch {
             self.errorMessage = error.localizedDescription
         }
     }
-    
+
     func sendPasswordResetEmail() async {
         guard let email = currentUser?.email else { return }
         do {
-            try await supabase.auth.resetPasswordForEmail(email)
+            try await authService.resetPassword(email: email)
             self.successMessage = "Password reset email sent. Please check your inbox."
         } catch {
             self.errorMessage = error.localizedDescription
         }
     }
-    
+
     func deleteAccount(password: String) async {
         isLoading = true
         errorMessage = nil
         guard let sessionUser = self.userSession, let email = sessionUser.email else { return }
-        
+
         do {
-            _ = try await supabase.auth.signIn(email: email, password: password)
-            
-            try await supabase.from("users")
-                .delete()
-                .eq("id", value: sessionUser.id.uuidString.lowercased())
-                .execute()
-            
-            try await supabase.auth.signOut()
+            _ = try await authService.signIn(email: email, password: password)
+            try await userRepository.deleteUser(uid: sessionUser.id.uuidString.lowercased())
+            try await authService.signOut()
             self.userSession = nil
             self.currentUser = nil
-            
         } catch {
             self.errorMessage = error.localizedDescription
         }
@@ -155,7 +136,7 @@ class AuthViewModel: ObservableObject {
     func signOut() {
         Task {
             do {
-                try await supabase.auth.signOut()
+                try await authService.signOut()
                 self.userSession = nil
                 self.currentUser = nil
             } catch {

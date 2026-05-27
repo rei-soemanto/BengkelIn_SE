@@ -17,43 +17,45 @@ import Supabase
 
 @MainActor
 class MechanicViewModel: ObservableObject {
-    
+
     // MARK: - Published State
-    
-    /// Available bengkels (verified shops) for the customer to pick from.
+
+    /// Verified workshops available to the customer for picking.
     @Published var availableBengkels: [Bengkel] = []
-    
+
     /// The current user's service requests (customer-facing).
     @Published var myServiceRequests: [ServiceRequest] = []
-    
+
     /// The mechanic's assigned tasks (mechanic-facing).
     @Published var assignedTasks: [ServiceRequest] = []
-    
+
     /// Incoming pending requests targeted at the provider's bengkel (provider-facing).
     @Published var incomingRequests: [ServiceRequest] = []
-    
-    /// The single active/in-progress request being tracked (for realtime).
+
+    /// Single active/in-progress request being tracked (for realtime).
     @Published var activeRequest: ServiceRequest?
-    
-    /// Loading, error, and success states — the UI should always reflect these.
+
     @Published var isLoading = false
     @Published var isFetchingBengkels = false
     @Published var isCreatingRequest = false
     @Published var errorMessage: String?
     @Published var successMessage: String?
-    
+
+    // MARK: - Dependencies
+
+    private let authService = AuthService()
+    private let serviceRequestRepository = ServiceRequestRepository()
+    private let bengkelRepository = BengkelRepository()
+    private let voucherRepository = VoucherRepository()
+
     // MARK: - Realtime
-    
-    /// Holds the active Realtime channel subscription so it can be torn down.
+
     private var realtimeChannel: RealtimeChannelV2?
-    /// Background task that listens for realtime changes.
     private var realtimeTask: Task<Void, Never>?
-    
+
     // MARK: - Lifecycle
-    
+
     deinit {
-        // Tear down the realtime subscription to prevent leaks.
-        // Because deinit runs off the MainActor, we capture what we need.
         let channel = realtimeChannel
         let task = realtimeTask
         task?.cancel()
@@ -63,51 +65,31 @@ class MechanicViewModel: ObservableObject {
             }
         }
     }
-    
+
     // ──────────────────────────────────────────────────────
     // MARK: - 1. Fetch Available Bengkels (Customer-Side)
     // ──────────────────────────────────────────────────────
-    
-    /// Fetches all verified bengkels from the `bengkels` table.
-    /// RLS Note: The `bengkels` table should have a SELECT policy that allows
-    /// authenticated users to read rows where `status = 'Verified'`.
+
     func fetchAvailableBengkels() async {
         isFetchingBengkels = true
         errorMessage = nil
-        
+
         do {
-            let bengkels: [Bengkel] = try await supabase.from("bengkels")
-                .select()
-                .eq("status", value: "Verified")
-                .order("average_rating", ascending: false)
-                .execute()
-                .value
-            
+            let bengkels = try await bengkelRepository.fetchVerifiedBengkels()
             self.availableBengkels = bengkels
         } catch {
             self.errorMessage = "Failed to load available bengkels: \(error.localizedDescription)"
             print("[MechanicVM] fetchAvailableBengkels error: \(error)")
         }
-        
+
         isFetchingBengkels = false
     }
-    
+
     // ──────────────────────────────────────────────────────
     // MARK: - 2. Create Service Request (Customer-Side)
     // ──────────────────────────────────────────────────────
-    
+
     /// Creates a new service request linked to the authenticated user, a vehicle, and a bengkel.
-    /// - Parameters:
-    ///   - vehicleId: The UUID of the customer's selected vehicle.
-    ///   - bengkelId: The UUID of the chosen bengkel.
-    ///   - serviceType: Free-text service type (e.g. "Flat Tire Repair").
-    ///   - description: Optional customer notes.
-    ///   - isEmergency: Whether this is a roadside assistance request.
-    ///   - location: Human-readable location string.
-    ///   - latitude: GPS latitude of the customer.
-    ///   - longitude: GPS longitude of the customer.
-    ///   - estimatedPrice: Optional estimated cost.
-    /// - Returns: `true` if the request was created successfully.
     func createServiceRequest(
         vehicleId: String,
         bengkelId: String,
@@ -123,35 +105,21 @@ class MechanicViewModel: ObservableObject {
         isCreatingRequest = true
         errorMessage = nil
         successMessage = nil
-        
+
         // Step 1: Validate authenticated session
-        guard let session = try? await supabase.auth.session else {
+        guard let session = try? await authService.getCurrentSession() else {
             self.errorMessage = "You must be logged in to create a service request."
             isCreatingRequest = false
             return false
         }
         let uid = session.user.id.uuidString.lowercased()
-        
-        // Step 1.5: Validate Voucher if attached
+
+        // Step 1.5: Validate voucher (provider scope) if attached
         if let vId = voucherId {
             do {
-                // Fetch the voucher
-                let voucher: Voucher = try await supabase.from("vouchers")
-                    .select()
-                    .eq("id", value: vId)
-                    .single()
-                    .execute()
-                    .value
-                
-                // If it has a providerUid, it must match the target bengkel's providerUid
+                let voucher = try await voucherRepository.fetchVoucher(id: vId)
                 if let vProvider = voucher.providerUid {
-                    let bengkel: Bengkel = try await supabase.from("bengkels")
-                        .select()
-                        .eq("id", value: bengkelId)
-                        .single()
-                        .execute()
-                        .value
-                    
+                    let bengkel = try await bengkelRepository.fetchBengkel(bengkelId: bengkelId)
                     if vProvider != bengkel.providerUid {
                         self.errorMessage = "This promo code is not valid for this workshop."
                         isCreatingRequest = false
@@ -164,8 +132,8 @@ class MechanicViewModel: ObservableObject {
                 return false
             }
         }
-        
-        // Step 2: Build the insert payload (DB manages id, created_at, updated_at)
+
+        // Step 2: Build the insert payload
         let insertPayload = ServiceRequestInsert(
             customerId: uid,
             vehicleId: vehicleId,
@@ -179,25 +147,18 @@ class MechanicViewModel: ObservableObject {
             longitude: longitude,
             estimatedPrice: estimatedPrice
         )
-        
+
         // Step 3: Insert
         do {
-            let created: ServiceRequest = try await supabase.from("service_requests")
-                .insert(insertPayload)
-                .select()
-                .single()
-                .execute()
-                .value
-            
+            let created = try await serviceRequestRepository.insertRequest(insertPayload)
             self.myServiceRequests.insert(created, at: 0)
             self.activeRequest = created
             self.successMessage = "Service request submitted! Waiting for bengkel confirmation."
-            
-            // Auto-subscribe to realtime updates for this new request
+
             if let requestId = created.id {
                 subscribeToRequestUpdates(requestId: requestId, userId: uid)
             }
-            
+
             isCreatingRequest = false
             return true
         } catch {
@@ -207,133 +168,93 @@ class MechanicViewModel: ObservableObject {
             return false
         }
     }
-    
+
     // ──────────────────────────────────────────────────────
     // MARK: - 3. Fetch My Service Requests (Customer-Side)
     // ──────────────────────────────────────────────────────
-    
-    /// Fetches all service requests created by the authenticated user.
-    /// RLS Note: The SELECT policy on `service_requests` should restrict
-    /// rows to `auth.uid() = customer_id`.
+
     func fetchMyServiceRequests() async {
         isLoading = true
         errorMessage = nil
-        
-        guard let session = try? await supabase.auth.session else {
+
+        guard let session = try? await authService.getCurrentSession() else {
             self.errorMessage = "You must be logged in to view your requests."
             isLoading = false
             return
         }
         let uid = session.user.id.uuidString.lowercased()
-        
+
         do {
-            let requests: [ServiceRequest] = try await supabase.from("service_requests")
-                .select()
-                .eq("customer_id", value: uid)
-                .order("created_at", ascending: false)
-                .execute()
-                .value
-            
+            let requests = try await serviceRequestRepository.fetchByCustomer(customerId: uid)
             self.myServiceRequests = requests
-            
-            // Set the first non-terminal request as the active one
             self.activeRequest = requests.first(where: {
                 $0.status == .pending || $0.status == .accepted || $0.status == .inProgress
             })
-            
         } catch {
             self.errorMessage = "Failed to load your service requests: \(error.localizedDescription)"
             print("[MechanicVM] fetchMyServiceRequests error: \(error)")
         }
-        
+
         isLoading = false
     }
-    
+
     // ──────────────────────────────────────────────────────
     // MARK: - 3.5 Fetch Assigned Tasks (Mechanic-Side)
     // ──────────────────────────────────────────────────────
-    
-    /// Fetches all service requests assigned to the authenticated mechanic.
+
     func fetchAssignedTasks() async {
         isLoading = true
         errorMessage = nil
-        
-        guard let session = try? await supabase.auth.session else {
+
+        guard let session = try? await authService.getCurrentSession() else {
             self.errorMessage = "You must be logged in to view your tasks."
             isLoading = false
             return
         }
         let uid = session.user.id.uuidString.lowercased()
-        
+
         do {
-            let requests: [ServiceRequest] = try await supabase.from("service_requests")
-                .select()
-                .eq("mechanic_id", value: uid)
-                .in("status", values: [ServiceRequestStatus.accepted.rawValue, ServiceRequestStatus.inProgress.rawValue])
-                .order("created_at", ascending: false)
-                .execute()
-                .value
-            
+            let requests = try await serviceRequestRepository.fetchActiveByMechanic(mechanicId: uid)
             self.assignedTasks = requests
-            
-            // Set the first non-terminal request as the active one
+
             if self.activeRequest == nil {
                 self.activeRequest = requests.first(where: {
                     $0.status == .accepted || $0.status == .inProgress
                 })
             }
-            
         } catch is CancellationError {
-            // SILENT FAIL: SwiftUI cancelled this task because the user navigated away.
-            // Do not print anything or show an error message.
+            // SwiftUI navigation cancelled this task — silent fail.
         } catch {
             self.errorMessage = "Failed to load your assigned tasks: \(error.localizedDescription)"
             print("[MechanicVM] fetchAssignedTasks error: \(error)")
         }
-        
+
         isLoading = false
     }
-    
+
     // ──────────────────────────────────────────────────────
     // MARK: - 4. Fetch Incoming Requests (Provider/Bengkel-Side)
     // ──────────────────────────────────────────────────────
-    
-    /// Fetches pending service requests targeted at a specific bengkel.
-    /// Called by the provider dashboard to show incoming job offers.
-    /// - Parameter bengkelId: The ID of the provider's bengkel.
+
     func fetchIncomingRequests(bengkelId: String) async {
         isLoading = true
         errorMessage = nil
-        
+
         do {
-            let requests: [ServiceRequest] = try await supabase.from("service_requests")
-                .select()
-                .eq("bengkel_id", value: bengkelId)
-                .in("status", values: [
-                    ServiceRequestStatus.pending.rawValue,
-                    ServiceRequestStatus.accepted.rawValue,
-                    ServiceRequestStatus.inProgress.rawValue
-                ])
-                .order("created_at", ascending: false)
-                .execute()
-                .value
-            
+            let requests = try await serviceRequestRepository.fetchOpenByBengkel(bengkelId: bengkelId)
             self.incomingRequests = requests
         } catch {
             self.errorMessage = "Failed to load incoming requests: \(error.localizedDescription)"
             print("[MechanicVM] fetchIncomingRequests error: \(error)")
         }
-        
+
         isLoading = false
     }
-    
+
     // ──────────────────────────────────────────────────────
     // MARK: - 5. Accept Service Request (Provider-Side)
     // ──────────────────────────────────────────────────────
-    
-    /// Accepts a pending service request by setting its status to `accepted`.
-    /// - Parameter requestId: The UUID of the service request to accept.
-    /// - Returns: `true` on success.
+
     func acceptServiceRequest(requestId: String) async -> Bool {
         return await updateRequestStatus(
             requestId: requestId,
@@ -343,12 +264,7 @@ class MechanicViewModel: ObservableObject {
             successMsg: "Request accepted! Customer has been notified."
         )
     }
-    
-    /// Assigns a specific mechanic to a job and marks it as accepted.
-    /// - Parameters:
-    ///   - requestId: The UUID of the service request.
-    ///   - mechanicId: The UUID of the chosen mechanic.
-    /// - Returns: `true` on success.
+
     func assignMechanic(requestId: String, mechanicId: String) async -> Bool {
         return await updateRequestStatus(
             requestId: requestId,
@@ -358,14 +274,11 @@ class MechanicViewModel: ObservableObject {
             successMsg: "Job accepted and mechanic dispatched!"
         )
     }
-    
+
     // ──────────────────────────────────────────────────────
     // MARK: - 6. Start Work on Request (Mechanic-Side)
     // ──────────────────────────────────────────────────────
-    
-    /// Transitions a service request to `in_progress`.
-    /// - Parameter requestId: The UUID of the service request.
-    /// - Returns: `true` on success.
+
     func startWork(requestId: String) async -> Bool {
         return await updateRequestStatus(
             requestId: requestId,
@@ -375,17 +288,11 @@ class MechanicViewModel: ObservableObject {
             successMsg: "Job started. Work in progress..."
         )
     }
-    
+
     // ──────────────────────────────────────────────────────
     // MARK: - 7. Complete Service Request (Mechanic-Side)
     // ──────────────────────────────────────────────────────
-    
-    /// Marks a service request as `completed`. In production,
-    /// this is where you'd also handle Supabase Storage photo upload.
-    /// - Parameters:
-    ///   - requestId: The UUID of the service request.
-    ///   - notes: Optional completion notes from the mechanic.
-    /// - Returns: `true` on success.
+
     func completeServiceRequest(requestId: String, notes: String? = nil) async -> Bool {
         let success = await updateRequestStatus(
             requestId: requestId,
@@ -394,9 +301,8 @@ class MechanicViewModel: ObservableObject {
             mechanicId: nil,
             successMsg: "Job completed successfully! Proof uploaded."
         )
-        
+
         if success {
-            // Remove from active lists
             withAnimation(.easeInOut) {
                 self.incomingRequests.removeAll { $0.id == requestId }
                 if self.activeRequest?.id == requestId {
@@ -404,17 +310,14 @@ class MechanicViewModel: ObservableObject {
                 }
             }
         }
-        
+
         return success
     }
-    
+
     // ──────────────────────────────────────────────────────
     // MARK: - 8. Cancel Service Request
     // ──────────────────────────────────────────────────────
-    
-    /// Cancels a service request. Can be called by either party.
-    /// - Parameter requestId: The UUID of the service request.
-    /// - Returns: `true` on success.
+
     func cancelServiceRequest(requestId: String) async -> Bool {
         let success = await updateRequestStatus(
             requestId: requestId,
@@ -423,7 +326,7 @@ class MechanicViewModel: ObservableObject {
             mechanicId: nil,
             successMsg: "Service request cancelled."
         )
-        
+
         if success {
             withAnimation(.easeInOut) {
                 self.myServiceRequests.removeAll { $0.id == requestId }
@@ -433,60 +336,47 @@ class MechanicViewModel: ObservableObject {
                 }
             }
         }
-        
+
         return success
     }
-    
+
     // ──────────────────────────────────────────────────────
-    // MARK: - 9. Realtime Subscription (Scoped to User)
+    // MARK: - 9. Realtime Subscription (Scoped to a Single Request)
     // ──────────────────────────────────────────────────────
-    
-    /// Subscribes to realtime Postgres changes on the `service_requests` table,
-    /// filtered to a specific request ID. This prevents data leaks from other users' rows.
-    ///
-    /// - Parameters:
-    ///   - requestId: The service request ID to monitor.
-    ///   - userId: The authenticated user's ID (used for channel naming/scoping).
+
     func subscribeToRequestUpdates(requestId: String, userId: String) {
-        // Tear down any existing subscription first
         teardownRealtime()
-        
+
         let channelName = "service_request_\(requestId)"
-        
         let channel = supabase.channel(channelName)
         self.realtimeChannel = channel
-        
-        // Listen for UPDATE events on service_requests filtered by ID
+
         let changes = channel.postgresChange(
             UpdateAction.self,
             schema: "public",
             table: "service_requests",
             filter: "id=eq.\(requestId)"
         )
-        
+
         self.realtimeTask = Task { [weak self] in
-            // Subscribe to the channel
             await channel.subscribe()
-            
-            // Listen for changes
+
             for await change in changes {
                 guard let self = self, !Task.isCancelled else { break }
-                
+
                 do {
                     let updatedRecord = try change.decodeRecord(as: ServiceRequest.self, decoder: ServiceRequest.decoder)
-                    
+
                     await MainActor.run {
-                        // Update the active request
                         self.activeRequest = updatedRecord
-                        
-                        // Update in the local arrays
+
                         if let idx = self.myServiceRequests.firstIndex(where: { $0.id == requestId }) {
                             self.myServiceRequests[idx] = updatedRecord
                         }
                         if let idx = self.incomingRequests.firstIndex(where: { $0.id == requestId }) {
                             self.incomingRequests[idx] = updatedRecord
                         }
-                        
+
                         print("[MechanicVM] Realtime update: request \(requestId) → \(updatedRecord.status.rawValue)")
                     }
                 } catch {
@@ -495,12 +385,11 @@ class MechanicViewModel: ObservableObject {
             }
         }
     }
-    
-    /// Tears down the active realtime channel subscription.
+
     func teardownRealtime() {
         realtimeTask?.cancel()
         realtimeTask = nil
-        
+
         if let channel = realtimeChannel {
             Task {
                 await supabase.removeChannel(channel)
@@ -508,18 +397,11 @@ class MechanicViewModel: ObservableObject {
             realtimeChannel = nil
         }
     }
-    
+
     // ──────────────────────────────────────────────────────
     // MARK: - Private: Generic Status Update
     // ──────────────────────────────────────────────────────
-    
-    /// Centralized, defensive status updater. All status transitions route through here.
-    /// - Parameters:
-    ///   - requestId: The UUID of the service request to update.
-    ///   - newStatus: The target status.
-    ///   - notes: Optional mechanic notes to attach.
-    ///   - successMsg: Message to publish on `successMessage` if the update succeeds.
-    /// - Returns: `true` on success.
+
     private func updateRequestStatus(
         requestId: String,
         newStatus: ServiceRequestStatus,
@@ -530,23 +412,19 @@ class MechanicViewModel: ObservableObject {
         isLoading = true
         errorMessage = nil
         successMessage = nil
-        
+
         let isoFormatter = ISO8601DateFormatter()
         isoFormatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        
-        var updatePayload = ServiceRequestStatusUpdate(
+
+        var payload = ServiceRequestStatusUpdate(
             status: newStatus.rawValue,
             mechanicNotes: notes,
             updatedAt: isoFormatter.string(from: Date())
         )
-        updatePayload.mechanicId = mechanicId
-        
+        payload.mechanicId = mechanicId
+
         do {
-            try await supabase.from("service_requests")
-                .update(updatePayload)
-                .eq("id", value: requestId)
-                .execute()
-            
+            try await serviceRequestRepository.updateStatus(requestId: requestId, payload: payload)
             self.successMessage = successMsg
             isLoading = false
             return true
@@ -562,7 +440,6 @@ class MechanicViewModel: ObservableObject {
 // MARK: - Custom Decoder for ServiceRequest (handles Supabase date formats)
 
 extension ServiceRequest {
-    /// A JSONDecoder configured for Supabase's default ISO 8601 date format.
     static var decoder: JSONDecoder {
         let decoder = JSONDecoder()
         let isoFormatter = ISO8601DateFormatter()
@@ -573,7 +450,6 @@ extension ServiceRequest {
             if let date = isoFormatter.date(from: dateString) {
                 return date
             }
-            // Fallback: try without fractional seconds
             isoFormatter.formatOptions = [.withInternetDateTime]
             if let date = isoFormatter.date(from: dateString) {
                 return date

@@ -1,6 +1,8 @@
 //
 //  MechanicResignation.swift
-//  BengkelIn
+//  BengkelIn_SE
+//
+//  Created by Rei Soemanto.
 //
 
 import Foundation
@@ -11,9 +13,9 @@ struct MechanicResignation: Codable, Identifiable {
     var mechanicId: String
     var status: String
     var createdAt: String?
-    
+
     var users: ResigningUser?
-    
+
     enum CodingKeys: String, CodingKey {
         case id
         case bengkelId = "bengkel_id"
@@ -26,16 +28,4 @@ struct MechanicResignation: Codable, Identifiable {
 
 struct ResigningUser: Codable {
     var name: String
-}
-
-struct MechanicResignationInsert: Encodable {
-    let bengkelId: String
-    let mechanicId: String
-    let status: String
-    
-    enum CodingKeys: String, CodingKey {
-        case bengkelId = "bengkel_id"
-        case mechanicId = "mechanic_id"
-        case status
-    }
 }

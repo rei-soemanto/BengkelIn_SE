@@ -1,6 +1,6 @@
 //
 //  VehicleViewModel.swift
-//  BengkelIn
+//  BengkelIn_SE
 //
 //  Created by Rei Soemanto on 24/04/26.
 //
@@ -15,34 +15,32 @@ class VehicleViewModel: ObservableObject {
     @Published var isLoading = false
     @Published var errorMessage: String?
     @Published var successMessage: String?
-    
+
+    private let authService = AuthService()
+    private let vehicleRepository = VehicleRepository()
+
     func fetchVehicles() async {
-        guard let session = try? await supabase.auth.session else { return }
+        guard let session = try? await authService.getCurrentSession() else { return }
         let uid = session.user.id.uuidString.lowercased()
-        
+
         do {
-            let fetchedVehicles: [Vehicle] = try await supabase.from("vehicles")
-                .select()
-                .eq("customer_id", value: uid)
-                .execute()
-                .value
-            
-            self.userVehicles = fetchedVehicles
+            let fetched = try await vehicleRepository.fetchVehicles(customerId: uid)
+            self.userVehicles = fetched
         } catch {
             print("Failed to fetch vehicles: \(error)")
         }
     }
-    
+
     func addVehicle(manufacturer: String, model: String, year: Int, licensePlate: String, color: String) async -> Bool {
         isLoading = true
         errorMessage = nil
-        
-        guard let session = try? await supabase.auth.session else {
+
+        guard let session = try? await authService.getCurrentSession() else {
             isLoading = false
             return false
         }
         let uid = session.user.id.uuidString.lowercased()
-        
+
         let newVehicle = Vehicle(
             id: nil,
             customerId: uid,
@@ -53,10 +51,9 @@ class VehicleViewModel: ObservableObject {
             color: color,
             createdAt: nil
         )
-        
+
         do {
-            try await supabase.from("vehicles").insert(newVehicle).execute()
-            
+            try await vehicleRepository.insertVehicle(newVehicle)
             await fetchVehicles()
             isLoading = false
             return true
@@ -66,33 +63,21 @@ class VehicleViewModel: ObservableObject {
             return false
         }
     }
-    
+
     func updateVehicle(vehicleId: String, manufacturer: String, model: String, year: Int, licensePlate: String, color: String) async -> Bool {
         isLoading = true
         errorMessage = nil
-        
-        struct VehicleUpdate: Encodable {
-            let manufacturer: String
-            let model: String
-            let year: Int
-            let license_plate: String
-            let color: String
-        }
-        
-        let updateData = VehicleUpdate(
+
+        let payload = VehicleUpdatePayload(
             manufacturer: manufacturer,
             model: model,
             year: year,
             license_plate: licensePlate,
             color: color
         )
-            
+
         do {
-            try await supabase.from("vehicles")
-                .update(updateData)
-                .eq("id", value: vehicleId)
-                .execute()
-                
+            try await vehicleRepository.updateVehicle(vehicleId: vehicleId, payload: payload)
             await fetchVehicles()
             self.successMessage = "Vehicle updated successfully!"
             isLoading = false
@@ -103,14 +88,10 @@ class VehicleViewModel: ObservableObject {
             return false
         }
     }
-    
+
     func deleteVehicle(vehicleId: String) async {
         do {
-            try await supabase.from("vehicles")
-                .delete()
-                .eq("id", value: vehicleId)
-                .execute()
-                
+            try await vehicleRepository.deleteVehicle(vehicleId: vehicleId)
             await fetchVehicles()
         } catch {
             print("Failed to delete vehicle: \(error)")

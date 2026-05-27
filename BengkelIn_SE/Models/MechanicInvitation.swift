@@ -34,26 +34,6 @@ struct MechanicInvitation: Codable, Identifiable {
     }
 }
 
-// MARK: - Insert DTO (let DB handle id & created_at)
-
-struct MechanicInvitationInsert: Encodable {
-    let bengkelId: String
-    let mechanicId: String
-    let status: String
-
-    enum CodingKeys: String, CodingKey {
-        case bengkelId  = "bengkel_id"
-        case mechanicId = "mechanic_id"
-        case status
-    }
-}
-
-// MARK: - Status Update DTO
-
-struct MechanicInvitationStatusUpdate: Encodable {
-    let status: String
-}
-
 // MARK: - Display Model (joined with bengkel name for the mechanic-side UI)
 
 /// Used when fetching invitations with a joined bengkel name for display.

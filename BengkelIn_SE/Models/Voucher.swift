@@ -39,7 +39,7 @@ struct UserVoucher: Codable, Identifiable {
     var voucherId: String?
     var isUsed: Bool?
     var createdAt: Date?
-    
+
     /// Nested voucher details populated via Supabase join: .select("*, vouchers(*)")
     var vouchers: Voucher?
 
@@ -53,20 +53,6 @@ struct UserVoucher: Codable, Identifiable {
     }
 }
 
-// MARK: - Insert DTO (for claiming a voucher)
-
-struct UserVoucherInsert: Encodable {
-    let userId: String
-    let voucherId: String
-    let isUsed: Bool
-
-    enum CodingKeys: String, CodingKey {
-        case userId    = "user_id"
-        case voucherId = "voucher_id"
-        case isUsed    = "is_used"
-    }
-}
-
 // MARK: - Custom Decoder for Voucher date formats
 
 extension Voucher {
@@ -77,16 +63,13 @@ extension Voucher {
         decoder.dateDecodingStrategy = .custom { decoder in
             let container = try decoder.singleValueContainer()
             let dateString = try container.decode(String.self)
-            // Try with fractional seconds first
             if let date = isoFormatter.date(from: dateString) {
                 return date
             }
-            // Fallback without fractional seconds
             isoFormatter.formatOptions = [.withInternetDateTime]
             if let date = isoFormatter.date(from: dateString) {
                 return date
             }
-            // Fallback: date-only format (e.g. "2026-06-30")
             let dateOnly = DateFormatter()
             dateOnly.dateFormat = "yyyy-MM-dd"
             dateOnly.locale = Locale(identifier: "en_US_POSIX")
