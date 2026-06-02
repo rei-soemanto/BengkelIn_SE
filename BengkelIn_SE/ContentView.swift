@@ -7,6 +7,7 @@
 
 import SwiftUI
 import Supabase
+import Combine
 
 struct ContentView: View {
     @StateObject private var authViewModel = AuthViewModel()
