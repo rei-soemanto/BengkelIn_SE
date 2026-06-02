@@ -148,13 +148,12 @@ class BengkelRouteViewModel: NSObject, ObservableObject, CLLocationManagerDelega
 
     // Apply the display + publishing behavior for the current role/assignment.
     private func reconfigureForRole() async {
-        if selfAssigned {
-            // Bengkel handles it: the shop is the handler position (static, never the customer).
-            if let shop = shopCoordinate { assigneeCoordinate = shop }
-            await publishShopLocation()
-        } else if amAssignee {
-            // Dispatched mechanic: my own live GPS is the handler position (published below).
+        if amAssignee {
+            // I'm handling the job — mechanic OR bengkel "Self". Publish my live device GPS
+            // so the customer (and a monitoring provider) sees me travel to them. Distinct
+            // simulator locations (see scripts/sim-route.sh) keep me off the customer's spot.
             if let me = bengkelCoordinate { assigneeCoordinate = me }
+            publishCurrentGPSIfPossible()
         } else if monitoringMechanic {
             // Provider watching a mechanic: mirror the mechanic's published location.
             await refreshAssigneeFromOrderLocations()
@@ -190,7 +189,7 @@ class BengkelRouteViewModel: NSObject, ObservableObject, CLLocationManagerDelega
         await refreshOrder()
         await reconfigureForRole()
         let auth = locationManager.authorizationStatus
-        if amAssignee, !selfAssigned, auth == .authorizedWhenInUse || auth == .authorizedAlways {
+        if amAssignee, auth == .authorizedWhenInUse || auth == .authorizedAlways {
             locationManager.stopUpdatingLocation()
             locationManager.startUpdatingLocation()
         }
@@ -243,9 +242,9 @@ class BengkelRouteViewModel: NSObject, ObservableObject, CLLocationManagerDelega
         guard let location = locations.last else { return }
         self.bengkelCoordinate = location.coordinate
 
-        // Only a dispatched mechanic streams their live GPS as the handler position.
-        // (Self uses the shop location; a monitoring provider only reads.)
-        guard amAssignee, !selfAssigned, status == "accepted", let requestId = serviceRequestId else { return }
+        // The assignee (mechanic OR bengkel "Self") streams live GPS as the handler position.
+        // A monitoring provider doesn't publish (it reads order_locations instead).
+        guard amAssignee, status == "accepted", let requestId = serviceRequestId else { return }
         self.assigneeCoordinate = location.coordinate
         let distance = customerCoordinate.map {
             location.distance(from: CLLocation(latitude: $0.latitude, longitude: $0.longitude))
@@ -266,10 +265,13 @@ class BengkelRouteViewModel: NSObject, ObservableObject, CLLocationManagerDelega
         }
     }
 
-    // Self-assignment: publish the bengkel's registered shop coordinates as the handler location.
-    private func publishShopLocation() async {
-        guard selfAssigned, let coord = shopCoordinate, let requestId = serviceRequestId else { return }
-        await publish(coordinate: coord, requestId: requestId)
+    // Publish the latest known GPS immediately (e.g. right after assignment) so the handler's
+    // marker appears without waiting for the next location update.
+    private func publishCurrentGPSIfPossible() {
+        guard amAssignee, status == "accepted", let requestId = serviceRequestId,
+              let coord = bengkelCoordinate else { return }
+        lastPublishedAt = Date()
+        Task { await publish(coordinate: coord, requestId: requestId) }
     }
 
     private func publish(coordinate: CLLocationCoordinate2D, requestId: String) async {
