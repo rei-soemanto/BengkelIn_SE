@@ -39,6 +39,14 @@ struct ServiceRequest: Codable, Identifiable {
     var createdAt: Date?
     var updatedAt: Date?
 
+    // Completion + rating (Phase 0 combine)
+    var completedAt: Date?
+    var customerCompleted: Bool?
+    var providerCompleted: Bool?
+    var completionPhotoUrl: String?
+    var rating: Int?
+    var review: String?
+
     enum CodingKeys: String, CodingKey {
         case id
         case customerId     = "customer_id"
@@ -56,5 +64,11 @@ struct ServiceRequest: Codable, Identifiable {
         case mechanicId     = "mechanic_id"
         case createdAt      = "created_at"
         case updatedAt      = "updated_at"
+        case completedAt          = "completed_at"
+        case customerCompleted    = "customer_completed"
+        case providerCompleted    = "provider_completed"
+        case completionPhotoUrl   = "completion_photo_url"
+        case rating
+        case review
     }
 }

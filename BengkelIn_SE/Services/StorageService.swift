@@ -24,4 +24,33 @@ class StorageService {
 
         return publicURL.absoluteString
     }
+
+    /// Uploads a completion / order proof photo to the `order-photos` bucket and returns its public URL.
+    func uploadOrderPhoto(uid: String, data: Data) async throws -> String {
+        let path = "\(uid)/\(UUID().uuidString).jpg"
+        let fileOptions = FileOptions(contentType: "image/jpeg", upsert: true)
+
+        try await supabase.storage
+            .from("order-photos")
+            .upload(path, data: data, options: fileOptions)
+
+        let publicURL = try supabase.storage
+            .from("order-photos")
+            .getPublicURL(path: path)
+
+        return publicURL.absoluteString
+    }
+
+    /// Removes order photos by their public URLs (best-effort cleanup on cancel).
+    func deleteOrderPhotos(urls: [String]) async throws {
+        let bucket = "order-photos"
+        let marker = "/\(bucket)/"
+        let paths = urls.compactMap { url -> String? in
+            guard let range = url.range(of: marker) else { return nil }
+            let path = String(url[range.upperBound...])
+            return path.isEmpty ? nil : path
+        }
+        guard !paths.isEmpty else { return }
+        _ = try await supabase.storage.from(bucket).remove(paths: paths)
+    }
 }

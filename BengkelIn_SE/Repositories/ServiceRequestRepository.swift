@@ -83,4 +83,33 @@ class ServiceRequestRepository {
             .eq("id", value: requestId)
             .execute()
     }
+
+    /// Fetches a single request by id (used by the completion / detail flows).
+    func fetchById(id: String) async throws -> ServiceRequest {
+        return try await supabase.from("service_requests")
+            .select()
+            .eq("id", value: id)
+            .single()
+            .execute()
+            .value
+    }
+
+    /// Dual-confirm completion via the `mark_order_completed` RPC (provider must
+    /// pass a proof photo). Returns the updated request row.
+    func markOrderCompleted(requestId: String, completionPhotoUrl: String?) async throws -> ServiceRequest {
+        return try await supabase
+            .rpc("mark_order_completed",
+                 params: MarkCompletedParams(p_request_id: requestId, p_completion_photo_url: completionPhotoUrl))
+            .single()
+            .execute()
+            .value
+    }
+
+    /// Write-once customer rating via the `rate_order` RPC.
+    func rateOrder(requestId: String, rating: Int, review: String?) async throws {
+        try await supabase
+            .rpc("rate_order",
+                 params: RateOrderParams(p_request_id: requestId, p_rating: rating, p_review: review))
+            .execute()
+    }
 }

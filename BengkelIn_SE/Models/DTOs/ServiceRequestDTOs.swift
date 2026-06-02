@@ -50,3 +50,16 @@ struct ServiceRequestStatusUpdate: Encodable {
         case updatedAt     = "updated_at"
     }
 }
+
+// Params for the mark_order_completed RPC (dual-confirm + optional proof photo).
+struct MarkCompletedParams: Encodable {
+    let p_request_id: String
+    let p_completion_photo_url: String?
+}
+
+// Params for the rate_order RPC (write-once customer rating).
+struct RateOrderParams: Encodable {
+    let p_request_id: String
+    let p_rating: Int
+    let p_review: String?
+}
