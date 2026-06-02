@@ -187,7 +187,11 @@ struct ProfileView: View {
                             ActionRow(icon: "person.text.rectangle", title: "Profile Settings")
                         }
                         
-                        if authViewModel.currentUser?.role != "PROVIDER" {
+                        // An ADMIN account is customer-only on mobile: it may not
+                        // register a bengkel or accept mechanic invitations. (The
+                        // server enforces this too — see migration
+                        // 20260602200000_freeze_dispute_and_admin_role_guards.sql.)
+                        if let role = authViewModel.currentUser?.role, role != "PROVIDER", role != "ADMIN" {
                             NavigationLink(destination: RegisterBengkelView()) {
                                 ActionRow(icon: "wrench.and.screwdriver", title: "Register as Bengkel")
                             }
