@@ -11,6 +11,16 @@ function toNumber(value: number | string | null): number {
   return Number(value ?? 0)
 }
 
+const emptyRevenueSummary: RevenueSummary = {
+  totalNet: 0,
+  totalFee: 0,
+  totalPointsRedeemed: 0,
+  orderCount: 0,
+  series: [],
+}
+
+const missingSchemaCodes = new Set(["PGRST202", "42883", "42P01"])
+
 export async function fetchRevenueSummary(): Promise<RevenueSummary> {
   await requireAdmin()
 
@@ -19,6 +29,9 @@ export async function fetchRevenueSummary(): Promise<RevenueSummary> {
   const { data, error } = await supabase.rpc("admin_revenue_summary")
 
   if (error) {
+    if (missingSchemaCodes.has(error.code)) {
+      return emptyRevenueSummary
+    }
     throw error
   }
 
