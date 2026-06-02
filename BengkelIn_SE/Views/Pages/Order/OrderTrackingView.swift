@@ -49,7 +49,7 @@ struct OrderTrackingView: View {
         VStack(spacing: 0) {
             TrackingMapView(
                 region: $region,
-                customerCoordinate: customerCoordinate,
+                customerCoordinate: customerPosition,
                 bengkelCoordinate: liveBengkelCoordinate,
                 bengkelName: bid.bengkel?.name ?? "Bengkel"
             )
@@ -176,7 +176,7 @@ struct OrderTrackingView: View {
     private func fitBothIfNeeded() {
         guard !didFitBoth, let bengkel = trackingViewModel.providerCoordinate else { return }
         didFitBoth = true
-        region = .fitting(customerCoordinate, bengkel)
+        region = .fitting(customerPosition, bengkel)
     }
 
     // Marks arrival sticky-true once the two parties are within range, and fires
