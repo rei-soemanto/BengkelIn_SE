@@ -16,6 +16,7 @@ struct NearbyOrder: Codable, Identifiable {
     var vehicleId: String?
     var vehicleInfo: String?
     var bengkelId: String?
+    var mechanicId: String?
     var rating: Int?
     var review: String?
     var customerCompleted: Bool?
@@ -40,6 +41,7 @@ struct NearbyOrder: Codable, Identifiable {
         case vehicleId = "vehicle_id"
         case vehicleInfo = "vehicle_info"
         case bengkelId = "bengkel_id"
+        case mechanicId = "mechanic_id"
         case rating
         case review
         case customerCompleted = "customer_completed"
