@@ -1,16 +1,5 @@
-//
-//  NearbyOrder.swift
-//  BengkelIn_SE
-//
-//  Created for the bidding feature on 02/06/26.
-//
-
 import Foundation
 
-/// A broadcast service request with its distance from a bengkel, as returned by
-/// the `nearby_service_requests` RPC (via the `bidding` edge function). This is a
-/// denormalized read model — distinct from `ServiceRequest` — so the bengkel's
-/// order feed never has to decode the full request row.
 struct NearbyOrder: Codable, Identifiable {
     var id: String
     var customerId: String
@@ -20,23 +9,43 @@ struct NearbyOrder: Codable, Identifiable {
     var isEmergency: Bool?
     var latitude: Double
     var longitude: Double
-    var estimatedPrice: Double?
-    var status: String?
-    var createdAt: Date?
+    var price: Int?
+    var status: String
+    var tireCount: Int?
+    var photoUrls: [String]?
+    var vehicleId: String?
+    var vehicleInfo: String?
+    var bengkelId: String?
+    var rating: Int?
+    var review: String?
+    var customerCompleted: Bool?
+    var providerCompleted: Bool?
+    var completionPhotoUrl: String?
+    var createdAt: String?
     var distanceM: Double?
 
     enum CodingKeys: String, CodingKey {
         case id
-        case customerId     = "customer_id"
-        case customerName   = "customer_name"
-        case serviceType    = "service_type"
+        case customerId = "customer_id"
+        case customerName = "customer_name"
+        case serviceType = "service_type"
         case description
-        case isEmergency    = "is_emergency"
+        case isEmergency = "is_emergency"
         case latitude
         case longitude
-        case estimatedPrice = "estimated_price"
+        case price
         case status
-        case createdAt      = "created_at"
-        case distanceM      = "distance_m"
+        case tireCount = "tire_count"
+        case photoUrls = "photo_urls"
+        case vehicleId = "vehicle_id"
+        case vehicleInfo = "vehicle_info"
+        case bengkelId = "bengkel_id"
+        case rating
+        case review
+        case customerCompleted = "customer_completed"
+        case providerCompleted = "provider_completed"
+        case completionPhotoUrl = "completion_photo_url"
+        case createdAt = "created_at"
+        case distanceM = "distance_m"
     }
 }
