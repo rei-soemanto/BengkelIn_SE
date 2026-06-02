@@ -14,6 +14,7 @@ struct ServiceRequestPayload: Encodable {
     let photo_urls: [String]?
     let vehicle_id: String?
     let vehicle_info: String?
+    let use_points: Bool
 }
 
 struct CreatedServiceRequest: Decodable {

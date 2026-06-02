@@ -1,4 +1,10 @@
-import { ClipboardList, Store, ShieldAlert, Banknote } from "lucide-react"
+import {
+  ClipboardList,
+  Store,
+  ShieldAlert,
+  Banknote,
+  TrendingUp,
+} from "lucide-react"
 import { requireAdmin } from "@/lib/auth/dal"
 import {
   countPendingBengkels,
@@ -6,16 +12,19 @@ import {
 } from "@/components/features/bengkels/services/bengkel-service"
 import { countPendingDisputes } from "@/components/features/disputes/services/dispute-service"
 import { countPendingWithdrawals } from "@/components/features/withdrawals/services/withdrawal-service"
+import { fetchRevenueSummary } from "@/components/features/revenue/services/revenue-service"
 import { StatCard } from "@/components/features/dashboard/components/stat-card"
+import { formatRupiah } from "@/lib/utils"
 
 export default async function DashboardPage() {
   const admin = await requireAdmin()
-  const [pendingCount, verifiedCount, disputeCount, withdrawalCount] =
+  const [pendingCount, verifiedCount, disputeCount, withdrawalCount, revenue] =
     await Promise.all([
       countPendingBengkels(),
       countVerifiedBengkels(),
       countPendingDisputes(),
       countPendingWithdrawals(),
+      fetchRevenueSummary(),
     ])
 
   const pendingActions = pendingCount + disputeCount + withdrawalCount
@@ -91,6 +100,17 @@ export default async function DashboardPage() {
           icon={Banknote}
           accent="sky"
           attention={withdrawalCount > 0}
+        />
+
+        <StatCard
+          title="Pendapatan Developer"
+          description="Total pendapatan bersih dari biaya transaksi 10%."
+          count={revenue.totalNet}
+          valueLabel={formatRupiah(revenue.totalNet)}
+          cta="Lihat pendapatan"
+          href="/pendapatan"
+          icon={TrendingUp}
+          accent="emerald"
         />
       </div>
     </div>

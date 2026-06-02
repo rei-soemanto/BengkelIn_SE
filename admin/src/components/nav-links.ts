@@ -6,4 +6,5 @@ export const navLinks: NavLink[] = [
   { href: "/bengkels/terverifikasi", label: "Bengkel Terverifikasi" },
   { href: "/komplain", label: "Komplain" },
   { href: "/penarikan", label: "Penarikan" },
+  { href: "/pendapatan", label: "Pendapatan" },
 ]

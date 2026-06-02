@@ -11,6 +11,8 @@ struct PaymentTarget: Identifiable {
 class PaymentViewModel: ObservableObject {
     @Published var balance: Double = 0
     @Published var heldBalance: Double = 0
+    @Published var points: Int = 0
+    @Published var pendingPoints: Int = 0
     @Published var topups: [Topup] = []
     @Published var withdrawals: [Withdrawal] = []
     @Published var isLoading = false
@@ -127,6 +129,8 @@ class PaymentViewModel: ObservableObject {
             let fetchedUser = try await user
             self.balance = fetchedUser.balance
             self.heldBalance = fetchedUser.heldBalance ?? 0
+            self.points = fetchedUser.availablePoints
+            self.pendingPoints = fetchedUser.pendingPoints ?? 0
             self.bankName = fetchedUser.bankName ?? ""
             self.bankAccountNumber = fetchedUser.bankAccountNumber ?? ""
             self.bankAccountName = fetchedUser.bankAccountName ?? ""

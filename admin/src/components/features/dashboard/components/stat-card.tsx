@@ -34,6 +34,7 @@ export function StatCard({
   icon: Icon,
   accent,
   attention = false,
+  valueLabel,
 }: StatCardProps) {
   return (
     <Link
@@ -61,7 +62,7 @@ export function StatCard({
                 />
               ) : null}
               <span className="text-3xl font-semibold tabular-nums tracking-tight">
-                {count}
+                {valueLabel ?? count}
               </span>
             </div>
           </div>

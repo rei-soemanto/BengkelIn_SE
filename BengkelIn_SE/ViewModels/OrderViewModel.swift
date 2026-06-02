@@ -32,6 +32,15 @@ class OrderViewModel: NSObject, ObservableObject, CLLocationManagerDelegate, Loc
     @Published var selectedVehicleId: String? = nil
     @Published var pendingVehicleId: String? = nil
     @Published var pendingVehicleInfo: String? = nil
+    @Published var usePoints: Bool = false
+    @Published var availablePoints: Int = 0
+
+    // Rupiah knocked off the estimate if the customer redeems points (1 poin = Rp1),
+    // capped at the available balance. Final redemption is recomputed server-side
+    // against the accepted bid price.
+    var pointsDiscount: Int {
+        usePoints ? min(availablePoints, estimatedPrice) : 0
+    }
 
     // True only once a *real* location has been resolved for this order — via
     // GPS, a map drag, or a search selection. Guards against silently creating
@@ -58,6 +67,7 @@ class OrderViewModel: NSObject, ObservableObject, CLLocationManagerDelegate, Loc
     private let locationService = LocationService()
     private let orderRepository = OrderRepository()
     private let storageService = StorageService()
+    private let userRepository = UserRepository()
 
     override init() {
         super.init()
@@ -185,6 +195,13 @@ class OrderViewModel: NSObject, ObservableObject, CLLocationManagerDelegate, Loc
         }
     }
 
+    func loadUserPoints() async {
+        guard let uid = try? await authService.currentUID() else { return }
+        if let user = try? await userRepository.fetchUser(uid: uid) {
+            self.availablePoints = user.availablePoints
+        }
+    }
+
     // Reset all per-order state so each new order starts from a clean slate and
     // must re-resolve its location. Call when the order form appears.
     func prepareForNewOrder() {
@@ -197,6 +214,7 @@ class OrderViewModel: NSObject, ObservableObject, CLLocationManagerDelegate, Loc
         pendingPhotoUrls = []
         navigateToBidding = false
         hasResolvedLocation = false
+        usePoints = false
         selectedVehicleId = nil
         pendingVehicleId = nil
         pendingVehicleInfo = nil

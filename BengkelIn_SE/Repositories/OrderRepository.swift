@@ -30,7 +30,9 @@ class OrderRepository {
             .gte("completed_at", value: iso)
             .execute()
             .value
-        return rows.reduce(0.0) { $0 + Double($1.price ?? 0) }
+        // Provider keeps 90%; the platform takes a 10% transaction fee. Show the
+        // net payout so "Pendapatan Hari Ini" matches what lands in the balance.
+        return rows.reduce(0.0) { $0 + Double($1.price ?? 0) } * 0.90
     }
 
     func fetchBengkelOrders(bengkelId: String) async throws -> [NearbyOrder] {

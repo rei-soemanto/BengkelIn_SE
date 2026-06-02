@@ -85,13 +85,40 @@ struct OrderView: View {
                             TirePhotoGrid(count: viewModel.tireCount, photos: $viewModel.photosData)
                         }
 
+                        if viewModel.availablePoints > 0 {
+                            VStack(spacing: 4) {
+                                Toggle(isOn: $viewModel.usePoints) {
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text("Gunakan Poin")
+                                            .font(.subheadline)
+                                            .fontWeight(.semibold)
+                                        Text("Tersedia \(viewModel.availablePoints) poin")
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                    }
+                                }
+                                if viewModel.usePoints && viewModel.pointsDiscount > 0 {
+                                    HStack {
+                                        Text("Potongan poin")
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                        Spacer()
+                                        Text("-Rp\(viewModel.pointsDiscount)")
+                                            .font(.caption)
+                                            .foregroundColor(.green)
+                                    }
+                                }
+                            }
+                            .padding(.horizontal)
+                        }
+
                         if viewModel.estimatedPrice > 0 {
                             HStack {
                                 Text("Perkiraan Biaya")
                                     .font(.subheadline)
                                     .foregroundColor(.secondary)
                                 Spacer()
-                                Text("Rp\(viewModel.estimatedPrice)")
+                                Text("Rp\(max(0, viewModel.estimatedPrice - viewModel.pointsDiscount))")
                                     .font(.headline)
                                     .fontWeight(.bold)
                             }
@@ -142,6 +169,7 @@ struct OrderView: View {
                     photoUrls: viewModel.pendingPhotoUrls,
                     vehicleId: viewModel.pendingVehicleId,
                     vehicleInfo: viewModel.pendingVehicleInfo,
+                    usePoints: viewModel.usePoints,
                     popToRoot: popToRoot
                 )
             }
@@ -159,6 +187,7 @@ struct OrderView: View {
             viewModel.prepareForNewOrder()
             viewModel.useCurrentLocation()
             Task { await viewModel.loadVehicles() }
+            Task { await viewModel.loadUserPoints() }
         }
     }
 

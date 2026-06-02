@@ -16,7 +16,7 @@ struct CustomerBiddingView: View {
     @Environment(\.dismiss) private var dismiss
     private let isResuming: Bool
 
-    init(serviceType: ServiceType, coordinate: CLLocationCoordinate2D, tireCount: Int = 1, photoUrls: [String] = [], vehicleId: String? = nil, vehicleInfo: String? = nil, popToRoot: @escaping () -> Void = {}) {
+    init(serviceType: ServiceType, coordinate: CLLocationCoordinate2D, tireCount: Int = 1, photoUrls: [String] = [], vehicleId: String? = nil, vehicleInfo: String? = nil, usePoints: Bool = false, popToRoot: @escaping () -> Void = {}) {
         self.popToRoot = popToRoot
         self.isResuming = false
         _viewModel = StateObject(wrappedValue: CustomerBiddingViewModel(
@@ -26,7 +26,8 @@ struct CustomerBiddingView: View {
             tireCount: tireCount,
             photoUrls: photoUrls,
             vehicleId: vehicleId,
-            vehicleInfo: vehicleInfo
+            vehicleInfo: vehicleInfo,
+            usePoints: usePoints
         ))
     }
 

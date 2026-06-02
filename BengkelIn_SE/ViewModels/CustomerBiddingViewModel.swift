@@ -34,6 +34,7 @@ final class CustomerBiddingViewModel: ObservableObject {
     let photoUrls: [String]
     let vehicleId: String?
     let vehicleInfo: String?
+    let usePoints: Bool
 
     private let searchTimeoutSeconds: UInt64 = 120
     private let decisionTimeoutSeconds: UInt64 = 10
@@ -53,7 +54,7 @@ final class CustomerBiddingViewModel: ObservableObject {
     private var knownBidIds: Set<String> = []
     private var didLoadBidsOnce = false
 
-    init(serviceType: ServiceType, latitude: Double, longitude: Double, tireCount: Int, photoUrls: [String], vehicleId: String? = nil, vehicleInfo: String? = nil) {
+    init(serviceType: ServiceType, latitude: Double, longitude: Double, tireCount: Int, photoUrls: [String], vehicleId: String? = nil, vehicleInfo: String? = nil, usePoints: Bool = false) {
         self.serviceType = serviceType
         self.latitude = latitude
         self.longitude = longitude
@@ -61,6 +62,7 @@ final class CustomerBiddingViewModel: ObservableObject {
         self.photoUrls = photoUrls
         self.vehicleId = vehicleId
         self.vehicleInfo = vehicleInfo
+        self.usePoints = usePoints
         let base = serviceType.minPrice
         let isTire = serviceType.requiresTireCount
         let min = isTire ? base * tireCount : base
@@ -77,7 +79,8 @@ final class CustomerBiddingViewModel: ObservableObject {
             tireCount: order.tireCount ?? 1,
             photoUrls: order.photoUrls ?? [],
             vehicleId: order.vehicleId,
-            vehicleInfo: order.vehicleInfo
+            vehicleInfo: order.vehicleInfo,
+            usePoints: order.usePoints ?? false
         )
         self.serviceRequestId = order.id
         self.customerBidPrice = order.price ?? self.minPrice
@@ -150,7 +153,8 @@ final class CustomerBiddingViewModel: ObservableObject {
                     tire_count: tireCount,
                     photo_urls: photoUrls,
                     vehicle_id: vehicleId,
-                    vehicle_info: vehicleInfo
+                    vehicle_info: vehicleInfo,
+                    use_points: usePoints
                 )
                 let created = try await orderRepository.createOrder(payload: payload)
                 self.serviceRequestId = created.id

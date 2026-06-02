@@ -119,6 +119,15 @@ struct OrderDetailView: View {
                 detailRow(label: "Kendaraan", value: info)
             }
 
+            if isCustomer, order.status == "completed" {
+                if let used = order.pointsUsed, used > 0 {
+                    detailRow(label: "Poin dipakai", value: "-Rp\(used)")
+                }
+                if let earned = order.pointsEarned, earned > 0 {
+                    detailRow(label: "Poin didapat", value: "+\(earned) poin")
+                }
+            }
+
             if let rating = localRating, rating > 0 {
                 Divider()
                 VStack(alignment: .leading, spacing: 8) {

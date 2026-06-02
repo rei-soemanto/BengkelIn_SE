@@ -91,6 +91,15 @@ struct PaymentView: View {
                 .font(.caption)
                 .foregroundColor(Color(.systemBackground).opacity(0.85))
             }
+            HStack(spacing: 12) {
+                Label("\(viewModel.points) poin", systemImage: "star.fill")
+                if viewModel.pendingPoints > 0 {
+                    Label("\(viewModel.pendingPoints) poin tertunda", systemImage: "clock.fill")
+                }
+            }
+            .font(.caption)
+            .foregroundColor(Color(.systemBackground).opacity(0.85))
+            .padding(.top, 2)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(24)

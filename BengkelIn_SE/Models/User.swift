@@ -20,9 +20,15 @@ struct User: Codable, Identifiable {
     var bankName: String?
     var bankAccountNumber: String?
     var bankAccountName: String?
+    var points: Int?
+    var pendingPoints: Int?
 
     var availableBalance: Double {
         balance - (heldBalance ?? 0)
+    }
+
+    var availablePoints: Int {
+        points ?? 0
     }
 
     enum CodingKeys: String, CodingKey {
@@ -36,5 +42,7 @@ struct User: Codable, Identifiable {
         case bankName = "bank_name"
         case bankAccountNumber = "bank_account_number"
         case bankAccountName = "bank_account_name"
+        case points
+        case pendingPoints = "pending_points"
     }
 }

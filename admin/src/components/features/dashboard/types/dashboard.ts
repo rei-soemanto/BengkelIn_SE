@@ -11,4 +11,5 @@ export interface StatCardProps {
   icon: LucideIcon
   accent: StatAccent
   attention?: boolean
+  valueLabel?: string
 }

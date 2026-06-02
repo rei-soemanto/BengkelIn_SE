@@ -22,6 +22,9 @@ struct NearbyOrder: Codable, Identifiable {
     var customerCompleted: Bool?
     var providerCompleted: Bool?
     var completionPhotoUrl: String?
+    var usePoints: Bool?
+    var pointsUsed: Int?
+    var pointsEarned: Int?
     var createdAt: String?
     var distanceM: Double?
 
@@ -47,6 +50,9 @@ struct NearbyOrder: Codable, Identifiable {
         case customerCompleted = "customer_completed"
         case providerCompleted = "provider_completed"
         case completionPhotoUrl = "completion_photo_url"
+        case usePoints = "use_points"
+        case pointsUsed = "points_used"
+        case pointsEarned = "points_earned"
         case createdAt = "created_at"
         case distanceM = "distance_m"
     }
