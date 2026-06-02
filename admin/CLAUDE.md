@@ -47,10 +47,11 @@ These are the rules the rest of this document exists to enforce. Violating any o
 
 1. **No `any`.** The `any` type is banned everywhere — props, state, API responses, callbacks, generics. If a type is genuinely unknown, use `unknown` and narrow it. Reach for generics, union types, or `zod`-inferred types instead. Prefer `interface` for object shapes; `type` for unions/aliases.
 2. **Every interface lives in a `types/` folder.** Never declare an `interface` (or exported `type` alias for a data shape) inline in a component, hook, or service file. Component prop interfaces, DB row shapes, DTOs, and API payloads all go in a `types/` file and are imported.
-3. **Feature-based structure.** Code is grouped by feature, not by technical layer (see below). Shared/global code lives in the top-level `src/` folders; feature code lives under `src/features/<feature>/`.
-4. **Every React hook lives in a `hooks/` folder.** Custom hooks (anything starting with `use`) are never defined inline in a component. Global hooks go in `src/hooks/`; feature hooks go in `src/features/<feature>/hooks/`. One hook per file.
-5. **Use shadcn/ui.** Build UI from the primitives in `src/components/ui/`. Do not hand-roll buttons, inputs, dialogs, tables, etc. Add missing primitives with `pnpm dlx shadcn@latest add <component>` — never copy them in by hand.
+3. **Feature-based structure under `components/features/`.** Code is grouped by feature, not by technical layer (see below). A feature owns its components, hooks, services, and types together under `src/components/features/<feature>/`. Shared/global code lives in the top-level `src/` folders (`src/components/`, `src/hooks/`, `src/types/`, `src/lib/`).
+4. **Every React hook lives in a `hooks/` folder.** Custom hooks (anything starting with `use`) are never defined inline in a component. Global hooks go in `src/hooks/`; feature hooks go in `src/components/features/<feature>/hooks/`. One hook per file.
+5. **Use shadcn/ui — via the `shadcn` skill.** Build all UI from the primitives in `src/components/ui/`. Do not hand-roll buttons, inputs, dialogs, tables, etc. **Invoke the `shadcn` skill** whenever you add, search for, compose, style, or debug a component, or when you need the correct usage/props for one — it knows this project's `components.json` (`base-nova` style) and the registry. Add missing primitives through the skill (it runs the shadcn CLI) — never copy component source in by hand.
 6. **Clean code.** Small, single-responsibility functions and components. Descriptive names. No dead code, no commented-out blocks, no `console.log` left behind. Server Components by default; add `"use client"` only when a component needs interactivity, state, or browser APIs.
+7. **Never write comments in the codebase.** Do not add code comments — no inline `//` comments, no block `/* */` comments, no JSDoc, no file-header comments, no "explaining" comments. The code must be self-documenting through clear names and small functions instead. (This rule applies to source files; the snippets in this CLAUDE.md use comments only to label examples.)
 
 ---
 
@@ -64,43 +65,44 @@ admin/src/
 │   └── <route>/
 │       └── page.tsx              # Page = compose feature components; minimal logic
 │
-├── components/                   # GLOBAL shared components (used across features)
-│   ├── ui/                       # shadcn/ui primitives — DO NOT edit by hand
-│   └── ...                       # app-wide composites (e.g. AppSidebar, PageHeader)
+├── components/                       # ALL UI components
+│   ├── ui/                           # shadcn/ui primitives — DO NOT edit by hand
+│   ├── <shared composites>           # app-wide composites (e.g. AppSidebar, PageHeader)
+│   └── features/                     # FEATURE MODULES (feature-based)
+│       └── <feature>/                # e.g. bengkels, users, service-requests, vouchers
+│           ├── components/           # this feature's components (composed from shadcn/ui)
+│           ├── hooks/                # this feature's hooks (one per file)
+│           ├── services/             # Supabase data access for this feature
+│           └── types/                # interfaces for this feature (props, rows, DTOs)
 │
-├── hooks/                        # GLOBAL shared hooks (e.g. use-mobile.ts)
+├── hooks/                            # GLOBAL shared hooks (e.g. use-mobile.ts)
 │
-├── types/                        # GLOBAL shared types/interfaces
-│   ├── database.ts               # Supabase row types (mirror the DB schema)
+├── types/                            # GLOBAL shared types/interfaces
+│   ├── database.ts                   # Supabase row types (mirror the DB schema)
 │   └── ...
 │
-├── lib/                          # GLOBAL utilities + client setup
-│   ├── utils.ts                  # cn() etc.
-│   └── supabase/                 # Supabase client factories (see below)
-│       ├── client.ts             # browser client
-│       └── server.ts             # server client (RSC / route handlers)
-│
-└── features/                     # FEATURE MODULES
-    └── <feature>/                # e.g. bengkels, users, service-requests, vouchers
-        ├── components/           # feature-specific components
-        ├── hooks/                # feature-specific hooks (one per file)
-        ├── services/             # Supabase data access for this feature
-        └── types/                # interfaces for this feature (props, rows, DTOs)
+└── lib/                              # GLOBAL utilities + client setup
+    ├── utils.ts                      # cn() etc.
+    └── supabase/                     # Supabase client factories (see below)
+        ├── client.ts                 # browser client
+        └── server.ts                 # server client (RSC / route handlers)
 ```
+
+A **feature** is a slice of the admin (e.g. `bengkels`, `users`, `service-requests`, `vouchers`). Everything that feature needs — its components, hooks, services, and types — lives together under `src/components/features/<feature>/`. Claude is expected to **create that feature's components by composing shadcn/ui primitives** (from `src/components/ui/`) to fit what the feature requires; pull in any missing primitive through the `shadcn` skill first, then assemble the feature component from it.
 
 ### Where does a file go?
 
 | You're adding... | Put it in... |
 |------------------|--------------|
 | A route/page | `src/app/<route>/page.tsx` (compose feature components, keep thin) |
-| A component used by one feature | `src/features/<feature>/components/` |
-| A component used by 2+ features | `src/components/` |
-| A shadcn primitive | `src/components/ui/` (via the shadcn CLI) |
-| A hook used by one feature | `src/features/<feature>/hooks/` |
+| A component used by one feature | `src/components/features/<feature>/components/` |
+| A component used by 2+ features | `src/components/` (top level) |
+| A shadcn primitive | `src/components/ui/` (via the `shadcn` skill) |
+| A hook used by one feature | `src/components/features/<feature>/hooks/` |
 | A hook used by 2+ features | `src/hooks/` |
-| An interface for one feature | `src/features/<feature>/types/` |
+| An interface for one feature | `src/components/features/<feature>/types/` |
 | An interface shared across features | `src/types/` |
-| Supabase queries for a feature | `src/features/<feature>/services/` |
+| Supabase queries for a feature | `src/components/features/<feature>/services/` |
 | The Supabase client factory | `src/lib/supabase/` |
 
 ---
@@ -109,11 +111,11 @@ admin/src/
 
 Connects to the **same Supabase project** as the iOS app. The DB schema (tables `users`, `vehicles`, `bengkels`, `service_requests`, `mechanic_invitations`, `mechanic_resignations`, `vouchers`, `user_vouchers`) is documented in [`../CLAUDE.md`](../CLAUDE.md) — **treat that as the source of truth** and mirror it into `src/types/database.ts`.
 
-### Setup (do this before writing data code)
+> **Use the `supabase-postgres-best-practices` skill** whenever you write, review, or optimize any Supabase/Postgres query, schema change, index, or RLS policy. It carries Supabase's performance and security guidance — consult it before shipping data-access code, not after.
 
-```sh
-pnpm add @supabase/supabase-js @supabase/ssr
-```
+### Setup
+
+`@supabase/supabase-js` and `@supabase/ssr` are already installed, and the client factories live in `src/lib/supabase/` (`client.ts`, `server.ts`).
 
 Credentials go in `.env.local` (never hard-code them, never commit them):
 
@@ -132,9 +134,9 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon/publishable key>
 All Supabase calls live in a feature's `services/` folder — components and pages never call `supabase.from(...)` inline. Services are typed functions that return typed rows; **no `any`**.
 
 ```ts
-// src/features/bengkels/services/bengkel-service.ts
+// src/components/features/bengkels/services/bengkel-service.ts
 import { createClient } from "@/lib/supabase/server";
-import type { Bengkel } from "@/features/bengkels/types/bengkel";
+import type { Bengkel } from "@/components/features/bengkels/types/bengkel";
 
 export async function fetchPendingBengkels(): Promise<Bengkel[]> {
   const supabase = await createClient();
@@ -157,7 +159,7 @@ As in iOS, the user PK is the Supabase `auth.user.id` UUID **lowercased**. Use `
 ## Type Conventions
 
 ```ts
-// src/features/bengkels/types/bengkel.ts
+// src/components/features/bengkels/types/bengkel.ts
 export interface Bengkel {
   id: string;
   providerUid: string;
@@ -168,7 +170,6 @@ export interface Bengkel {
   totalReviews: number | null;
 }
 
-// Component props — interface, in the feature's types/ folder
 export interface BengkelTableProps {
   bengkels: Bengkel[];
   onVerify: (id: string) => void;
@@ -186,17 +187,17 @@ Rules:
 ## Component Conventions
 
 - **Server Component by default.** Only add `"use client"` when you need state, effects, event handlers, or browser APIs.
-- Build from **shadcn/ui** primitives (`@/components/ui/*`). Compose, don't reinvent.
+- Build from **shadcn/ui** primitives (`@/components/ui/*`) via the **`shadcn` skill**. Compose, don't reinvent.
 - Use `cn()` from `@/lib/utils` for conditional class merging.
 - Props are always a named `interface` imported from a `types/` file (see rule 2).
 - Keep pages (`app/**/page.tsx`) thin: fetch data (server-side) and compose feature components. Business logic lives in services/hooks.
 - Use `sonner` (`toast(...)`) for user feedback; `lucide-react` for icons.
 
 ```tsx
-// src/features/bengkels/components/bengkel-table.tsx
+// src/components/features/bengkels/components/bengkel-table.tsx
 import { Table, TableBody, TableCell, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import type { BengkelTableProps } from "@/features/bengkels/types/bengkel";
+import type { BengkelTableProps } from "@/components/features/bengkels/types/bengkel";
 
 export function BengkelTable({ bengkels, onVerify }: BengkelTableProps) {
   return (
@@ -223,11 +224,11 @@ export function BengkelTable({ bengkels, onVerify }: BengkelTableProps) {
 - A hook owns its own typed state and returns a typed object — **no `any`**. Define the return-shape interface in a `types/` file when it is non-trivial.
 
 ```ts
-// src/features/bengkels/hooks/use-pending-bengkels.ts
+// src/components/features/bengkels/hooks/use-pending-bengkels.ts
 "use client";
 import { useState, useEffect } from "react";
-import type { Bengkel } from "@/features/bengkels/types/bengkel";
-import { fetchPendingBengkelsClient } from "@/features/bengkels/services/bengkel-service";
+import type { Bengkel } from "@/components/features/bengkels/types/bengkel";
+import { fetchPendingBengkelsClient } from "@/components/features/bengkels/services/bengkel-service";
 
 export function usePendingBengkels() {
   const [bengkels, setBengkels] = useState<Bengkel[]>([]);
@@ -257,16 +258,17 @@ export function usePendingBengkels() {
 | `@/lib` | `src/lib` |
 | `@/lib/utils` | `cn()` helper |
 | `@/types` | `src/types` |
-| `@/features/<f>/...` | feature module |
+| `@/components/features/<f>/...` | feature module |
 
 ---
 
 ## Definition of Done
 
 - [ ] No `any` anywhere in the change.
+- [ ] No comments added to any source file.
 - [ ] Every new interface/data-type lives in a `types/` folder, not inline.
 - [ ] Every new hook lives in a `hooks/` folder, one per file.
-- [ ] Feature code is under `src/features/<feature>/`; shared code is in the top-level folders.
-- [ ] UI is built from shadcn/ui primitives.
-- [ ] Supabase access is isolated in a `services/` file, not inline in components.
+- [ ] Feature code is under `src/components/features/<feature>/`; shared code is in the top-level folders.
+- [ ] UI is built from shadcn/ui primitives, added/composed via the `shadcn` skill.
+- [ ] Supabase access is isolated in a `services/` file, not inline in components, and was checked against the `supabase-postgres-best-practices` skill.
 - [ ] `pnpm lint` and `pnpm build` pass clean.

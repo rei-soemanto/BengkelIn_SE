@@ -1,3 +1,13 @@
+allowBuilds:
+  msw: set this to true or false
+  sharp: set this to true or false
+  unrs-resolver: set this to true or false
+
 ignoredBuiltDependencies:
   - sharp
   - unrs-resolver
+
+# Disable pnpm 11's built-in supply-chain "minimum release age" guardrail.
+# Our toolchain (Next.js, @supabase/*, @typescript-eslint, etc.) ships
+# same-day releases that would otherwise be rejected as "too new".
+minimumReleaseAge: 0
