@@ -28,31 +28,8 @@ struct MechanicDashboardView: View {
                     Spacer()
                 }
 
-                // Placeholder for the assigned-job list (Eugene's dispatch slice fills this).
-                VStack(alignment: .leading, spacing: 16) {
-                    Text("Pekerjaan Aktif")
-                        .font(.title2)
-                        .fontWeight(.bold)
-
-                    VStack(spacing: 12) {
-                        Image(systemName: "wrench.and.screwdriver")
-                            .font(.largeTitle)
-                            .foregroundColor(.gray)
-                        Text("Belum ada pekerjaan yang ditugaskan")
-                            .font(.subheadline)
-                            .foregroundColor(.gray)
-                            .multilineTextAlignment(.center)
-                        Text("Pekerjaan yang ditugaskan bengkel akan muncul di sini.")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                            .multilineTextAlignment(.center)
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 30)
-                    .background(Color(.systemGray6))
-                    .cornerRadius(12)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
+                // Assigned-job feed (Eugene's dispatch slice).
+                MechanicJobsView()
 
                 Spacer()
             }
