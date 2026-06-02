@@ -51,8 +51,13 @@ class BengkelRouteViewModel: NSObject, ObservableObject, CLLocationManagerDelega
     var selfAssigned: Bool { mechanicId != nil && mechanicId == providerUid }   // bengkel handles it itself
     var amAssignee: Bool { mechanicId != nil && mechanicId == myUid }           // I'm the one handling it
     private var monitoringMechanic: Bool { amProvider && mechanicId != nil && mechanicId != providerUid }
-    // Label for the handler pin: "Anda" when I'm the handler, "Mekanik" when I'm just watching.
+    // Label for the handler pin.
     var viewerIsAssignee: Bool { amAssignee }
+    var handlerLabel: String {
+        if amAssignee { return "Anda" }       // I'm doing the job (self-provider or mechanic)
+        if monitoringMechanic { return "Mekanik" }  // provider watching the dispatched mechanic
+        return "Bengkel"                       // unassigned provider previewing their shop
+    }
 
     override init() {
         super.init()
@@ -153,6 +158,10 @@ class BengkelRouteViewModel: NSObject, ObservableObject, CLLocationManagerDelega
         } else if monitoringMechanic {
             // Provider watching a mechanic: mirror the mechanic's published location.
             await refreshAssigneeFromOrderLocations()
+        } else if amProvider {
+            // Unassigned provider at the gate: preview the bengkel at its shop so the map
+            // always has a handler marker (don't leave it blank before assigning).
+            if let shop = shopCoordinate { assigneeCoordinate = shop }
         }
     }
 

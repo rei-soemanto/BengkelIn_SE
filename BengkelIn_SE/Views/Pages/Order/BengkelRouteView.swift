@@ -18,11 +18,17 @@ struct BengkelRouteView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var region: MKCoordinateRegion
     @State private var didFitBoth = false
-    @State private var showReportSheet = false
+    @State private var activeSheet: RouteSheet?
     @State private var reportReason = ""
     @State private var reportPhotoItem: PhotosPickerItem?
     @State private var reportPhotoData: Data?
-    @State private var showAssignSheet = false
+
+    // A single sheet selector — two `.sheet(isPresented:)` modifiers on one view conflict
+    // in SwiftUI (one flickers shut), so assign + report share one item-driven sheet.
+    private enum RouteSheet: Identifiable {
+        case assign, report
+        var id: Int { self == .assign ? 0 : 1 }
+    }
 
     init(order: NearbyOrder) {
         self.order = order
@@ -108,74 +114,80 @@ struct BengkelRouteView: View {
             viewModel.stop()
             chatWatch.stop()
         }
-        .sheet(isPresented: $showReportSheet) {
-            NavigationStack {
-                VStack(alignment: .leading, spacing: 16) {
-                    Text("Laporkan kendala yang membuat pesanan tidak bisa diselesaikan. Sertakan bukti foto. Dana ditahan untuk ditinjau admin.")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
-                    TextField("Alasan / kendala…", text: $reportReason, axis: .vertical)
-                        .lineLimit(3...6)
-                        .padding()
-                        .background(Color(.systemGray6))
-                        .cornerRadius(12)
-                    PhotosPicker(selection: $reportPhotoItem, matching: .images) {
-                        HStack {
-                            Image(systemName: reportPhotoData == nil ? "photo.badge.plus" : "checkmark.circle.fill")
-                            Text(reportPhotoData == nil ? "Lampirkan Bukti Foto" : "Foto terlampir")
+        .sheet(item: $activeSheet) { sheet in
+            switch sheet {
+            case .assign:
+                AssignMechanicSheet(requestId: order.id) {
+                    // After assigning, refresh the order so the gate updates immediately
+                    // (the realtime watcher also picks up the change).
+                    Task { await viewModel.refreshAfterAssignment() }
+                }
+                .presentationDetents([.medium, .large])
+            case .report:
+                reportSheet
+            }
+        }
+    }
+
+    private var reportSheet: some View {
+        NavigationStack {
+            VStack(alignment: .leading, spacing: 16) {
+                Text("Laporkan kendala yang membuat pesanan tidak bisa diselesaikan. Sertakan bukti foto. Dana ditahan untuk ditinjau admin.")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                TextField("Alasan / kendala…", text: $reportReason, axis: .vertical)
+                    .lineLimit(3...6)
+                    .padding()
+                    .background(Color(.systemGray6))
+                    .cornerRadius(12)
+                PhotosPicker(selection: $reportPhotoItem, matching: .images) {
+                    HStack {
+                        Image(systemName: reportPhotoData == nil ? "photo.badge.plus" : "checkmark.circle.fill")
+                        Text(reportPhotoData == nil ? "Lampirkan Bukti Foto" : "Foto terlampir")
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(Color(.systemGray6))
+                    .cornerRadius(12)
+                }
+                .onChange(of: reportPhotoItem) { item in
+                    guard let item else { return }
+                    Task {
+                        if let data = try? await item.loadTransferable(type: Data.self) {
+                            reportPhotoData = data
                         }
+                    }
+                }
+                Button {
+                    Task {
+                        if await viewModel.reportIssue(reason: reportReason, photoData: reportPhotoData) {
+                            activeSheet = nil
+                            dismiss()
+                        }
+                    }
+                } label: {
+                    Text("Kirim Laporan")
+                        .fontWeight(.bold)
+                        .foregroundColor(.white)
                         .frame(maxWidth: .infinity)
                         .padding()
-                        .background(Color(.systemGray6))
+                        .background(Color.red.opacity(reportReason.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? 0.4 : 1))
                         .cornerRadius(12)
-                    }
-                    .onChange(of: reportPhotoItem) { item in
-                        guard let item else { return }
-                        Task {
-                            if let data = try? await item.loadTransferable(type: Data.self) {
-                                reportPhotoData = data
-                            }
-                        }
-                    }
-                    Button {
-                        Task {
-                            if await viewModel.reportIssue(reason: reportReason, photoData: reportPhotoData) {
-                                showReportSheet = false
-                                dismiss()
-                            }
-                        }
-                    } label: {
-                        Text("Kirim Laporan")
-                            .fontWeight(.bold)
-                            .foregroundColor(.white)
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(Color.red.opacity(reportReason.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? 0.4 : 1))
-                            .cornerRadius(12)
-                    }
-                    .disabled(reportReason.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                    Spacer()
                 }
-                .padding()
-                .navigationTitle("Laporkan Kendala")
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbar {
-                    ToolbarItem(placement: .cancellationAction) {
-                        Button("Batal") { showReportSheet = false }
-                    }
+                .disabled(reportReason.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                Spacer()
+            }
+            .padding()
+            .navigationTitle("Laporkan Kendala")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Batal") { activeSheet = nil }
                 }
             }
-            .presentationBackground(Color(.systemBackground))
-            .presentationDetents([.large])
         }
-        .sheet(isPresented: $showAssignSheet) {
-            AssignMechanicSheet(requestId: order.id) {
-                // After assigning, refresh the order so the gate updates immediately
-                // (the realtime watcher also picks up the change).
-                Task { await viewModel.refreshAfterAssignment() }
-            }
-            .presentationDetents([.medium, .large])
-        }
+        .presentationBackground(Color(.systemBackground))
+        .presentationDetents([.large])
     }
 
     private var pins: [TrackingPin] {
@@ -186,11 +198,11 @@ struct BengkelRouteView: View {
             icon: "person.fill",
             tint: .blue
         )]
-        if let coord = viewModel.assigneeCoordinate {
+        if let coord = viewModel.assigneeCoordinate ?? viewModel.bengkelCoordinate {
             list.append(TrackingPin(
                 id: "bengkel",
                 coordinate: coord,
-                label: viewModel.viewerIsAssignee ? "Anda" : "Mekanik",
+                label: viewModel.handlerLabel,
                 icon: "car.fill",
                 tint: .primary
             ))
@@ -199,7 +211,7 @@ struct BengkelRouteView: View {
     }
 
     private func fitBothIfNeeded() {
-        guard !didFitBoth, let me = viewModel.assigneeCoordinate else { return }
+        guard !didFitBoth, let me = viewModel.assigneeCoordinate ?? viewModel.bengkelCoordinate else { return }
         didFitBoth = true
         region = .fitting(customerCoordinate, me)
     }
@@ -248,7 +260,7 @@ struct BengkelRouteView: View {
                 if isUnassigned {
                     // Provider hasn't dispatched yet — show the assignment gate (UC2).
                     Button {
-                        showAssignSheet = true
+                        activeSheet = .assign
                     } label: {
                         HStack {
                             Image(systemName: "person.2.badge.gearshape.fill")
@@ -290,7 +302,7 @@ struct BengkelRouteView: View {
 
     private var reportButton: some View {
         Button(role: .destructive) {
-            showReportSheet = true
+            activeSheet = .report
         } label: {
             HStack {
                 Image(systemName: "exclamationmark.bubble.fill")
