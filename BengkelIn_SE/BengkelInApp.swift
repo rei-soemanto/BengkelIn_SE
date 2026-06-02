@@ -1,6 +1,6 @@
 //
-//  MbengkelInApp.swift
-//  MbengkelIn
+//  BengkelInApp.swift
+//  BengkelIn
 //
 //  Created by Rei Soemanto on 23/04/26.
 //
@@ -37,7 +37,7 @@ class AppDelegate: NSObject, UIApplicationDelegate, UNUserNotificationCenterDele
 }
 
 @main
-struct MbengkelInApp: App {
+struct BengkelInApp: App {
     @UIApplicationDelegateAdaptor(AppDelegate.self) var delegate
     
     var body: some Scene {

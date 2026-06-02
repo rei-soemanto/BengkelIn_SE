@@ -1,6 +1,6 @@
 //
 //  DashboardView.swift
-//  MbengkelIn
+//  BengkelIn
 //
 //  Created by Rei Soemanto on 23/04/26.
 //
@@ -50,7 +50,7 @@ struct DashboardView: View {
             VStack(spacing: 24) {
                 HStack {
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("MbengkelIn")
+                        Text("BengkelIn")
                             .font(.title3)
                             .foregroundColor(.gray)
                         Text("Hi, \(authViewModel.currentUser?.name ?? "User")!")

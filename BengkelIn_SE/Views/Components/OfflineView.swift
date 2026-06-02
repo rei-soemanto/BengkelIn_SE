@@ -11,7 +11,7 @@ struct OfflineView: View {
             Text("Tidak Ada Koneksi")
                 .font(.title2)
                 .fontWeight(.bold)
-            Text("MbengkelIn butuh koneksi internet untuk berfungsi. Periksa koneksimu lalu coba lagi.")
+            Text("BengkelIn butuh koneksi internet untuk berfungsi. Periksa koneksimu lalu coba lagi.")
                 .font(.subheadline)
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)

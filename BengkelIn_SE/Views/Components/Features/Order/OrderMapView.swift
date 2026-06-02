@@ -1,6 +1,6 @@
 //
 //  OSMMapView.swift
-//  MbengkelIn
+//  BengkelIn
 //
 //  Created by Bryan Fernando Dinata on 19/05/26.
 //
@@ -11,7 +11,7 @@ final class OSMTileOverlay: MKTileOverlay {
     override func loadTile(at path: MKTileOverlayPath, result: @escaping (Data?, Error?) -> Void) {
         let url = self.url(forTilePath: path)
         var request = URLRequest(url: url)
-        request.setValue("MbengkelIn/1.0 (university project)", forHTTPHeaderField: "User-Agent")
+        request.setValue("BengkelIn/1.0 (university project)", forHTTPHeaderField: "User-Agent")
 
         let task = URLSession.shared.dataTask(with: request) { data, _, error in
             result(data, error)

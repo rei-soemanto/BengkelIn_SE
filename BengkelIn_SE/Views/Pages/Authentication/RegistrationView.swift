@@ -1,6 +1,6 @@
 //
 //  RegistrationView.swift
-//  MbengkelIn
+//  BengkelIn
 //
 //  Created by Rei Soemanto on 23/04/26.
 //
@@ -32,7 +32,7 @@ struct RegistrationView: View {
                 .padding(.top, 30)
                 
                 VStack(alignment: .center, spacing: 8) {
-                    Text("MbengkelIn")
+                    Text("BengkelIn")
                         .font(.largeTitle)
                         .fontWeight(.bold)
                     

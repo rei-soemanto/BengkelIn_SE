@@ -1,6 +1,6 @@
 //
 //  ContentView.swift
-//  MbengkelIn
+//  BengkelIn
 //
 //  Created by Rei Soemanto on 23/04/26.
 //
@@ -186,7 +186,7 @@ struct SplashView: View {
                     .font(.system(size: 64))
                     .foregroundStyle(.primary)
 
-                Text("MbengkelIn")
+                Text("BengkelIn")
                     .font(.title.bold())
                     .foregroundStyle(.primary)
 
