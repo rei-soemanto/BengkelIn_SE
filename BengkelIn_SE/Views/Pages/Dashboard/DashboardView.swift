@@ -24,10 +24,12 @@ struct DashboardView: View {
     var body: some View {
         NavigationStack(path: $path) {
             VStack(spacing: 0) {
-                if authViewModel.appMode == .customer || authViewModel.currentUser?.role != "PROVIDER" {
-                    customerDashboard
-                } else {
+                if authViewModel.appMode == .mechanic && authViewModel.currentUser?.role == "MECHANIC" {
+                    MechanicDashboardView(authViewModel: authViewModel)
+                } else if authViewModel.appMode == .bengkel && authViewModel.currentUser?.role == "PROVIDER" {
                     BengkelDashboardView(authViewModel: authViewModel, bengkelBiddingViewModel: bengkelBiddingViewModel)
+                } else {
+                    customerDashboard
                 }
             }
             .navigationDestination(for: DashboardRoute.self) { route in

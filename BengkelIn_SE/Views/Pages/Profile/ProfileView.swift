@@ -191,6 +191,10 @@ struct ProfileView: View {
                             NavigationLink(destination: RegisterBengkelView()) {
                                 ActionRow(icon: "wrench.and.screwdriver", title: "Register as Bengkel")
                             }
+
+                            NavigationLink(destination: MechanicInvitesView(authViewModel: authViewModel)) {
+                                ActionRow(icon: "envelope", title: "Undangan Mekanik")
+                            }
                         }
                     }
                     

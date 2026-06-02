@@ -16,6 +16,7 @@ struct ContentView: View {
     @Environment(\.scenePhase) private var scenePhase
 
     private var isProvider: Bool { authViewModel.currentUser?.role == "PROVIDER" }
+    private var isMechanic: Bool { authViewModel.currentUser?.role == "MECHANIC" }
     private var isBengkelMode: Bool { isProvider && authViewModel.appMode == .bengkel }
 
     var body: some View {
@@ -32,6 +33,15 @@ struct ContentView: View {
                         Picker("App Mode", selection: $authViewModel.appMode) {
                             Text("Pelanggan").tag(AppMode.customer)
                             Text("Bengkel").tag(AppMode.bengkel)
+                        }
+                        .pickerStyle(.segmented)
+                        .padding(.horizontal)
+                        .padding(.vertical, 8)
+                        .background(Color(.systemBackground))
+                    } else if isMechanic {
+                        Picker("App Mode", selection: $authViewModel.appMode) {
+                            Text("Pelanggan").tag(AppMode.customer)
+                            Text("Mekanik").tag(AppMode.mechanic)
                         }
                         .pickerStyle(.segmented)
                         .padding(.horizontal)

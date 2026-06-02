@@ -172,6 +172,10 @@ struct BengkelProfileView: View {
                         .cornerRadius(12)
                         
                         VStack(spacing: 16) {
+                            NavigationLink(destination: ManageRosterView()) {
+                                ActionRow(icon: "person.2.badge.gearshape", title: "Kelola Mekanik")
+                            }
+
                             NavigationLink(destination: UpdateBengkelView(bengkelViewModel: bengkelViewModel, authViewModel: authViewModel, bengkel: bengkel)) {
                                 ActionRow(icon: "pencil.circle", title: "Edit Bengkel Settings")
                             }
