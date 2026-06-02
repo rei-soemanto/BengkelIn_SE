@@ -21,6 +21,8 @@ struct PaymentView: View {
     @State private var customAmount: String = ""
     @State private var showBankSheet = false
     @State private var showWithdrawSheet = false
+    // Top-up options stay hidden until the user taps the balance card (or its + button).
+    @State private var showTopUp = false
 
     private var enteredAmount: Int { Int(customAmount) ?? 0 }
     private var isAmountValid: Bool {
@@ -32,7 +34,10 @@ struct PaymentView: View {
             ScrollView {
                 VStack(spacing: 24) {
                     balanceCard
-                    topUpSection
+                    if showTopUp {
+                        topUpSection
+                            .transition(.opacity.combined(with: .move(edge: .top)))
+                    }
                     withdrawSection
                     historySection
                     withdrawalHistorySection
@@ -76,35 +81,53 @@ struct PaymentView: View {
     }
 
     private var balanceCard: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Saldo Anda")
-                .font(.subheadline)
-                .foregroundColor(Color(.systemBackground).opacity(0.8))
-            Text(Int(viewModel.balance).rupiah)
-                .font(.system(size: 36, weight: .bold))
-                .foregroundColor(Color(.systemBackground))
-            if viewModel.heldBalance > 0 {
-                HStack(spacing: 12) {
-                    Label("Tertahan \(Int(viewModel.heldBalance).rupiah)", systemImage: "lock.fill")
-                    Label("Tersedia \(Int(viewModel.availableBalance).rupiah)", systemImage: "checkmark.circle.fill")
+        Button {
+            withAnimation(.easeInOut(duration: 0.25)) { showTopUp.toggle() }
+        } label: {
+            HStack(alignment: .top, spacing: 12) {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Saldo Anda")
+                        .font(.subheadline)
+                        .foregroundColor(Color(.systemBackground).opacity(0.8))
+                    Text(Int(viewModel.balance).rupiah)
+                        .font(.system(size: 36, weight: .bold))
+                        .foregroundColor(Color(.systemBackground))
+                    if viewModel.heldBalance > 0 {
+                        HStack(spacing: 12) {
+                            Label("Tertahan \(Int(viewModel.heldBalance).rupiah)", systemImage: "lock.fill")
+                            Label("Tersedia \(Int(viewModel.availableBalance).rupiah)", systemImage: "checkmark.circle.fill")
+                        }
+                        .font(.caption)
+                        .foregroundColor(Color(.systemBackground).opacity(0.85))
+                    }
+                    HStack(spacing: 12) {
+                        Label("\(viewModel.points) poin", systemImage: "star.fill")
+                        if viewModel.pendingPoints > 0 {
+                            Label("\(viewModel.pendingPoints) poin tertunda", systemImage: "clock.fill")
+                        }
+                    }
+                    .font(.caption)
+                    .foregroundColor(Color(.systemBackground).opacity(0.85))
+                    .padding(.top, 2)
                 }
-                .font(.caption)
-                .foregroundColor(Color(.systemBackground).opacity(0.85))
+
+                Spacer()
+
+                // Tap to reveal / hide the top-up options.
+                Image(systemName: showTopUp ? "minus" : "plus")
+                    .font(.title2.weight(.bold))
+                    .foregroundColor(Color.primary.opacity(0.9))
+                    .frame(width: 44, height: 44)
+                    .background(Color(.systemBackground))
+                    .clipShape(Circle())
+                    .accessibilityLabel(showTopUp ? "Sembunyikan Top Up" : "Top Up Saldo")
             }
-            HStack(spacing: 12) {
-                Label("\(viewModel.points) poin", systemImage: "star.fill")
-                if viewModel.pendingPoints > 0 {
-                    Label("\(viewModel.pendingPoints) poin tertunda", systemImage: "clock.fill")
-                }
-            }
-            .font(.caption)
-            .foregroundColor(Color(.systemBackground).opacity(0.85))
-            .padding(.top, 2)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(24)
+            .background(Color.primary.opacity(0.9))
+            .cornerRadius(20)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(24)
-        .background(Color.primary.opacity(0.9))
-        .cornerRadius(20)
+        .buttonStyle(.plain)
     }
 
     private var topUpSection: some View {
