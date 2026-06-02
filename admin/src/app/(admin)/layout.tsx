@@ -9,7 +9,7 @@ export default async function AdminLayout({
   return (
     <div className="flex min-h-full flex-col">
       <AdminHeader />
-      <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-6">
+      <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-6 min-[2000px]:max-w-[1600px] min-[2560px]:max-w-[2000px] lg:px-6">
         {children}
       </main>
     </div>

@@ -33,6 +33,11 @@ const initiatorLabel: Record<string, string> = {
   provider: "Bengkel",
 }
 
+const sourceLabel: Record<string, string> = {
+  dispute: "Sengketa Dana",
+  behavior: "Laporan Perilaku",
+}
+
 export function DisputeResolutionDialog({
   dispute,
 }: DisputeResolutionDialogProps) {
@@ -60,9 +65,13 @@ export function DisputeResolutionDialog({
               <span className="text-xs font-medium text-muted-foreground">
                 Laporan dibuat oleh
               </span>
-              <Badge variant="secondary">
-                {initiatorLabel[dispute.initiatorRole] ?? dispute.initiatorRole}
-              </Badge>
+              <div className="flex items-center gap-1.5">
+                <Badge variant="outline">{sourceLabel[dispute.source]}</Badge>
+                <Badge variant="secondary">
+                  {initiatorLabel[dispute.initiatorRole] ??
+                    dispute.initiatorRole}
+                </Badge>
+              </div>
             </div>
             <span className="text-sm font-medium">
               {dispute.initiatorName ?? "—"}
@@ -127,7 +136,7 @@ export function DisputeResolutionDialog({
               description={`Saldo sebesar ${formatRupiah(dispute.price)} akan dipindahkan dari pelanggan ke bengkel "${dispute.bengkelName ?? "—"}". Tindakan ini tidak dapat dibatalkan.`}
               confirmLabel="Teruskan"
               disabled={pending}
-              onConfirm={() => payout(dispute.id)}
+              onConfirm={() => payout(dispute.id, dispute.source)}
             />
             <ConfirmActionButton
               label="Kembalikan ke Pelanggan"
@@ -136,7 +145,7 @@ export function DisputeResolutionDialog({
               description={`Saldo sebesar ${formatRupiah(dispute.price)} akan dikembalikan ke saldo pelanggan dan bengkel tidak menerima pembayaran. Tindakan ini tidak dapat dibatalkan.`}
               confirmLabel="Kembalikan"
               disabled={pending}
-              onConfirm={() => refund(dispute.id)}
+              onConfirm={() => refund(dispute.id, dispute.source)}
             />
           </DialogFooter>
         ) : (

@@ -7,18 +7,23 @@ import {
   refundDispute,
   payoutDispute,
 } from "@/components/features/disputes/services/dispute-actions"
+import type { DisputeSource } from "@/types/database"
 
 export function useDisputeResolution() {
   const router = useRouter()
   const [pending, startTransition] = useTransition()
 
   function run(
-    action: (id: string) => Promise<{ ok: boolean; error?: string }>,
+    action: (
+      id: string,
+      source: DisputeSource
+    ) => Promise<{ ok: boolean; error?: string }>,
     id: string,
+    source: DisputeSource,
     successMessage: string
   ) {
     startTransition(async () => {
-      const result = await action(id)
+      const result = await action(id, source)
       if (result.ok) {
         toast.success(successMessage)
         router.refresh()
@@ -30,9 +35,9 @@ export function useDisputeResolution() {
 
   return {
     pending,
-    refund: (id: string) =>
-      run(refundDispute, id, "Saldo dikembalikan ke pelanggan."),
-    payout: (id: string) =>
-      run(payoutDispute, id, "Saldo diteruskan ke bengkel."),
+    refund: (id: string, source: DisputeSource) =>
+      run(refundDispute, id, source, "Saldo dikembalikan ke pelanggan."),
+    payout: (id: string, source: DisputeSource) =>
+      run(payoutDispute, id, source, "Saldo diteruskan ke bengkel."),
   }
 }

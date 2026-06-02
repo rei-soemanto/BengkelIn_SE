@@ -52,13 +52,13 @@ export function VerifiedBengkelsList({ bengkels }: VerifiedBengkelsListProps) {
         <AccordionItem key={bengkel.id} value={bengkel.id}>
           <AccordionTrigger>
             <span className="flex flex-1 items-center justify-between gap-2 pr-2">
-              <span className="flex flex-col gap-0.5">
-                <span>{bengkel.name}</span>
-                <span className="text-xs font-normal text-muted-foreground">
+              <span className="flex min-w-0 flex-col gap-0.5 text-left">
+                <span className="truncate">{bengkel.name}</span>
+                <span className="truncate text-xs font-normal text-muted-foreground">
                   {bengkel.providerName ?? "—"}
                 </span>
               </span>
-              <Badge variant="secondary">
+              <Badge variant="secondary" className="shrink-0">
                 {bengkel.mechanics.length} mekanik
               </Badge>
             </span>

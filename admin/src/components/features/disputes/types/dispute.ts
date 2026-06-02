@@ -1,6 +1,11 @@
-import type { DisputeStatus, DisputeInitiatorRole } from "@/types/database"
+import type {
+  DisputeStatus,
+  DisputeInitiatorRole,
+  DisputeSource,
+} from "@/types/database"
 
 export interface Dispute {
+  source: DisputeSource
   id: string
   status: DisputeStatus
   reason: string

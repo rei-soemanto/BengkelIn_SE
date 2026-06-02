@@ -19,6 +19,7 @@ export async function fetchDisputes(): Promise<Dispute[]> {
   const rows = (data ?? []) as DisputeRpcRow[]
 
   return rows.map((row) => ({
+    source: row.source,
     id: row.id,
     status: row.status,
     reason: row.reason,
@@ -50,14 +51,23 @@ export async function countPendingDisputes(): Promise<number> {
 
   const supabase = await createClient()
 
-  const { count, error } = await supabase
-    .from("order_disputes")
-    .select("id", { count: "exact", head: true })
-    .eq("status", "pending")
+  const [disputes, behaviors] = await Promise.all([
+    supabase
+      .from("order_disputes")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "pending"),
+    supabase
+      .from("behavior_reports")
+      .select("id", { count: "exact", head: true })
+      .eq("status", "pending"),
+  ])
 
-  if (error) {
-    throw error
+  if (disputes.error) {
+    throw disputes.error
+  }
+  if (behaviors.error) {
+    throw behaviors.error
   }
 
-  return count ?? 0
+  return (disputes.count ?? 0) + (behaviors.count ?? 0)
 }

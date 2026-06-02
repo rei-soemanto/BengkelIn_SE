@@ -46,8 +46,10 @@ export interface MechanicSummary {
 
 export type DisputeStatus = "pending" | "refunded" | "paid"
 export type DisputeInitiatorRole = "customer" | "provider"
+export type DisputeSource = "dispute" | "behavior"
 
 export interface DisputeRpcRow {
+  source: DisputeSource
   id: string
   status: DisputeStatus
   reason: string
