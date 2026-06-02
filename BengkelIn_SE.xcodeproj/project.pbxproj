@@ -15,14 +15,30 @@
 		040571B32FA59FF300566BD5 /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = 040571B22FA59FF300566BD5 /* Supabase */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		CAFE0000000000000000000B /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 04872CD92FA4C402004D7972 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 04872CE02FA4C402004D7972;
+			remoteInfo = BengkelIn_SE;
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXFileReference section */
 		04872CE12FA4C402004D7972 /* BengkelIn_SE.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BengkelIn_SE.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		CAFE00000000000000000002 /* BengkelIn_SETests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = BengkelIn_SETests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		04872CE32FA4C402004D7972 /* BengkelIn_SE */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = BengkelIn_SE;
+			sourceTree = "<group>";
+		};
+		CAFE00000000000000000003 /* BengkelIn_SETests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = BengkelIn_SETests;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -41,6 +57,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		CAFE00000000000000000005 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -55,6 +78,7 @@
 			isa = PBXGroup;
 			children = (
 				04872CE32FA4C402004D7972 /* BengkelIn_SE */,
+				CAFE00000000000000000003 /* BengkelIn_SETests */,
 				040571A72FA59FF300566BD5 /* Frameworks */,
 				04872CE22FA4C402004D7972 /* Products */,
 			);
@@ -64,6 +88,7 @@
 			isa = PBXGroup;
 			children = (
 				04872CE12FA4C402004D7972 /* BengkelIn_SE.app */,
+				CAFE00000000000000000002 /* BengkelIn_SETests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -105,6 +130,29 @@
 			productReference = 04872CE12FA4C402004D7972 /* BengkelIn_SE.app */;
 			productType = "com.apple.product-type.application";
 		};
+		CAFE00000000000000000001 /* BengkelIn_SETests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = CAFE00000000000000000007 /* Build configuration list for PBXNativeTarget "BengkelIn_SETests" */;
+			buildPhases = (
+				CAFE00000000000000000004 /* Sources */,
+				CAFE00000000000000000005 /* Frameworks */,
+				CAFE00000000000000000006 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				CAFE0000000000000000000A /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				CAFE00000000000000000003 /* BengkelIn_SETests */,
+			);
+			name = BengkelIn_SETests;
+			packageProductDependencies = (
+			);
+			productName = BengkelIn_SETests;
+			productReference = CAFE00000000000000000002 /* BengkelIn_SETests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -117,6 +165,10 @@
 				TargetAttributes = {
 					04872CE02FA4C402004D7972 = {
 						CreatedOnToolsVersion = 26.2;
+					};
+					CAFE00000000000000000001 = {
+						CreatedOnToolsVersion = 26.2;
+						TestTargetID = 04872CE02FA4C402004D7972;
 					};
 				};
 			};
@@ -138,6 +190,7 @@
 			projectRoot = "";
 			targets = (
 				04872CE02FA4C402004D7972 /* BengkelIn_SE */,
+				CAFE00000000000000000001 /* BengkelIn_SETests */,
 			);
 		};
 /* End PBXProject section */
@@ -150,10 +203,24 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		CAFE00000000000000000006 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		04872CDD2FA4C402004D7972 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		CAFE00000000000000000004 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -186,6 +253,11 @@
 		040571BF2FA5A00400566BD5 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			productRef = 040571BE2FA5A00400566BD5 /* Supabase */;
+		};
+		CAFE0000000000000000000A /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 04872CE02FA4C402004D7972 /* BengkelIn_SE */;
+			targetProxy = CAFE0000000000000000000B /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -375,6 +447,50 @@
 			};
 			name = Release;
 		};
+		CAFE00000000000000000008 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 4ND5QM3KQN;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.madweek10.BengkelIn-SE.Tests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/BengkelIn_SE.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/BengkelIn_SE";
+			};
+			name = Debug;
+		};
+		CAFE00000000000000000009 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 4ND5QM3KQN;
+				GENERATE_INFOPLIST_FILE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.2;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = "com.madweek10.BengkelIn-SE.Tests";
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/BengkelIn_SE.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/BengkelIn_SE";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -392,6 +508,15 @@
 			buildConfigurations = (
 				04872CED2FA4C402004D7972 /* Debug */,
 				04872CEE2FA4C402004D7972 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		CAFE00000000000000000007 /* Build configuration list for PBXNativeTarget "BengkelIn_SETests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				CAFE00000000000000000008 /* Debug */,
+				CAFE00000000000000000009 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
