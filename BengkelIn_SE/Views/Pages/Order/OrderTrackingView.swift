@@ -200,25 +200,13 @@ struct OrderTrackingView: View {
     // The bengkel has assigned someone to the job once mechanic_id is set — either
     // a roster mechanic or the provider itself (assign_mechanic with no mechanic).
     private var isAssigned: Bool { trackingViewModel.order?.mechanicId != nil }
-    // True when the bengkel owner (provider) is doing the work themselves, i.e.
-    // the assignee is the bengkel's provider_uid.
-    private var isSelfHandled: Bool {
-        guard let assignee = trackingViewModel.order?.mechanicId else { return false }
-        return assignee == bid.providerUid
-    }
 
-    // Position of the party actually handling the service. Their live published
-    // location while travelling; if they aren't publishing yet, fall back to the
-    // bengkel's fixed shop coordinate ONLY when the bengkel itself is the handler
-    // (a stationary shop). A separate mechanic must be confirmed by live GPS — no
-    // shop fallback, otherwise a customer standing at the shop would look "arrived"
-    // while the assigned mechanic is still en route from elsewhere.
+    // Position of the party actually handling the service: their live published
+    // location only. The bengkel's fixed shop coordinate is never used here —
+    // arrival must be confirmed by an actual live GPS fix, otherwise a customer
+    // sitting near the shop would look "arrived" while the handler is elsewhere.
     private var handlerCoordinate: CLLocationCoordinate2D? {
-        if let live = trackingViewModel.providerCoordinate { return live }
-        if isSelfHandled, let lat = bid.bengkel?.latitude, let lon = bid.bengkel?.longitude {
-            return CLLocationCoordinate2D(latitude: lat, longitude: lon)
-        }
-        return nil
+        trackingViewModel.providerCoordinate
     }
 
     private var handlerDistanceMeters: CLLocationDistance? {
@@ -228,11 +216,9 @@ struct OrderTrackingView: View {
             .distance(from: CLLocation(latitude: p.latitude, longitude: p.longitude))
     }
     private var isBengkelNear: Bool {
-        // 150 m, not a tight 80 m: "at the same location" (e.g. ordering from
-        // within a large campus where the order pin and the bengkel's registered
-        // pin differ by GPS noise + placement) must still count as arrived.
-        // Safe to be generous — settlement still requires dual completion.
-        if let d = handlerDistanceMeters { return d <= 150 }
+        // Both parties are placed by live GPS, so arrival uses a tight 80 m —
+        // matching the bengkel side. Settlement still requires dual completion.
+        if let d = handlerDistanceMeters { return d <= 80 }
         return false
     }
 

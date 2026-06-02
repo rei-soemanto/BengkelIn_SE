@@ -104,6 +104,7 @@ class BengkelRouteViewModel: NSObject, ObservableObject, CLLocationManagerDelega
                         let previous = self?.order
                         self?.order = updated
                         self?.notifyOnCancellation(previous: previous, updated: updated)
+                        self?.publishCurrentLocationIfPossible()
                     }
                 }
             }
@@ -206,6 +207,12 @@ class BengkelRouteViewModel: NSObject, ObservableObject, CLLocationManagerDelega
         case ..<3000: return 5
         default: return 10
         }
+    }
+
+    private func publishCurrentLocationIfPossible() {
+        guard status == "accepted", let requestId = serviceRequestId, let coord = bengkelCoordinate else { return }
+        lastPublishedAt = Date()
+        Task { await publish(coordinate: coord, requestId: requestId) }
     }
 
     private func publish(coordinate: CLLocationCoordinate2D, requestId: String) async {
