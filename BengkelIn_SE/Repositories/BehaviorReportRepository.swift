@@ -18,4 +18,13 @@ class BehaviorReportRepository {
             ))
             .execute()
     }
+
+    func fetchReportedRequestIds(reporterId: String) async throws -> [String] {
+        let rows: [ReportedRequestRow] = try await supabase.from("behavior_reports")
+            .select("service_request_id")
+            .eq("reporter_id", value: reporterId)
+            .execute()
+            .value
+        return rows.map { $0.service_request_id }
+    }
 }

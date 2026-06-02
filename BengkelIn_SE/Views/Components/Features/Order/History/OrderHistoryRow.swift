@@ -11,6 +11,7 @@ struct OrderHistoryRow: View {
     let order: NearbyOrder
     let onTap: () -> Void
     var onReport: (() -> Void)? = nil
+    var hasReported: Bool = false
 
     private var canReport: Bool {
         onReport != nil && (order.status == "completed" || order.status == "cancelled")
@@ -24,21 +25,34 @@ struct OrderHistoryRow: View {
             .buttonStyle(.plain)
 
             if canReport {
-                Button {
-                    onReport?()
-                } label: {
+                if hasReported {
                     HStack(spacing: 6) {
-                        Image(systemName: "flag.fill")
-                        Text("Laporkan perilaku")
+                        Image(systemName: "checkmark.circle.fill")
+                        Text("Sudah dilaporkan")
                     }
                     .font(.caption.bold())
-                    .foregroundColor(.red)
+                    .foregroundColor(.secondary)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 8)
-                    .background(Color.red.opacity(0.10))
+                    .background(Color(.systemGray5))
                     .cornerRadius(12)
+                } else {
+                    Button {
+                        onReport?()
+                    } label: {
+                        HStack(spacing: 6) {
+                            Image(systemName: "flag.fill")
+                            Text("Laporkan perilaku")
+                        }
+                        .font(.caption.bold())
+                        .foregroundColor(.red)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 8)
+                        .background(Color.red.opacity(0.10))
+                        .cornerRadius(12)
+                    }
+                    .buttonStyle(.plain)
                 }
-                .buttonStyle(.plain)
             }
         }
     }

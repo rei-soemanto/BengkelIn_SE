@@ -114,6 +114,7 @@ export function DisputeResolutionDialog({
           <Separator />
 
           <div className="grid gap-3 sm:grid-cols-2">
+            <DetailRow label="ID Pesanan" value={dispute.serviceRequestId} />
             <DetailRow label="Jenis Layanan" value={dispute.serviceType ?? "—"} />
             <DetailRow label="Nilai Pesanan" value={formatRupiah(dispute.price)} />
             <DetailRow

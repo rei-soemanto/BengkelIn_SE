@@ -15,9 +15,11 @@ class BengkelHistoryViewModel: ObservableObject, Sendable {
     @Published var isLoading = false
     @Published var errorMessage: String?
     @Published var detailOrder: NearbyOrder?
+    @Published var reportedOrderIds: Set<String> = []
 
     private let bengkelRepository = BengkelRepository()
     private let orderRepository = OrderRepository()
+    private let behaviorReportRepository = BehaviorReportRepository()
     private let authService = AuthService()
     private var channel: RealtimeChannelV2?
     private var bengkelId: String?
@@ -45,11 +47,18 @@ class BengkelHistoryViewModel: ObservableObject, Sendable {
             self.bengkelId = bengkelId
             let fetched = try await orderRepository.fetchBengkelOrders(bengkelId: bengkelId)
             self.orders = fetched.sorted(by: Self.isOrderedBefore)
+            if let reported = try? await behaviorReportRepository.fetchReportedRequestIds(reporterId: uid) {
+                self.reportedOrderIds = Set(reported)
+            }
             startRealtimeIfNeeded()
         } catch {
             self.errorMessage = error.localizedDescription
         }
         isLoading = false
+    }
+
+    func markReported(_ orderId: String) {
+        reportedOrderIds.insert(orderId)
     }
 
     private func startRealtimeIfNeeded() {

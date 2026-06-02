@@ -1,8 +1,8 @@
-import { fetchDisputes } from "@/components/features/disputes/services/dispute-service"
+import { fetchDisputeOrders } from "@/components/features/disputes/services/dispute-service"
 import { DisputesTable } from "@/components/features/disputes/components/disputes-table"
 
 export default async function KomplainPage() {
-  const disputes = await fetchDisputes()
+  const orders = await fetchDisputeOrders()
 
   return (
     <div className="flex flex-col gap-6">
@@ -15,7 +15,7 @@ export default async function KomplainPage() {
           saldo dikembalikan ke pelanggan atau diteruskan ke bengkel.
         </p>
       </div>
-      <DisputesTable disputes={disputes} />
+      <DisputesTable orders={orders} />
     </div>
   )
 }

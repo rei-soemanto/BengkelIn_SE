@@ -42,7 +42,9 @@ struct CustomerHistoryView: View {
                 }
             }
             .sheet(item: $reportOrder) { order in
-                ReportBehaviorSheet(order: order)
+                ReportBehaviorSheet(order: order) {
+                    viewModel.markReported(order.id)
+                }
             }
     }
 
@@ -66,7 +68,7 @@ struct CustomerHistoryView: View {
                         Task { await viewModel.select(order) }
                     }, onReport: {
                         reportOrder = order
-                    })
+                    }, hasReported: viewModel.reportedOrderIds.contains(order.id))
                 }
             }
             .padding()

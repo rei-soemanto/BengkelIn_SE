@@ -3,7 +3,55 @@ import "server-only"
 import { createClient } from "@/lib/supabase/server"
 import { requireAdmin } from "@/lib/auth/dal"
 import type { DisputeRpcRow } from "@/types/database"
-import type { Dispute } from "@/components/features/disputes/types/dispute"
+import type {
+  Dispute,
+  DisputeOrder,
+} from "@/components/features/disputes/types/dispute"
+
+export async function fetchDisputeOrders(): Promise<DisputeOrder[]> {
+  const disputes = await fetchDisputes()
+  return groupDisputesByOrder(disputes)
+}
+
+function groupDisputesByOrder(disputes: Dispute[]): DisputeOrder[] {
+  const orders = new Map<string, DisputeOrder>()
+
+  for (const dispute of disputes) {
+    const existing = orders.get(dispute.serviceRequestId)
+
+    if (existing) {
+      existing.complaints.push(dispute)
+      if (dispute.status === "pending") {
+        existing.pendingCount += 1
+      }
+      continue
+    }
+
+    orders.set(dispute.serviceRequestId, {
+      serviceRequestId: dispute.serviceRequestId,
+      serviceType: dispute.serviceType,
+      description: dispute.description,
+      price: dispute.price,
+      orderStatus: dispute.orderStatus,
+      orderCreatedAt: dispute.orderCreatedAt,
+      customerId: dispute.customerId,
+      customerName: dispute.customerName,
+      customerEmail: dispute.customerEmail,
+      bengkelId: dispute.bengkelId,
+      bengkelName: dispute.bengkelName,
+      bengkelAddress: dispute.bengkelAddress,
+      providerUid: dispute.providerUid,
+      providerName: dispute.providerName,
+      providerEmail: dispute.providerEmail,
+      complaints: [dispute],
+      pendingCount: dispute.status === "pending" ? 1 : 0,
+    })
+  }
+
+  return Array.from(orders.values()).sort(
+    (a, b) => Number(b.pendingCount > 0) - Number(a.pendingCount > 0)
+  )
+}
 
 export async function fetchDisputes(): Promise<Dispute[]> {
   await requireAdmin()

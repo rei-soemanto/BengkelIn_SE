@@ -36,8 +36,33 @@ export interface DisputeActionResult {
   error?: string
 }
 
+export interface DisputeOrder {
+  serviceRequestId: string
+  serviceType: string | null
+  description: string | null
+  price: number | null
+  orderStatus: string | null
+  orderCreatedAt: string | null
+  customerId: string
+  customerName: string | null
+  customerEmail: string | null
+  bengkelId: string | null
+  bengkelName: string | null
+  bengkelAddress: string | null
+  providerUid: string | null
+  providerName: string | null
+  providerEmail: string | null
+  complaints: Dispute[]
+  pendingCount: number
+}
+
 export interface DisputesTableProps {
-  disputes: Dispute[]
+  orders: DisputeOrder[]
+}
+
+export interface DisputeOrderRowProps {
+  order: DisputeOrder
+  columnCount: number
 }
 
 export interface DisputeResolutionDialogProps {

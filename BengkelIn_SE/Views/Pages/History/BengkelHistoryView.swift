@@ -28,7 +28,9 @@ struct BengkelHistoryView: View {
                 NavigationStack { BengkelRouteView(order: order) }
             }
             .sheet(item: $reportOrder) { order in
-                ReportBehaviorSheet(order: order)
+                ReportBehaviorSheet(order: order) {
+                    viewModel.markReported(order.id)
+                }
             }
     }
 
@@ -58,7 +60,7 @@ struct BengkelHistoryView: View {
                         }
                     }, onReport: {
                         reportOrder = order
-                    })
+                    }, hasReported: viewModel.reportedOrderIds.contains(order.id))
                 }
             }
             .padding()

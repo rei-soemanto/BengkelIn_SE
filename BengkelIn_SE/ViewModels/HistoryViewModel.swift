@@ -20,9 +20,11 @@ class HistoryViewModel: ObservableObject {
     @Published var biddingOrder: NearbyOrder?
     @Published var trackingBid: Bid?
     @Published var trackingCoordinate: CLLocationCoordinate2D?
+    @Published var reportedOrderIds: Set<String> = []
 
     private let authService = AuthService()
     private let orderRepository = OrderRepository()
+    private let behaviorReportRepository = BehaviorReportRepository()
 
     func loadOrders() async {
         isLoading = true
@@ -35,10 +37,17 @@ class HistoryViewModel: ObservableObject {
         do {
             let fetched = try await orderRepository.fetchOrders(customerId: uid)
             self.orders = fetched.sorted(by: Self.isOrderedBefore)
+            if let reported = try? await behaviorReportRepository.fetchReportedRequestIds(reporterId: uid) {
+                self.reportedOrderIds = Set(reported)
+            }
         } catch {
             self.errorMessage = error.localizedDescription
         }
         isLoading = false
+    }
+
+    func markReported(_ orderId: String) {
+        reportedOrderIds.insert(orderId)
     }
 
     func select(_ order: NearbyOrder) async {

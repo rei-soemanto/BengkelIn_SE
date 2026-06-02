@@ -9,6 +9,7 @@ import SwiftUI
 
 struct ReportBehaviorSheet: View {
     let order: NearbyOrder
+    var onSubmitted: () -> Void = {}
 
     @StateObject private var viewModel = BehaviorReportViewModel()
     @Environment(\.dismiss) private var dismiss
@@ -35,6 +36,7 @@ struct ReportBehaviorSheet: View {
                 Button {
                     Task {
                         if await viewModel.submit(serviceRequestId: order.id, reason: reason) {
+                            onSubmitted()
                             dismiss()
                         }
                     }

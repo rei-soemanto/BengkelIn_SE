@@ -104,3 +104,7 @@ struct BehaviorReportPayload: Encodable {
     let reporter_id: String
     let reason: String
 }
+
+struct ReportedRequestRow: Decodable {
+    let service_request_id: String
+}
