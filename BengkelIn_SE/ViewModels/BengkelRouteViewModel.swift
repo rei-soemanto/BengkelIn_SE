@@ -19,6 +19,9 @@ class BengkelRouteViewModel: NSObject, ObservableObject, CLLocationManagerDelega
     @Published var order: NearbyOrder?
     @Published var bengkelCoordinate: CLLocationCoordinate2D?
     @Published var customerLiveCoordinate: CLLocationCoordinate2D?
+    // The viewing user's uid — lets the route screen tell apart the provider (who may need
+    // to assign), the self-assigned provider, and the dispatched mechanic.
+    @Published var myUid: String?
 
     private let locationManager = CLLocationManager()
     private let orderRepository = OrderRepository()
@@ -64,6 +67,7 @@ class BengkelRouteViewModel: NSObject, ObservableObject, CLLocationManagerDelega
         self.order = order
         self.serviceRequestId = order.id
         self.customerCoordinate = CLLocationCoordinate2D(latitude: order.latitude, longitude: order.longitude)
+        self.myUid = try? await authService.currentUID()
 
         let auth = locationManager.authorizationStatus
         if auth == .notDetermined {
@@ -116,6 +120,15 @@ class BengkelRouteViewModel: NSObject, ObservableObject, CLLocationManagerDelega
     func stop() {
         locationManager.stopUpdatingLocation()
         stopChannel()
+    }
+
+    // Re-pull the order on demand (e.g. right after the provider assigns a mechanic) so the
+    // route screen's dispatch gate reflects the new mechanic_id without waiting on realtime.
+    func refreshOrder() async {
+        guard let id = serviceRequestId else { return }
+        if let updated = try? await orderRepository.fetchOrder(id: id) {
+            self.order = updated
+        }
     }
 
     func reportIssue(reason: String, photoData: Data?) async -> Bool {

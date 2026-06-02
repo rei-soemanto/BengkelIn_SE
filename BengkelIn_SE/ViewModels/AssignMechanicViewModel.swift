@@ -1,0 +1,50 @@
+//
+//  AssignMechanicViewModel.swift
+//  BengkelIn_SE
+//
+//  Created by Amadeus Eugene Dirgantara on 02/06/26.
+//
+
+import SwiftUI
+import Combine
+import Supabase
+
+// Provider-side dispatch (UC2). Lists the bengkel's accepted mechanics (the roster
+// seam read owned by Bryan) and assigns a job to one — or to "Self".
+@MainActor
+class AssignMechanicViewModel: ObservableObject {
+    @Published var availableMechanics: [AvailableMechanic] = []
+    @Published var isLoading = false
+    @Published var isAssigning = false
+    @Published var errorMessage: String?
+
+    private let mechanicRepository = MechanicRepository()              // Bryan's roster read
+    private let assignmentRepository = MechanicAssignmentRepository()
+
+    func fetchAvailableMechanics() async {
+        isLoading = true
+        errorMessage = nil
+        do {
+            availableMechanics = try await mechanicRepository.fetchAvailableMechanics()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+        isLoading = false
+    }
+
+    // mechanicId == nil → assign to Self (provider). Returns true on success.
+    @discardableResult
+    func assign(requestId: String, mechanicId: String?) async -> Bool {
+        isAssigning = true
+        errorMessage = nil
+        do {
+            try await assignmentRepository.assignMechanic(requestId: requestId, mechanicId: mechanicId)
+            isAssigning = false
+            return true
+        } catch {
+            errorMessage = error.localizedDescription
+            isAssigning = false
+            return false
+        }
+    }
+}

@@ -22,6 +22,7 @@ struct BengkelRouteView: View {
     @State private var reportReason = ""
     @State private var reportPhotoItem: PhotosPickerItem?
     @State private var reportPhotoData: Data?
+    @State private var showAssignSheet = false
 
     init(order: NearbyOrder) {
         self.order = order
@@ -48,6 +49,18 @@ struct BengkelRouteView: View {
     private var isCustomerNear: Bool {
         if let d = customerDistanceMeters { return d <= 80 }
         return false
+    }
+
+    // Assignment state (drives the dispatch gate). Reads the live order from the VM so it
+    // reflects a just-made assignment, falling back to the order passed in.
+    private var assignedMechanicId: String? {
+        viewModel.order?.mechanicId ?? order.mechanicId
+    }
+    private var isUnassigned: Bool { assignedMechanicId == nil }
+    // Provider delegated to a mechanic (someone other than the viewer) — viewer just monitors.
+    private var assignedToOther: Bool {
+        guard let assignee = assignedMechanicId, let me = viewModel.myUid else { return false }
+        return assignee != me
     }
 
     var body: some View {
@@ -153,6 +166,14 @@ struct BengkelRouteView: View {
             .presentationBackground(.white)
             .presentationDetents([.large])
         }
+        .sheet(isPresented: $showAssignSheet) {
+            AssignMechanicSheet(requestId: order.id) {
+                // After assigning, refresh the order so the gate updates immediately
+                // (the realtime watcher also picks up the change).
+                Task { await viewModel.refreshOrder() }
+            }
+            .presentationDetents([.medium, .large])
+        }
     }
 
     private var pins: [TrackingPin] {
@@ -222,19 +243,31 @@ struct BengkelRouteView: View {
 
             switch viewModel.status {
             case "accepted":
-                CompleteOrderButton(requestId: order.id, isCustomer: false, canComplete: isCustomerNear)
-                Button(role: .destructive) {
-                    showReportSheet = true
-                } label: {
-                    HStack {
-                        Image(systemName: "exclamationmark.bubble.fill")
-                        Text("Laporkan Kendala").fontWeight(.semibold)
+                if isUnassigned {
+                    // Provider hasn't dispatched yet — show the assignment gate (UC2).
+                    Button {
+                        showAssignSheet = true
+                    } label: {
+                        HStack {
+                            Image(systemName: "person.2.badge.gearshape.fill")
+                            Text("Tugaskan Mekanik").fontWeight(.bold)
+                        }
+                        .foregroundColor(Color(.systemBackground))
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 14)
+                        .background(Color.primary.opacity(0.9))
+                        .cornerRadius(12)
                     }
-                    .foregroundColor(.red)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 12)
-                    .background(Color.red.opacity(0.12))
-                    .cornerRadius(12)
+                    reportButton
+                } else if assignedToOther {
+                    // Provider delegated to a mechanic — monitor only; the mechanic completes.
+                    statusLine(text: "Ditugaskan ke mekanik. Memantau pekerjaan…",
+                               icon: "person.fill.checkmark", color: .blue)
+                    reportButton
+                } else {
+                    // Self-provider or the dispatched mechanic does the work.
+                    CompleteOrderButton(requestId: order.id, isCustomer: false, canComplete: isCustomerNear)
+                    reportButton
                 }
             case "completed":
                 statusLine(text: "Pesanan selesai.", icon: "checkmark.seal.fill", color: .green)
@@ -251,6 +284,22 @@ struct BengkelRouteView: View {
         .padding()
         .background(Color(.systemBackground))
         .shadow(color: .black.opacity(0.05), radius: 10, y: -2)
+    }
+
+    private var reportButton: some View {
+        Button(role: .destructive) {
+            showReportSheet = true
+        } label: {
+            HStack {
+                Image(systemName: "exclamationmark.bubble.fill")
+                Text("Laporkan Kendala").fontWeight(.semibold)
+            }
+            .foregroundColor(.red)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 12)
+            .background(Color.red.opacity(0.12))
+            .cornerRadius(12)
+        }
     }
 
     private func statusLine(text: String, icon: String, color: Color) -> some View {
