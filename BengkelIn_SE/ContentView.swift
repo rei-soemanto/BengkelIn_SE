@@ -15,6 +15,7 @@ struct ContentView: View {
     @StateObject private var bengkelBiddingViewModel = BengkelBiddingViewModel()
     @ObservedObject private var orderRoute = OrderRouteState.shared
     @State private var bidOrder: NearbyOrder?
+    @State private var selectedTab = 0
     @Environment(\.scenePhase) private var scenePhase
 
     private var isProvider: Bool { authViewModel.currentUser?.role == "PROVIDER" }
@@ -73,8 +74,9 @@ struct ContentView: View {
     }
 
     private var mainTabView: some View {
-        TabView {
-            DashboardView(authViewModel: authViewModel, bengkelBiddingViewModel: bengkelBiddingViewModel)
+        TabView(selection: $selectedTab) {
+            DashboardView(authViewModel: authViewModel, bengkelBiddingViewModel: bengkelBiddingViewModel, onOpenSaldo: { selectedTab = 1 })
+                .tag(0)
                 .tabItem {
                     Label(
                         isBengkelMode ? "Bengkel" : "Beranda",
@@ -83,6 +85,7 @@ struct ContentView: View {
                 }
 
             PaymentView()
+                .tag(1)
                 .tabItem {
                     Label(
                         isBengkelMode ? "Pendapatan" : "Saldo",
@@ -91,6 +94,7 @@ struct ContentView: View {
                 }
 
             HistoryView(authViewModel: authViewModel)
+                .tag(2)
                 .tabItem {
                     Label(
                         isBengkelMode ? "Pesanan" : "Riwayat",
@@ -99,6 +103,7 @@ struct ContentView: View {
                 }
 
             ProfileView(authViewModel: authViewModel)
+                .tag(3)
                 .tabItem {
                     Label(
                         "Profil",

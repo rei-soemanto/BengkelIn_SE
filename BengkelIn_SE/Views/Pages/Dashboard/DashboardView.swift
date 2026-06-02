@@ -17,6 +17,7 @@ enum DashboardRoute: Hashable {
 struct DashboardView: View {
     @ObservedObject var authViewModel: AuthViewModel
     @ObservedObject var bengkelBiddingViewModel: BengkelBiddingViewModel
+    var onOpenSaldo: () -> Void = {}
     @State private var recentOrders: [String] = []
     @State private var path = NavigationPath()
     @Environment(\.scenePhase) private var scenePhase
@@ -76,7 +77,7 @@ struct DashboardView: View {
                                     .shadow(color: Color.primary.opacity(0.15), radius: 10, x: 0, y: 5)
                                 }
 
-                NavigationLink(destination: Text("Pembayaran Sementara")) {
+                Button(action: onOpenSaldo) {
                     HStack {
                         VStack(alignment: .leading, spacing: 8) {
                             Text("Saldo Saya")
@@ -106,7 +107,8 @@ struct DashboardView: View {
                     .cornerRadius(16)
                     .shadow(color: Color.primary.opacity(0.15), radius: 10, x: 0, y: 5)
                 }
-                
+                .buttonStyle(.plain)
+
                 VStack(alignment: .leading, spacing: 16) {
                     Text("Pesanan Terbaru")
                         .font(.title2)
