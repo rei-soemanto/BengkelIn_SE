@@ -13,6 +13,9 @@ import SwiftUI
 struct MechanicJobsView: View {
     @StateObject private var viewModel = MechanicJobsViewModel()
     @Environment(\.scenePhase) private var scenePhase
+    // Presented full-screen (not pushed) so the route/work screen covers the
+    // app-mode role switcher that lives above the tab bar in ContentView.
+    @State private var jobToOpen: NearbyOrder?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -32,7 +35,7 @@ struct MechanicJobsView: View {
                 emptyState
             } else {
                 ForEach(viewModel.jobs) { job in
-                    NavigationLink(destination: BengkelRouteView(order: job)) {
+                    Button { jobToOpen = job } label: {
                         jobCard(job)
                     }
                     .buttonStyle(.plain)
@@ -43,6 +46,9 @@ struct MechanicJobsView: View {
         .task { await viewModel.fetchJobs() }
         .onChange(of: scenePhase) { phase in
             if phase == .active { Task { await viewModel.fetchJobs() } }
+        }
+        .fullScreenCover(item: $jobToOpen) { order in
+            NavigationStack { BengkelRouteView(order: order) }
         }
     }
 
