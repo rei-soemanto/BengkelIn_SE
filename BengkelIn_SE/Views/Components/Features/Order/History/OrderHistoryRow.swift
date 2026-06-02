@@ -97,7 +97,10 @@ struct OrderHistoryRow: View {
                 }
             }
             .padding()
-            .background(Color(.systemBackground))
+            // secondarySystemGroupedBackground contrasts with the screen's grouped background
+            // in BOTH modes (systemBackground is pure black in dark mode, same as the screen,
+            // so the card was invisible).
+            .background(Color(.secondarySystemGroupedBackground))
             .cornerRadius(16)
             .shadow(color: .black.opacity(0.04), radius: 6, x: 0, y: 2)
         .overlay(alignment: .topTrailing) {

@@ -218,6 +218,9 @@ struct ProfileView: View {
                             
                             Toggle("Dark Mode", isOn: $isDarkMode)
                                 .font(.body)
+                                // Explicit tint: the app's global .tint(.primary) turns the
+                                // "on" track white in dark mode, hiding the white knob.
+                                .tint(.green)
                         }
                         .padding()
                         .background(Color(.systemBackground))
