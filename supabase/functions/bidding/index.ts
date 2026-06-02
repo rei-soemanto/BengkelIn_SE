@@ -1,14 +1,10 @@
 // BengkelIn — bidding edge function (Marketplace tier).
 // Actions: ordersForMechanic (nearby open orders), mechanicsForCustomer
 // (nearby verified bengkels), placeBid (upsert a revisable offer).
+// Open-order status is lowercase 'pending'; the customer's offered price is read
+// from service_requests.estimated_price. accept_bid lives in SQL, not here.
 //
-// Adapted from MbengkelIn's `bidding` function to BengkelIn conventions:
-// open-order status is the lowercase 'pending' and the customer's offered price
-// is read from service_requests.estimated_price. All DB authority stays in the
-// SECURITY DEFINER RPCs (accept_bid lives in SQL, not here).
-//
-// DRAFT — deploy via the Supabase MCP / `supabase functions deploy bidding`
-// only after the companion migration is applied and verified.
+// DEPLOYED 2026-06-02 to project ipxwpxozreksmuiztwcy (version 2, verify_jwt on).
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
@@ -72,11 +68,9 @@ Deno.serve(async (req: Request) => {
       return json({ mechanics: data });
     }
     case "placeBid": {
-      // Re-verify the order is still open before writing, and block self-bids
-      // (the DB trigger enforces the self-bid rule too — this is a clean early error).
       const { data: order, error: orderError } = await supabase
         .from("service_requests")
-        .select("id, status, bengkel_id, customer_id")
+        .select("id, status, bengkel_id, customer_id, estimated_price")
         .eq("id", payload.serviceRequestId)
         .single();
       if (orderError || !order) return json({ error: "Order not found" }, 404);
@@ -85,6 +79,25 @@ Deno.serve(async (req: Request) => {
       }
       if (order.status !== "pending" || order.bengkel_id !== null) {
         return json({ error: "Order sudah tidak menerima tawaran" }, 409);
+      }
+
+      // The bengkel being bid on must belong to the caller.
+      const { data: bengkel, error: bengkelError } = await supabase
+        .from("bengkels")
+        .select("id, provider_uid")
+        .eq("id", payload.bengkelId)
+        .single();
+      if (bengkelError || !bengkel || bengkel.provider_uid !== userId) {
+        return json({ error: "Bengkel bukan milik Anda" }, 403);
+      }
+
+      // Bid must meet the customer's price floor.
+      const price = Number(payload.price);
+      if (!Number.isFinite(price) || price <= 0) {
+        return json({ error: "Harga tidak valid" }, 400);
+      }
+      if (order.estimated_price != null && price < Number(order.estimated_price)) {
+        return json({ error: "Tawaran di bawah harga pelanggan" }, 400);
       }
 
       // Upsert on (service_request_id, provider_uid) so a bengkel can revise a
@@ -96,7 +109,7 @@ Deno.serve(async (req: Request) => {
             service_request_id: payload.serviceRequestId,
             provider_uid: userId,
             bengkel_id: payload.bengkelId,
-            price: payload.price,
+            price,
             notes: payload.notes ?? null,
             status: "pending",
           },

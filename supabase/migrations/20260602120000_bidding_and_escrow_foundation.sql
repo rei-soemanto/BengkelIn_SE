@@ -1,50 +1,42 @@
 -- ============================================================================
 -- Bidding + escrow foundation for BengkelIn  (Marketplace tier — Eugene)
 --
--- STATUS: DRAFT. Authored from BengkelIn_SE Swift models + CLAUDE.md schema
--- notes (conceptual verification only — the live remote schema was NOT yet
--- introspected). VERIFY every column name / type / status value against the
--- live DB via the Supabase MCP before applying. Adapted from MbengkelIn's
--- bidding backend, re-aligned to BengkelIn conventions:
---   * order status is lowercase text: pending/accepted/in_progress/completed/cancelled
---   * money is double precision (BengkelIn uses Double balances)
---   * the customer's offered price reuses service_requests.estimated_price
---     (BengkelIn has no separate `price` column)
+-- APPLIED 2026-06-02 to project ipxwpxozreksmuiztwcy (verified against the live
+-- schema first). Aligned to reality: order status is lowercase text;
+-- service_requests.estimated_price is `numeric`; service_type is a Postgres enum
+-- (cast ::text); money mirrors `users.balance` (double precision).
 --
--- This migration is ADDITIVE and backward-compatible: existing direct-request
--- rows keep their bengkel_id; only new bidding rows start with a null bengkel_id.
--- It deliberately stops at the schema seam with the Money tier — the actual
--- HOLD / SETTLE / REFUND of balances lives in Bryan's triggers (see CONTRACTS.md).
+-- Additive & backward-compatible: bengkel_id made nullable for bidding broadcast.
+-- Stops at the Money-tier seam — HOLD/SETTLE/REFUND of balances are Bryan's
+-- triggers (see CONTRACTS.md); accept_bid here only GATES on available balance.
 -- ============================================================================
 
--- 1. Escrow balance columns on users (columns only; movement logic = Money tier).
+-- 1. Escrow balance columns (columns only; movement logic = Money tier).
 alter table public.users
   add column if not exists held_balance    double precision not null default 0,
   add column if not exists pending_balance double precision not null default 0;
 
--- 2. Let a service_request exist with no bengkel yet (broadcast for bidding).
+-- 2. Allow a broadcast order with no bengkel yet.
 alter table public.service_requests
   alter column bengkel_id drop not null;
 
--- 3. Bids table.
+-- 3. Bids table (price numeric to match service_requests.estimated_price).
 create table if not exists public.bids (
   id                 uuid primary key default gen_random_uuid(),
   service_request_id uuid not null references public.service_requests(id) on delete cascade,
   provider_uid       uuid not null references public.users(id)            on delete cascade,
   bengkel_id         uuid not null references public.bengkels(id)         on delete cascade,
-  price              double precision not null,
+  price              numeric not null,
   notes              text,
   status             text not null default 'pending', -- pending/accepted/rejected/autorejected/expired
   created_at         timestamptz not null default now(),
-  unique (service_request_id, provider_uid) -- one (revisable) bid per bengkel per order
+  unique (service_request_id, provider_uid)
 );
 alter table public.bids enable row level security;
 create index if not exists bids_service_request_id_idx on public.bids(service_request_id);
 create index if not exists bids_provider_uid_idx       on public.bids(provider_uid);
 
--- 4. RLS.
--- Mechanics/providers must SEE open orders to bid on them (and to receive
--- realtime new-order events, which enforce RLS per subscriber).
+-- 4. RLS (additive to the existing customer/bengkel/mechanic policies).
 drop policy if exists "Authenticated can view open service requests" on public.service_requests;
 create policy "Authenticated can view open service requests"
   on public.service_requests for select to authenticated
@@ -79,9 +71,9 @@ create policy "Customers update bids on their requests"
   with check (exists (select 1 from public.service_requests sr
                  where sr.id = bids.service_request_id and sr.customer_id = auth.uid()));
 
--- 5. Self-bid guard (a customer cannot bid on their own order).
+-- 5. Self-bid guard.
 create or replace function public.reject_self_bid()
-returns trigger language plpgsql security definer set search_path = public as $$
+returns trigger language plpgsql security definer set search_path = public as $fn$
 begin
   if exists (select 1 from public.service_requests sr
              where sr.id = new.service_request_id and sr.customer_id = new.provider_uid) then
@@ -89,20 +81,20 @@ begin
   end if;
   return new;
 end;
-$$;
+$fn$;
 drop trigger if exists trg_reject_self_bid on public.bids;
 create trigger trg_reject_self_bid before insert or update on public.bids
   for each row execute function public.reject_self_bid();
 
--- 6. Geospatial discovery RPCs (Haversine, metres).
+-- 6. Geospatial discovery RPCs (Haversine, metres). service_type cast ::text (enum).
 create or replace function public.nearby_service_requests(
   p_lat double precision, p_lon double precision, p_radius_m double precision default 5000)
 returns table (
   id uuid, customer_id uuid, customer_name text, service_type text, description text,
   is_emergency boolean, latitude double precision, longitude double precision,
-  estimated_price double precision, status text, created_at timestamptz, distance_m double precision)
-language sql security definer set search_path = public as $$
-  select sr.id, sr.customer_id, u.name, sr.service_type, sr.description, sr.is_emergency,
+  estimated_price numeric, status text, created_at timestamptz, distance_m double precision)
+language sql security definer set search_path = public as $fn$
+  select sr.id, sr.customer_id, u.name, sr.service_type::text, sr.description, sr.is_emergency,
          sr.latitude, sr.longitude, sr.estimated_price, sr.status, sr.created_at,
          6371000 * 2 * asin(sqrt(power(sin(radians(sr.latitude - p_lat)/2),2) +
            cos(radians(p_lat))*cos(radians(sr.latitude))*power(sin(radians(sr.longitude - p_lon)/2),2))) as distance_m
@@ -114,7 +106,7 @@ language sql security definer set search_path = public as $$
     and 6371000 * 2 * asin(sqrt(power(sin(radians(sr.latitude - p_lat)/2),2) +
           cos(radians(p_lat))*cos(radians(sr.latitude))*power(sin(radians(sr.longitude - p_lon)/2),2))) <= p_radius_m
   order by distance_m asc;
-$$;
+$fn$;
 
 create or replace function public.nearby_bengkels(
   p_lat double precision, p_lon double precision, p_radius_m double precision default 5000)
@@ -122,34 +114,34 @@ returns table (
   id uuid, provider_uid uuid, name text, address text, latitude double precision,
   longitude double precision, average_rating double precision, total_reviews integer,
   offered_services jsonb, distance_m double precision)
-language sql security definer set search_path = public as $$
+language sql security definer set search_path = public as $fn$
   select b.id, b.provider_uid, b.name, b.address, b.latitude, b.longitude,
          b.average_rating, b.total_reviews, b.offered_services,
          6371000 * 2 * asin(sqrt(power(sin(radians(b.latitude - p_lat)/2),2) +
            cos(radians(p_lat))*cos(radians(b.latitude))*power(sin(radians(b.longitude - p_lon)/2),2))) as distance_m
   from public.bengkels b
-  where b.status = 'Verified'
+  where b.status::text = 'Verified'
     and 6371000 * 2 * asin(sqrt(power(sin(radians(b.latitude - p_lat)/2),2) +
           cos(radians(p_lat))*cos(radians(b.latitude))*power(sin(radians(b.longitude - p_lon)/2),2))) <= p_radius_m
   order by distance_m asc;
-$$;
+$fn$;
 revoke all on function public.nearby_service_requests(double precision,double precision,double precision) from public;
 revoke all on function public.nearby_bengkels(double precision,double precision,double precision)         from public;
 grant execute on function public.nearby_service_requests(double precision,double precision,double precision) to authenticated;
 grant execute on function public.nearby_bengkels(double precision,double precision,double precision)         to authenticated;
 
--- 7. accept_bid — server-authoritative, atomic, balance-checked.
---    SEAM with Money tier: this gates on AVAILABLE balance (balance - held_balance)
---    and assigns the winning bengkel + price. It does NOT move money. The hold on
---    create and the settle/refund on completion/cancel are Bryan's triggers.
+-- 7. accept_bid — atomic, balance-gated. Money MOVEMENT stays in the Money tier;
+--    this only gates on available balance and assigns the winning bengkel + price.
 create or replace function public.accept_bid(p_bid_id uuid)
 returns public.service_requests
-language plpgsql security definer set search_path = public as $$
+language plpgsql security definer set search_path = public as $fn$
 declare
   v_bid       public.bids;
   sr          public.service_requests;
-  v_available double precision;
+  v_available numeric;
 begin
+  if auth.uid() is null then raise exception 'Not authenticated'; end if;
+
   select * into v_bid from public.bids where id = p_bid_id;
   if not found then raise exception 'Bid not found'; end if;
 
@@ -158,7 +150,7 @@ begin
   if sr.customer_id <> auth.uid() then raise exception 'Not authorized for this order'; end if;
   if sr.status <> 'pending' or sr.bengkel_id is not null then raise exception 'Order no longer open'; end if;
 
-  select (coalesce(balance,0) - coalesce(held_balance,0)) into v_available
+  select (coalesce(balance,0) - coalesce(held_balance,0))::numeric into v_available
     from public.users where id = sr.customer_id;
   if v_available is null or v_available < v_bid.price then
     raise exception 'Saldo tidak cukup';
@@ -175,11 +167,11 @@ begin
   select * into sr from public.service_requests where id = sr.id;
   return sr;
 end;
-$$;
+$fn$;
 grant execute on function public.accept_bid(uuid) to authenticated;
 
--- 8. Realtime publication (idempotent guards — a table can only be added once).
-do $$ begin
+-- 8. Realtime publication (idempotent).
+do $do$ begin
   if not exists (select 1 from pg_publication_tables
                  where pubname='supabase_realtime' and schemaname='public' and tablename='bids') then
     alter publication supabase_realtime add table public.bids;
@@ -188,4 +180,12 @@ do $$ begin
                  where pubname='supabase_realtime' and schemaname='public' and tablename='service_requests') then
     alter publication supabase_realtime add table public.service_requests;
   end if;
-end $$;
+end $do$;
+
+-- 9. Harden grants: SECURITY DEFINER functions must not be callable by anon.
+--    (CREATE OR REPLACE preserves the default PUBLIC grant, so revoke explicitly.)
+revoke execute on function public.accept_bid(uuid) from public, anon;
+revoke execute on function public.nearby_service_requests(double precision,double precision,double precision) from public, anon;
+revoke execute on function public.nearby_bengkels(double precision,double precision,double precision) from public, anon;
+revoke execute on function public.reject_self_bid() from public, anon, authenticated; -- trigger only
+grant execute on function public.accept_bid(uuid) to authenticated;
