@@ -7,8 +7,8 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion"
-import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
+import { ToneBadge } from "@/components/tone-badge"
 import {
   Empty,
   EmptyDescription,
@@ -47,7 +47,10 @@ export function VerifiedBengkelsList({ bengkels }: VerifiedBengkelsListProps) {
   }
 
   return (
-    <Accordion multiple>
+    <Accordion
+      multiple
+      className="overflow-hidden rounded-xl border bg-card px-4 shadow-sm"
+    >
       {bengkels.map((bengkel) => (
         <AccordionItem key={bengkel.id} value={bengkel.id}>
           <AccordionTrigger>
@@ -58,9 +61,9 @@ export function VerifiedBengkelsList({ bengkels }: VerifiedBengkelsListProps) {
                   {bengkel.providerName ?? "—"}
                 </span>
               </span>
-              <Badge variant="secondary" className="shrink-0">
+              <ToneBadge tone="emerald" className="shrink-0">
                 {bengkel.mechanics.length} mekanik
-              </Badge>
+              </ToneBadge>
             </span>
           </AccordionTrigger>
           <AccordionContent>

@@ -35,29 +35,31 @@ export function PendingBengkelsTable({ bengkels }: PendingBengkelsTableProps) {
   }
 
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>Nama Bengkel</TableHead>
-          <TableHead>Pemohon</TableHead>
-          <TableHead>Alamat</TableHead>
-          <TableHead className="text-right">Aksi</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {bengkels.map((bengkel) => (
-          <TableRow key={bengkel.id}>
-            <TableCell className="font-medium">{bengkel.name}</TableCell>
-            <TableCell>{bengkel.requesterName ?? "—"}</TableCell>
-            <TableCell className="max-w-xs truncate" title={bengkel.address}>
-              {bengkel.address}
-            </TableCell>
-            <TableCell className="text-right">
-              <BengkelApprovalDialog bengkel={bengkel} />
-            </TableCell>
+    <div className="overflow-hidden rounded-xl border bg-card shadow-sm">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Nama Bengkel</TableHead>
+            <TableHead>Pemohon</TableHead>
+            <TableHead>Alamat</TableHead>
+            <TableHead className="text-right">Aksi</TableHead>
           </TableRow>
-        ))}
-      </TableBody>
-    </Table>
+        </TableHeader>
+        <TableBody>
+          {bengkels.map((bengkel) => (
+            <TableRow key={bengkel.id}>
+              <TableCell className="font-medium">{bengkel.name}</TableCell>
+              <TableCell>{bengkel.requesterName ?? "—"}</TableCell>
+              <TableCell className="max-w-xs truncate" title={bengkel.address}>
+                {bengkel.address}
+              </TableCell>
+              <TableCell className="text-right">
+                <BengkelApprovalDialog bengkel={bengkel} />
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </div>
   )
 }

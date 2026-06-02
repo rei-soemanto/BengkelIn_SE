@@ -7,7 +7,9 @@ export default async function KomplainPage() {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-1">
-        <h1 className="font-heading text-xl font-medium">Komplain Pesanan</h1>
+        <h1 className="font-heading text-2xl font-semibold tracking-tight">
+          Komplain Pesanan
+        </h1>
         <p className="text-sm text-muted-foreground">
           Tinjau komplain dari pelanggan maupun bengkel, lalu putuskan apakah
           saldo dikembalikan ke pelanggan atau diteruskan ke bengkel.

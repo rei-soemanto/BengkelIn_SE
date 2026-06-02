@@ -1,4 +1,3 @@
-import Link from "next/link"
 import { ClipboardList, Store, ShieldAlert, Banknote } from "lucide-react"
 import { requireAdmin } from "@/lib/auth/dal"
 import {
@@ -7,14 +6,7 @@ import {
 } from "@/components/features/bengkels/services/bengkel-service"
 import { countPendingDisputes } from "@/components/features/disputes/services/dispute-service"
 import { countPendingWithdrawals } from "@/components/features/withdrawals/services/withdrawal-service"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
+import { StatCard } from "@/components/features/dashboard/components/stat-card"
 
 export default async function DashboardPage() {
   const admin = await requireAdmin()
@@ -26,105 +18,80 @@ export default async function DashboardPage() {
       countPendingWithdrawals(),
     ])
 
+  const pendingActions = pendingCount + disputeCount + withdrawalCount
+
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-8">
       <div className="flex flex-col gap-1">
-        <h1 className="font-heading text-xl font-medium">
+        <h1 className="font-heading text-2xl font-semibold tracking-tight">
           Halo, {admin.name ?? "Admin"}
         </h1>
         <p className="text-sm text-muted-foreground">
-          Selamat datang di dasbor admin BengkelIn.
+          {pendingActions > 0
+            ? `Ada ${pendingActions} hal yang menunggu tindakan Anda hari ini.`
+            : "Semua sudah ditangani. Tidak ada yang menunggu tindakan."}
         </p>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 min-[2000px]:grid-cols-4">
-        <Card>
-          <CardHeader>
-            <div className="mb-1 flex size-9 items-center justify-center rounded-lg bg-muted">
-              <ClipboardList className="size-4" />
-            </div>
-            <CardTitle>Persetujuan Bengkel</CardTitle>
-            <CardDescription>
-              {pendingCount > 0
-                ? `${pendingCount} pengajuan menunggu ditinjau.`
-                : "Tidak ada pengajuan yang menunggu."}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button nativeButton={false} render={<Link href="/bengkels" />}>
-              Tinjau pengajuan
-            </Button>
-          </CardContent>
-        </Card>
+        <StatCard
+          title="Persetujuan Bengkel"
+          description={
+            pendingCount > 0
+              ? `${pendingCount} pengajuan menunggu ditinjau.`
+              : "Tidak ada pengajuan yang menunggu."
+          }
+          count={pendingCount}
+          cta="Tinjau pengajuan"
+          href="/bengkels"
+          icon={ClipboardList}
+          accent="amber"
+          attention={pendingCount > 0}
+        />
 
-        <Card>
-          <CardHeader>
-            <div className="mb-1 flex size-9 items-center justify-center rounded-lg bg-muted">
-              <Store className="size-4" />
-            </div>
-            <CardTitle>Bengkel Terverifikasi</CardTitle>
-            <CardDescription>
-              {verifiedCount > 0
-                ? `${verifiedCount} bengkel aktif terdaftar.`
-                : "Belum ada bengkel terverifikasi."}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button
-              variant="outline"
-              nativeButton={false}
-              render={<Link href="/bengkels/terverifikasi" />}
-            >
-              Lihat daftar
-            </Button>
-          </CardContent>
-        </Card>
+        <StatCard
+          title="Bengkel Terverifikasi"
+          description={
+            verifiedCount > 0
+              ? `${verifiedCount} bengkel aktif terdaftar.`
+              : "Belum ada bengkel terverifikasi."
+          }
+          count={verifiedCount}
+          cta="Lihat daftar"
+          href="/bengkels/terverifikasi"
+          icon={Store}
+          accent="emerald"
+        />
 
-        <Card>
-          <CardHeader>
-            <div className="mb-1 flex size-9 items-center justify-center rounded-lg bg-muted">
-              <ShieldAlert className="size-4" />
-            </div>
-            <CardTitle>Komplain Pesanan</CardTitle>
-            <CardDescription>
-              {disputeCount > 0
-                ? `${disputeCount} komplain menunggu diputuskan.`
-                : "Tidak ada komplain yang menunggu."}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button
-              variant="outline"
-              nativeButton={false}
-              render={<Link href="/komplain" />}
-            >
-              Tinjau komplain
-            </Button>
-          </CardContent>
-        </Card>
+        <StatCard
+          title="Komplain Pesanan"
+          description={
+            disputeCount > 0
+              ? `${disputeCount} komplain menunggu diputuskan.`
+              : "Tidak ada komplain yang menunggu."
+          }
+          count={disputeCount}
+          cta="Tinjau komplain"
+          href="/komplain"
+          icon={ShieldAlert}
+          accent="rose"
+          attention={disputeCount > 0}
+        />
 
-        <Card>
-          <CardHeader>
-            <div className="mb-1 flex size-9 items-center justify-center rounded-lg bg-muted">
-              <Banknote className="size-4" />
-            </div>
-            <CardTitle>Permintaan Penarikan</CardTitle>
-            <CardDescription>
-              {withdrawalCount > 0
-                ? `${withdrawalCount} permintaan menunggu ditinjau.`
-                : "Tidak ada permintaan penarikan."}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button
-              variant="outline"
-              nativeButton={false}
-              render={<Link href="/penarikan" />}
-            >
-              Tinjau penarikan
-            </Button>
-          </CardContent>
-        </Card>
+        <StatCard
+          title="Permintaan Penarikan"
+          description={
+            withdrawalCount > 0
+              ? `${withdrawalCount} permintaan menunggu ditinjau.`
+              : "Tidak ada permintaan penarikan."
+          }
+          count={withdrawalCount}
+          cta="Tinjau penarikan"
+          href="/penarikan"
+          icon={Banknote}
+          accent="sky"
+          attention={withdrawalCount > 0}
+        />
       </div>
     </div>
   )

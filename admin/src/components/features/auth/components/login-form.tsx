@@ -19,7 +19,7 @@ export function LoginForm() {
   const { state, action, pending } = useLoginForm()
 
   return (
-    <Card className="w-full max-w-sm">
+    <Card className="w-full max-w-sm shadow-lg">
       <CardHeader className="text-center">
         <div className="mx-auto mb-2 flex size-10 items-center justify-center rounded-lg bg-muted">
           <ShieldCheck className="size-5" />

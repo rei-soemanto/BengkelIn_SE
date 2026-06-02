@@ -7,7 +7,7 @@ export default async function VerifiedBengkelsPage() {
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-1">
-        <h1 className="font-heading text-xl font-medium">
+        <h1 className="font-heading text-2xl font-semibold tracking-tight">
           Bengkel Terverifikasi
         </h1>
         <p className="text-sm text-muted-foreground">
