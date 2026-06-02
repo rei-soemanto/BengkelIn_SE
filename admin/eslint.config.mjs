@@ -13,6 +13,14 @@ const eslintConfig = defineConfig([
     "build/**",
     "next-env.d.ts",
   ]),
+  // shadcn-generated primitives are vendored upstream; exempt them from
+  // hand-written-code rules rather than editing the generated source.
+  {
+    files: ["src/components/ui/**", "src/hooks/use-mobile.ts"],
+    rules: {
+      "react-hooks/set-state-in-effect": "off",
+    },
+  },
 ]);
 
 export default eslintConfig;
