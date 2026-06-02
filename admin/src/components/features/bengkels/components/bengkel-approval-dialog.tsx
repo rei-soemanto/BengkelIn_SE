@@ -12,7 +12,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
 import { BengkelMapPreview } from "@/components/features/bengkels/components/bengkel-map-preview"
-import { ConfirmActionButton } from "@/components/features/bengkels/components/confirm-action-button"
+import { ConfirmActionButton } from "@/components/confirm-action-button"
 import { useBengkelApproval } from "@/components/features/bengkels/hooks/use-bengkel-approval"
 import type { BengkelApprovalDialogProps } from "@/components/features/bengkels/types/bengkel"
 

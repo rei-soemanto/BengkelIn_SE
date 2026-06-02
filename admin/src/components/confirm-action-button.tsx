@@ -13,7 +13,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import { Button } from "@/components/ui/button"
-import type { ConfirmActionButtonProps } from "@/components/features/bengkels/types/bengkel"
+import type { ConfirmActionButtonProps } from "@/types/confirm-action"
 
 export function ConfirmActionButton({
   label,

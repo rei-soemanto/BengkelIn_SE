@@ -27,6 +27,18 @@ export function AdminHeader() {
             >
               Bengkel Terverifikasi
             </Link>
+            <Link
+              href="/komplain"
+              className="transition-colors hover:text-foreground"
+            >
+              Komplain
+            </Link>
+            <Link
+              href="/penarikan"
+              className="transition-colors hover:text-foreground"
+            >
+              Penarikan
+            </Link>
           </nav>
         </div>
         <LogoutButton />

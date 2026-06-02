@@ -1,10 +1,12 @@
 import Link from "next/link"
-import { ClipboardList, Store } from "lucide-react"
+import { ClipboardList, Store, ShieldAlert, Banknote } from "lucide-react"
 import { requireAdmin } from "@/lib/auth/dal"
 import {
   countPendingBengkels,
   countVerifiedBengkels,
 } from "@/components/features/bengkels/services/bengkel-service"
+import { countPendingDisputes } from "@/components/features/disputes/services/dispute-service"
+import { countPendingWithdrawals } from "@/components/features/withdrawals/services/withdrawal-service"
 import {
   Card,
   CardContent,
@@ -16,10 +18,13 @@ import { Button } from "@/components/ui/button"
 
 export default async function DashboardPage() {
   const admin = await requireAdmin()
-  const [pendingCount, verifiedCount] = await Promise.all([
-    countPendingBengkels(),
-    countVerifiedBengkels(),
-  ])
+  const [pendingCount, verifiedCount, disputeCount, withdrawalCount] =
+    await Promise.all([
+      countPendingBengkels(),
+      countVerifiedBengkels(),
+      countPendingDisputes(),
+      countPendingWithdrawals(),
+    ])
 
   return (
     <div className="flex flex-col gap-6">
@@ -71,6 +76,52 @@ export default async function DashboardPage() {
               render={<Link href="/bengkels/terverifikasi" />}
             >
               Lihat daftar
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <div className="mb-1 flex size-9 items-center justify-center rounded-lg bg-muted">
+              <ShieldAlert className="size-4" />
+            </div>
+            <CardTitle>Komplain Pesanan</CardTitle>
+            <CardDescription>
+              {disputeCount > 0
+                ? `${disputeCount} komplain menunggu diputuskan.`
+                : "Tidak ada komplain yang menunggu."}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button
+              variant="outline"
+              nativeButton={false}
+              render={<Link href="/komplain" />}
+            >
+              Tinjau komplain
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <div className="mb-1 flex size-9 items-center justify-center rounded-lg bg-muted">
+              <Banknote className="size-4" />
+            </div>
+            <CardTitle>Permintaan Penarikan</CardTitle>
+            <CardDescription>
+              {withdrawalCount > 0
+                ? `${withdrawalCount} permintaan menunggu ditinjau.`
+                : "Tidak ada permintaan penarikan."}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button
+              variant="outline"
+              nativeButton={false}
+              render={<Link href="/penarikan" />}
+            >
+              Tinjau penarikan
             </Button>
           </CardContent>
         </Card>

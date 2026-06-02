@@ -44,6 +44,53 @@ export interface MechanicSummary {
   phone: string | null
 }
 
+export type DisputeStatus = "pending" | "refunded" | "paid"
+export type DisputeInitiatorRole = "customer" | "provider"
+
+export interface DisputeRpcRow {
+  id: string
+  status: DisputeStatus
+  reason: string
+  proof_url: string | null
+  initiator_role: DisputeInitiatorRole
+  initiator_name: string | null
+  created_at: string | null
+  resolved_at: string | null
+  service_request_id: string
+  service_type: string | null
+  description: string | null
+  price: number | null
+  order_status: string | null
+  order_created_at: string | null
+  customer_id: string
+  customer_name: string | null
+  customer_email: string | null
+  bengkel_id: string | null
+  bengkel_name: string | null
+  bengkel_address: string | null
+  provider_uid: string | null
+  provider_name: string | null
+  provider_email: string | null
+}
+
+export type WithdrawalStatus = "pending" | "approved" | "rejected"
+
+export interface WithdrawalRpcRow {
+  id: string
+  user_id: string
+  user_name: string | null
+  user_email: string | null
+  amount: number
+  bank_name: string | null
+  bank_account_number: string | null
+  bank_account_name: string | null
+  status: WithdrawalStatus
+  notes: string | null
+  created_at: string | null
+  updated_at: string | null
+  user_balance: number | null
+}
+
 export interface VerifiedBengkelRpcRow {
   id: string
   provider_uid: string
