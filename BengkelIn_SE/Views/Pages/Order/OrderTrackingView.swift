@@ -80,7 +80,10 @@ struct OrderTrackingView: View {
         .task { await chatWatch.start() }
         // Co-located from the start (e.g. the order was placed at the bengkel,
         // no one moves): evaluate once using the known shop / order coordinates.
-        .onAppear { evaluateProximity() }
+        .onAppear {
+            OrderRouteState.shared.enter(bid.serviceRequestId)
+            evaluateProximity()
+        }
         .onChange(of: trackingViewModel.order?.status) { status in
             if status == "accepted" {
                 locationPublisher.start(serviceRequestId: bid.serviceRequestId)
@@ -163,6 +166,7 @@ struct OrderTrackingView: View {
             }
         }
         .onDisappear {
+            OrderRouteState.shared.leave(bid.serviceRequestId)
             trackingViewModel.stop()
             chatWatch.stop()
             locationPublisher.stop()

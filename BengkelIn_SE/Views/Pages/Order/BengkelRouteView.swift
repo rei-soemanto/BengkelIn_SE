@@ -96,6 +96,7 @@ struct BengkelRouteView: View {
         }
         .task { await viewModel.start(order: order) }
         .task { await chatWatch.start() }
+        .onAppear { OrderRouteState.shared.enter(order.id) }
         .onChange(of: viewModel.bengkelCoordinate?.latitude) { _ in fitBothIfNeeded() }
         .onChange(of: viewModel.status) { newStatus in
             if newStatus == "cancelled" {
@@ -103,6 +104,7 @@ struct BengkelRouteView: View {
             }
         }
         .onDisappear {
+            OrderRouteState.shared.leave(order.id)
             viewModel.stop()
             chatWatch.stop()
         }
@@ -170,7 +172,7 @@ struct BengkelRouteView: View {
             AssignMechanicSheet(requestId: order.id) {
                 // After assigning, refresh the order so the gate updates immediately
                 // (the realtime watcher also picks up the change).
-                Task { await viewModel.refreshOrder() }
+                Task { await viewModel.refreshAfterAssignment() }
             }
             .presentationDetents([.medium, .large])
         }

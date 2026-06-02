@@ -43,6 +43,7 @@ class BengkelRouteViewModel: NSObject, ObservableObject, CLLocationManagerDelega
         super.init()
         locationManager.delegate = self
         locationManager.desiredAccuracy = kCLLocationAccuracyNearestTenMeters
+        locationManager.pausesLocationUpdatesAutomatically = false
         // Background location updates require the `location` UIBackgroundMode in
         // the bundle's Info.plist; enabling them without it throws at runtime.
         // Guard so the app never crashes if that capability isn't built in — the
@@ -50,7 +51,6 @@ class BengkelRouteViewModel: NSObject, ObservableObject, CLLocationManagerDelega
         if let backgroundModes = Bundle.main.object(forInfoDictionaryKey: "UIBackgroundModes") as? [String],
            backgroundModes.contains("location") {
             locationManager.allowsBackgroundLocationUpdates = true
-            locationManager.pausesLocationUpdatesAutomatically = false
         }
     }
 
@@ -128,6 +128,15 @@ class BengkelRouteViewModel: NSObject, ObservableObject, CLLocationManagerDelega
         guard let id = serviceRequestId else { return }
         if let updated = try? await orderRepository.fetchOrder(id: id) {
             self.order = updated
+        }
+    }
+
+    func refreshAfterAssignment() async {
+        await refreshOrder()
+        let auth = locationManager.authorizationStatus
+        if auth == .authorizedWhenInUse || auth == .authorizedAlways {
+            locationManager.stopUpdatingLocation()
+            locationManager.startUpdatingLocation()
         }
     }
 

@@ -26,12 +26,12 @@ class CustomerLocationPublishViewModel: NSObject, ObservableObject, CLLocationMa
         super.init()
         locationManager.delegate = self
         locationManager.desiredAccuracy = kCLLocationAccuracyNearestTenMeters
+        locationManager.pausesLocationUpdatesAutomatically = false
         // Background location updates require the `location` UIBackgroundMode in
         // the bundle's Info.plist; enabling them without it throws at runtime.
         if let backgroundModes = Bundle.main.object(forInfoDictionaryKey: "UIBackgroundModes") as? [String],
            backgroundModes.contains("location") {
             locationManager.allowsBackgroundLocationUpdates = true
-            locationManager.pausesLocationUpdatesAutomatically = false
         }
     }
 

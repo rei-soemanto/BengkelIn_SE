@@ -12,6 +12,7 @@ struct ContentView: View {
     @StateObject private var authViewModel = AuthViewModel()
     @StateObject private var network = NetworkMonitor()
     @StateObject private var bengkelBiddingViewModel = BengkelBiddingViewModel()
+    @ObservedObject private var orderRoute = OrderRouteState.shared
     @State private var bidOrder: NearbyOrder?
     @Environment(\.scenePhase) private var scenePhase
 
@@ -29,24 +30,26 @@ struct ContentView: View {
                 SplashView()
             } else if authViewModel.userSession != nil {
                 VStack(spacing: 0) {
-                    if isProvider {
-                        Picker("App Mode", selection: $authViewModel.appMode) {
-                            Text("Pelanggan").tag(AppMode.customer)
-                            Text("Bengkel").tag(AppMode.bengkel)
+                    if !orderRoute.isActive {
+                        if isProvider {
+                            Picker("App Mode", selection: $authViewModel.appMode) {
+                                Text("Pelanggan").tag(AppMode.customer)
+                                Text("Bengkel").tag(AppMode.bengkel)
+                            }
+                            .pickerStyle(.segmented)
+                            .padding(.horizontal)
+                            .padding(.vertical, 8)
+                            .background(Color(.systemBackground))
+                        } else if isMechanic {
+                            Picker("App Mode", selection: $authViewModel.appMode) {
+                                Text("Pelanggan").tag(AppMode.customer)
+                                Text("Mekanik").tag(AppMode.mechanic)
+                            }
+                            .pickerStyle(.segmented)
+                            .padding(.horizontal)
+                            .padding(.vertical, 8)
+                            .background(Color(.systemBackground))
                         }
-                        .pickerStyle(.segmented)
-                        .padding(.horizontal)
-                        .padding(.vertical, 8)
-                        .background(Color(.systemBackground))
-                    } else if isMechanic {
-                        Picker("App Mode", selection: $authViewModel.appMode) {
-                            Text("Pelanggan").tag(AppMode.customer)
-                            Text("Mekanik").tag(AppMode.mechanic)
-                        }
-                        .pickerStyle(.segmented)
-                        .padding(.horizontal)
-                        .padding(.vertical, 8)
-                        .background(Color(.systemBackground))
                     }
 
                     mainTabView
@@ -195,6 +198,15 @@ struct SplashView: View {
             }
         }
     }
+}
+
+@MainActor
+final class OrderRouteState: ObservableObject {
+    static let shared = OrderRouteState()
+    @Published private var activeIds: Set<String> = []
+    var isActive: Bool { !activeIds.isEmpty }
+    func enter(_ id: String) { activeIds.insert(id) }
+    func leave(_ id: String) { activeIds.remove(id) }
 }
 
 #Preview {
