@@ -140,6 +140,10 @@ class PaymentViewModel: ObservableObject {
             self.topups = fetchedTopups
             self.withdrawals = try await withdrawalHistory
         } catch {
+            // A cancelled in-flight fetch (view torn down / re-entered, e.g. when
+            // returning to this tab after an order) is not a user-facing error.
+            if error is CancellationError { return }
+            if (error as? URLError)?.code == .cancelled { return }
             self.errorMessage = error.localizedDescription
         }
     }
