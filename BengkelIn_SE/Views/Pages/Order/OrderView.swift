@@ -86,28 +86,13 @@ struct OrderView: View {
                         }
 
                         if viewModel.availablePoints > 0 {
-                            VStack(spacing: 4) {
-                                Toggle(isOn: $viewModel.usePoints) {
-                                    VStack(alignment: .leading, spacing: 2) {
-                                        Text("Gunakan Poin")
-                                            .font(.subheadline)
-                                            .fontWeight(.semibold)
-                                        Text("Tersedia \(viewModel.availablePoints) poin")
-                                            .font(.caption)
-                                            .foregroundColor(.secondary)
-                                    }
-                                }
-                                if viewModel.usePoints && viewModel.pointsDiscount > 0 {
-                                    HStack {
-                                        Text("Potongan poin")
-                                            .font(.caption)
-                                            .foregroundColor(.secondary)
-                                        Spacer()
-                                        Text("-Rp\(viewModel.pointsDiscount)")
-                                            .font(.caption)
-                                            .foregroundColor(.green)
-                                    }
-                                }
+                            HStack(spacing: 6) {
+                                Image(systemName: "star.fill")
+                                    .foregroundColor(.yellow)
+                                Text("Anda punya \(viewModel.availablePoints) poin")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                Spacer()
                             }
                             .padding(.horizontal)
                         }
@@ -118,7 +103,7 @@ struct OrderView: View {
                                     .font(.subheadline)
                                     .foregroundColor(.secondary)
                                 Spacer()
-                                Text("Rp\(max(0, viewModel.estimatedPrice - viewModel.pointsDiscount))")
+                                Text("Rp\(viewModel.estimatedPrice)")
                                     .font(.headline)
                                     .fontWeight(.bold)
                             }
@@ -177,9 +162,24 @@ struct OrderView: View {
         .navigationBarHidden(true)
         .ignoresSafeArea(.keyboard, edges: .bottom)
         .animation(.spring(response: 0.4, dampingFraction: 0.8), value: viewModel.isEditingLocation)
+        .confirmationDialog(
+            "Gunakan Poin?",
+            isPresented: $viewModel.showPointsPrompt,
+            titleVisibility: .visible
+        ) {
+            Button("Gunakan \(viewModel.availablePoints) Poin") {
+                viewModel.beginOrder(usePoints: true)
+            }
+            Button("Tanpa Poin") {
+                viewModel.beginOrder(usePoints: false)
+            }
+            Button("Batal", role: .cancel) {}
+        } message: {
+            Text("Anda punya \(viewModel.availablePoints) poin (Rp\(viewModel.availablePoints)). Jika dipakai, total dipotong hingga Rp\(viewModel.maxRedeemablePreview) dan Anda tidak mendapat poin dari transaksi ini.")
+        }
         .loadingOverlay(
             phase: viewModel.loadingPhase,
-            onRetry: { viewModel.createOrder() },
+            onRetry: { viewModel.retryOrder() },
             onStop: { viewModel.cancelLoading() }
         )
         .onAppear {

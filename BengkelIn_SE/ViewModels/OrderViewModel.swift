@@ -34,12 +34,13 @@ class OrderViewModel: NSObject, ObservableObject, CLLocationManagerDelegate, Loc
     @Published var pendingVehicleInfo: String? = nil
     @Published var usePoints: Bool = false
     @Published var availablePoints: Int = 0
+    @Published var showPointsPrompt: Bool = false
 
-    // Rupiah knocked off the estimate if the customer redeems points (1 poin = Rp1),
-    // capped at the available balance. Final redemption is recomputed server-side
-    // against the accepted bid price.
-    var pointsDiscount: Int {
-        usePoints ? min(availablePoints, estimatedPrice) : 0
+    // Max rupiah the customer could redeem on this order (1 poin = Rp1), capped
+    // at the estimate. Shown in the use-points prompt; final redemption is
+    // recomputed server-side against the accepted bid price.
+    var maxRedeemablePreview: Int {
+        min(availablePoints, estimatedPrice)
     }
 
     // True only once a *real* location has been resolved for this order — via
@@ -215,6 +216,7 @@ class OrderViewModel: NSObject, ObservableObject, CLLocationManagerDelegate, Loc
         navigateToBidding = false
         hasResolvedLocation = false
         usePoints = false
+        showPointsPrompt = false
         selectedVehicleId = nil
         pendingVehicleId = nil
         pendingVehicleInfo = nil
@@ -268,26 +270,54 @@ class OrderViewModel: NSObject, ObservableObject, CLLocationManagerDelegate, Loc
     }
 
     func createOrder() {
-        guard let service = selectedService, !locationAddress.isEmpty else { return }
+        guard validateOrder() else { return }
+        // Ask, on every order, whether to redeem points — but only when the
+        // customer actually has points to spend.
+        if availablePoints > 0 {
+            showPointsPrompt = true
+        } else {
+            beginOrder(usePoints: false)
+        }
+    }
+
+    private func validateOrder() -> Bool {
+        guard let service = selectedService, !locationAddress.isEmpty else { return false }
         guard hasResolvedLocation else {
             self.errorMessage = "Tentukan lokasi kamu dulu (gunakan lokasi saat ini, geser peta, atau cari alamat)."
-            return
+            return false
         }
-        guard let serviceType = ServiceType(rawValue: service) else {
+        guard ServiceType(rawValue: service) != nil else {
             self.errorMessage = "Layanan tidak dikenali."
-            return
+            return false
         }
-        guard let vehicleId = selectedVehicleId, let vehicle = vehicles.first(where: { $0.id == vehicleId }) else {
+        guard let vehicleId = selectedVehicleId, vehicles.contains(where: { $0.id == vehicleId }) else {
             self.errorMessage = vehicles.isEmpty ? "Tambahkan kendaraan di menu Profil terlebih dahulu." : "Pilih kendaraan yang bermasalah."
-            return
+            return false
         }
         if requiresTireCount {
             let provided = photosData.compactMap { $0 }
             guard provided.count == tireCount else {
                 self.errorMessage = "Mohon sertakan \(tireCount) foto kondisi ban (satu per ban)."
-                return
+                return false
             }
         }
+        self.errorMessage = nil
+        return true
+    }
+
+    // Re-run the upload + navigate step after a failure, keeping the earlier
+    // points decision.
+    func retryOrder() {
+        beginOrder(usePoints: usePoints)
+    }
+
+    func beginOrder(usePoints: Bool) {
+        self.usePoints = usePoints
+        showPointsPrompt = false
+        guard let service = selectedService,
+              let serviceType = ServiceType(rawValue: service),
+              let vehicleId = selectedVehicleId,
+              let vehicle = vehicles.first(where: { $0.id == vehicleId }) else { return }
         self.errorMessage = nil
         loadingPhase = .loading(message: "Mengunggah foto...")
         Task { @MainActor in
