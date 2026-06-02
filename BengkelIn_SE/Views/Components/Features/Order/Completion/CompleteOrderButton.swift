@@ -1,11 +1,3 @@
-//
-//  CompleteOrderButton.swift
-//  BengkelIn_SE
-//
-//  Ported from MbengkelIn (Eugene's completion feature). Drop into an active-order
-//  / order-detail screen, passing the request id and whether the viewer is the customer.
-//
-
 import SwiftUI
 import PhotosUI
 
@@ -34,16 +26,18 @@ struct CompleteOrderButton: View {
             }
         }
         .task { await viewModel.start() }
-        .onChange(of: scenePhase) { _, phase in
-            if phase == .active { Task { await viewModel.refresh() } }
+        .onChange(of: scenePhase) { phase in
+            if phase == .active {
+                Task { await viewModel.refresh() }
+            }
         }
     }
 
     @ViewBuilder
     private var content: some View {
-        if viewModel.status == .completed {
+        if viewModel.status == "completed" {
             statusLabel(text: "Pesanan Selesai", icon: "checkmark.seal.fill", color: .green)
-        } else if viewModel.status == .cancelled {
+        } else if viewModel.status == "cancelled" {
             statusLabel(text: "Pesanan Dibatalkan", icon: "xmark.seal.fill", color: .red)
         } else if viewModel.mySideCompleted {
             VStack(spacing: 6) {
@@ -67,7 +61,7 @@ struct CompleteOrderButton: View {
                 buttonLabel
             }
             .disabled(viewModel.isLoading)
-            .onChange(of: photoItem) { _, item in
+            .onChange(of: photoItem) { item in
                 guard let item else { return }
                 Task {
                     if let data = try? await item.loadTransferable(type: Data.self) {

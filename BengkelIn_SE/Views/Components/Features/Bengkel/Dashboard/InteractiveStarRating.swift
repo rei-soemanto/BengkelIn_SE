@@ -1,12 +1,13 @@
 //
 //  InteractiveStarRating.swift
-//  BengkelIn_SE
+//  MbengkelIn
 //
-//  Ported from MbengkelIn. Tappable star picker for submitting a rating (1...maxRating).
+//  Created by Amadeus Eugine Dirgantara on 29/05/26.
 //
 
 import SwiftUI
 
+// Tappable star picker for submitting a rating (1...maxRating).
 struct InteractiveStarRating: View {
     @Binding var rating: Int
     var maxRating: Int = 5

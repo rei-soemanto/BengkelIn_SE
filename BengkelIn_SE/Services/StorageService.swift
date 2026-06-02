@@ -1,6 +1,6 @@
 //
 //  StorageService.swift
-//  BengkelIn_SE
+//  MbengkelIn
 //
 //  Created by Rei Soemanto on 27/05/26.
 //
@@ -9,9 +9,9 @@ import Foundation
 import Supabase
 
 class StorageService {
-    /// Uploads an avatar image to the `avatars` bucket at `{uid}/profile.jpg` and returns its public URL.
     func uploadAvatar(uid: String, data: Data) async throws -> String {
         let path = "\(uid)/profile.jpg"
+
         let fileOptions = FileOptions(contentType: "image/jpeg", upsert: true)
 
         try await supabase.storage
@@ -25,9 +25,9 @@ class StorageService {
         return publicURL.absoluteString
     }
 
-    /// Uploads a completion / order proof photo to the `order-photos` bucket and returns its public URL.
     func uploadOrderPhoto(uid: String, data: Data) async throws -> String {
         let path = "\(uid)/\(UUID().uuidString).jpg"
+
         let fileOptions = FileOptions(contentType: "image/jpeg", upsert: true)
 
         try await supabase.storage
@@ -41,7 +41,6 @@ class StorageService {
         return publicURL.absoluteString
     }
 
-    /// Removes order photos by their public URLs (best-effort cleanup on cancel).
     func deleteOrderPhotos(urls: [String]) async throws {
         let bucket = "order-photos"
         let marker = "/\(bucket)/"
@@ -52,5 +51,21 @@ class StorageService {
         }
         guard !paths.isEmpty else { return }
         _ = try await supabase.storage.from(bucket).remove(paths: paths)
+    }
+
+    func uploadChatImage(serviceRequestId: String, data: Data) async throws -> String {
+        let path = "\(serviceRequestId)/\(UUID().uuidString).jpg"
+
+        let fileOptions = FileOptions(contentType: "image/jpeg", upsert: false)
+
+        try await supabase.storage
+            .from("chat-images")
+            .upload(path, data: data, options: fileOptions)
+
+        let publicURL = try supabase.storage
+            .from("chat-images")
+            .getPublicURL(path: path)
+
+        return publicURL.absoluteString
     }
 }

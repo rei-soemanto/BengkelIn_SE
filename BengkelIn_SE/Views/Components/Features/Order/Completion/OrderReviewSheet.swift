@@ -1,13 +1,14 @@
 //
 //  OrderReviewSheet.swift
-//  BengkelIn_SE
+//  MbengkelIn
 //
-//  Ported from MbengkelIn (Eugene's reviews feature). Self-contained rating +
-//  review sheet — used as the post-completion prompt and reusable from history.
+//  Created by Amadeus Eugine Dirgantara on 29/05/26.
 //
 
 import SwiftUI
 
+// A self-contained rating + review sheet. Used for the automatic prompt shown
+// when an order completes, and reusable anywhere a review is collected.
 struct OrderReviewSheet: View {
     let requestId: String
     var existingRating: Int? = nil
@@ -31,6 +32,7 @@ struct OrderReviewSheet: View {
             .navigationTitle(existingRating == nil ? "Beri Penilaian" : "Penilaian Anda")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                // Let the customer skip and review later from history (editable only).
                 if existingRating == nil {
                     ToolbarItem(placement: .topBarTrailing) {
                         Button("Nanti") { dismiss() }
@@ -49,13 +51,16 @@ struct OrderReviewSheet: View {
         .interactiveDismissDisabled(viewModel.isSubmitting)
     }
 
+    // Read-only state shown when the order has already been rated. The DB's
+    // rate_order RPC also rejects a second rating, so this is purely UX.
     private func alreadyRatedContent(_ existingRating: Int) -> some View {
         VStack(spacing: 24) {
             VStack(spacing: 10) {
                 Image(systemName: "checkmark.seal.fill")
                     .font(.system(size: 52))
                     .foregroundColor(.green)
-                Text("Terima Kasih").font(.title2.bold())
+                Text("Terima Kasih")
+                    .font(.title2.bold())
                 Text("Anda sudah memberi penilaian untuk pesanan ini.")
                     .font(.subheadline)
                     .foregroundColor(.secondary)
@@ -66,7 +71,9 @@ struct OrderReviewSheet: View {
             StarRatingView(rating: Double(existingRating))
                 .font(.title)
 
-            Button { dismiss() } label: {
+            Button {
+                dismiss()
+            } label: {
                 Text("Tutup")
                     .font(.headline)
                     .foregroundColor(Color(.systemBackground))
@@ -85,7 +92,8 @@ struct OrderReviewSheet: View {
                 Image(systemName: "checkmark.seal.fill")
                     .font(.system(size: 52))
                     .foregroundColor(.green)
-                Text("Pesanan Selesai").font(.title2.bold())
+                Text("Pesanan Selesai")
+                    .font(.title2.bold())
                 Text("Bagaimana pengalaman servis Anda?")
                     .font(.subheadline)
                     .foregroundColor(.secondary)
@@ -103,8 +111,15 @@ struct OrderReviewSheet: View {
 
             Button {
                 Task {
-                    let ok = await viewModel.submit(requestId: requestId, rating: rating, review: reviewText)
-                    if ok { onSubmitted(); dismiss() }
+                    let ok = await viewModel.submit(
+                        requestId: requestId,
+                        rating: rating,
+                        review: reviewText
+                    )
+                    if ok {
+                        onSubmitted()
+                        dismiss()
+                    }
                 }
             } label: {
                 Text(viewModel.isSubmitting ? "Mengirim..." : "Kirim Penilaian")

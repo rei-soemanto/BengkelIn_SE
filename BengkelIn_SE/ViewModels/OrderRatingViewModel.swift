@@ -1,9 +1,8 @@
 //
 //  OrderRatingViewModel.swift
-//  BengkelIn_SE
+//  MbengkelIn
 //
-//  Ported from MbengkelIn (Eugene's reviews feature). Submits a write-once
-//  customer rating via the rate_order RPC.
+//  Created by Amadeus Eugine Dirgantara on 29/05/26.
 //
 
 import SwiftUI
@@ -15,7 +14,7 @@ class OrderRatingViewModel: ObservableObject {
     @Published var isSubmitting = false
     @Published var errorMessage: String?
 
-    private let serviceRequestRepository = ServiceRequestRepository()
+    private let orderRepository = OrderRepository()
 
     func submit(requestId: String, rating: Int, review: String) async -> Bool {
         guard (1...5).contains(rating) else {
@@ -26,7 +25,7 @@ class OrderRatingViewModel: ObservableObject {
         errorMessage = nil
         let trimmed = review.trimmingCharacters(in: .whitespacesAndNewlines)
         do {
-            try await serviceRequestRepository.rateOrder(
+            try await orderRepository.submitRating(
                 requestId: requestId,
                 rating: rating,
                 review: trimmed.isEmpty ? nil : trimmed

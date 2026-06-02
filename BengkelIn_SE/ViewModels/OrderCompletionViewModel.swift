@@ -1,11 +1,3 @@
-//
-//  OrderCompletionViewModel.swift
-//  BengkelIn_SE
-//
-//  Ported from MbengkelIn (Eugene's completion feature). Dual-confirm completion
-//  with a mandatory provider proof photo, live via realtime on the request row.
-//
-
 import SwiftUI
 import Combine
 import Supabase
@@ -13,17 +5,19 @@ import Supabase
 @MainActor
 class OrderCompletionViewModel: ObservableObject {
     private let authService = AuthService()
-    @Published var order: ServiceRequest?
+    @Published var order: NearbyOrder?
     @Published var isLoading = false
     @Published var errorMessage: String?
 
     let requestId: String
     let isCustomer: Bool
 
-    private let serviceRequestRepository = ServiceRequestRepository()
+    private let orderRepository = OrderRepository()
     private let storageService = StorageService()
+    private let notificationService = NotificationService()
     private var realtimeChannel: RealtimeChannelV2?
     private var realtimeReaderTasks: [Task<Void, Never>] = []
+    private var hasLoadedOnce = false
 
     nonisolated init(requestId: String, isCustomer: Bool) {
         self.requestId = requestId
@@ -39,22 +33,49 @@ class OrderCompletionViewModel: ObservableObject {
         }
     }
 
-    var status: ServiceRequestStatus { order?.status ?? .accepted }
-    var isFinished: Bool { status == .completed || status == .cancelled }
+    var status: String { order?.status ?? "accepted" }
+    var isFinished: Bool { status == "completed" || status == "cancelled" }
     var mySideCompleted: Bool {
         isCustomer ? (order?.customerCompleted ?? false) : (order?.providerCompleted ?? false)
     }
 
     func start() async {
+        notificationService.requestAuthorization()
         await refresh()
         startRealtimeSubscription()
     }
 
     func refresh() async {
         do {
-            self.order = try await serviceRequestRepository.fetchById(id: requestId)
+            let updated = try await orderRepository.fetchOrder(id: requestId)
+            notifyOnCounterpartCompletion(previous: order, updated: updated)
+            self.order = updated
         } catch {
             self.errorMessage = error.localizedDescription
+        }
+    }
+
+    // Each device only reacts to the OPPOSITE party's completion flag flipping,
+    // so the actor never notifies itself.
+    private func notifyOnCounterpartCompletion(previous: NearbyOrder?, updated: NearbyOrder) {
+        defer { hasLoadedOnce = true }
+        guard hasLoadedOnce, let previous else { return }
+
+        if isCustomer,
+           !(previous.providerCompleted ?? false),
+           (updated.providerCompleted ?? false) {
+            notificationService.notifyNewOrder(
+                title: "Bengkel menyelesaikan pesanan",
+                body: "Bengkel telah menandai pekerjaan selesai."
+            )
+        }
+        if !isCustomer,
+           !(previous.customerCompleted ?? false),
+           (updated.customerCompleted ?? false) {
+            notificationService.notifyNewOrder(
+                title: "Pelanggan menyelesaikan pesanan",
+                body: "Pelanggan telah menandai pekerjaan selesai."
+            )
         }
     }
 
@@ -63,7 +84,10 @@ class OrderCompletionViewModel: ObservableObject {
         let channel = supabase.channel("order-completion-\(requestId)")
         self.realtimeChannel = channel
         let stream = channel.postgresChange(
-            AnyAction.self, schema: "public", table: "service_requests", filter: "id=eq.\(requestId)"
+            AnyAction.self,
+            schema: "public",
+            table: "service_requests",
+            filter: "id=eq.\(requestId)"
         )
         realtimeReaderTasks.append(Task { [weak self] in
             guard let self = self else { return }
@@ -87,15 +111,11 @@ class OrderCompletionViewModel: ObservableObject {
         do {
             var photoUrl: String? = nil
             if let photoData {
-                let session = try await authService.getCurrentSession()
-                let uid = session.user.id.uuidString.lowercased()
+                let uid = try await authService.currentUID()
                 photoUrl = try await storageService.uploadOrderPhoto(uid: uid, data: photoData)
             }
-            self.order = try await serviceRequestRepository.markOrderCompleted(
-                requestId: requestId, completionPhotoUrl: photoUrl
-            )
+            self.order = try await orderRepository.markOrderCompleted(requestId: requestId, completionPhotoUrl: photoUrl)
         } catch {
-            // e.g. "Foto penyelesaian wajib dilampirkan" surfaced from the RPC.
             self.errorMessage = error.localizedDescription
         }
         isLoading = false
