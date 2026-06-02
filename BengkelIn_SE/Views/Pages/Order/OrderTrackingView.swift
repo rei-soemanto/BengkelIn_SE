@@ -59,7 +59,7 @@ struct OrderTrackingView: View {
                 status: trackingViewModel.status,
                 unreadCount: chatWatch.unreadCount,
                 onOpenChat: { chatWatch.markAllRead() },
-                canComplete: hasBeenNear,
+                canComplete: canCustomerComplete,
                 onCancel: { activeSheet = .cancel }
             )
         }
@@ -105,6 +105,11 @@ struct OrderTrackingView: View {
         // The customer may be the one who travels to the bengkel, so re-check
         // proximity whenever the customer's own live location moves too.
         .onChange(of: locationPublisher.currentCoordinate?.latitude) { _ in
+            evaluateProximity()
+        }
+        // Re-check when the bengkel assigns a handler: a self-assigned, co-located
+        // order becomes "arrived" the moment the assignment lands.
+        .onChange(of: trackingViewModel.order?.mechanicId) { _ in
             evaluateProximity()
         }
         .sheet(item: $activeSheet) { sheet in
@@ -187,13 +192,33 @@ struct OrderTrackingView: View {
     private var customerPosition: CLLocationCoordinate2D {
         locationPublisher.currentCoordinate ?? customerCoordinate
     }
-    // The bengkel's position: its live published location while travelling, else
-    // its fixed shop coordinate (so "customer arrives at a stationary bengkel"
-    // is detected even when no live location is being published).
-    private var bengkelPosition: CLLocationCoordinate2D? { liveBengkelCoordinate }
 
-    private var bengkelDistanceMeters: CLLocationDistance? {
-        guard let p = bengkelPosition else { return nil }
+    // The bengkel has assigned someone to the job once mechanic_id is set — either
+    // a roster mechanic or the provider itself (assign_mechanic with no mechanic).
+    private var isAssigned: Bool { trackingViewModel.order?.mechanicId != nil }
+    // True when the bengkel owner (provider) is doing the work themselves, i.e.
+    // the assignee is the bengkel's provider_uid.
+    private var isSelfHandled: Bool {
+        guard let assignee = trackingViewModel.order?.mechanicId else { return false }
+        return assignee == bid.providerUid
+    }
+
+    // Position of the party actually handling the service. Their live published
+    // location while travelling; if they aren't publishing yet, fall back to the
+    // bengkel's fixed shop coordinate ONLY when the bengkel itself is the handler
+    // (a stationary shop). A separate mechanic must be confirmed by live GPS — no
+    // shop fallback, otherwise a customer standing at the shop would look "arrived"
+    // while the assigned mechanic is still en route from elsewhere.
+    private var handlerCoordinate: CLLocationCoordinate2D? {
+        if let live = trackingViewModel.providerCoordinate { return live }
+        if isSelfHandled, let lat = bid.bengkel?.latitude, let lon = bid.bengkel?.longitude {
+            return CLLocationCoordinate2D(latitude: lat, longitude: lon)
+        }
+        return nil
+    }
+
+    private var handlerDistanceMeters: CLLocationDistance? {
+        guard let p = handlerCoordinate else { return nil }
         let c = customerPosition
         return CLLocation(latitude: c.latitude, longitude: c.longitude)
             .distance(from: CLLocation(latitude: p.latitude, longitude: p.longitude))
@@ -203,9 +228,13 @@ struct OrderTrackingView: View {
         // within a large campus where the order pin and the bengkel's registered
         // pin differ by GPS noise + placement) must still count as arrived.
         // Safe to be generous — settlement still requires dual completion.
-        if let d = bengkelDistanceMeters { return d <= 150 }
+        if let d = handlerDistanceMeters { return d <= 150 }
         return false
     }
+
+    // The customer may only complete once a handler is assigned AND has arrived.
+    // Before assignment the status stays "Menunggu bengkel tiba di lokasi".
+    private var canCustomerComplete: Bool { isAssigned && hasBeenNear }
 
     private var liveBengkelCoordinate: CLLocationCoordinate2D? {
         if let live = trackingViewModel.providerCoordinate { return live }
