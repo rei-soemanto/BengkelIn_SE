@@ -36,6 +36,7 @@ class BengkelViewModel: NSObject, ObservableObject, CLLocationManagerDelegate, L
     private let locationManager = CLLocationManager()
     private var cancellables = Set<AnyCancellable>()
     private var realtimeChannel: RealtimeChannelV2?
+    private var earningsChannel: RealtimeChannelV2?
     private var realtimeReaderTasks: [Task<Void, Never>] = []
 
     override init() {
@@ -199,6 +200,12 @@ class BengkelViewModel: NSObject, ObservableObject, CLLocationManagerDelegate, L
                 await client.removeChannel(channel)
             }
         }
+        if let channel = earningsChannel {
+            let client = supabase
+            Task {
+                await client.removeChannel(channel)
+            }
+        }
     }
 
     // Loads the bengkel once, then keeps its status (e.g. Pending -> Verified)
@@ -207,6 +214,9 @@ class BengkelViewModel: NSObject, ObservableObject, CLLocationManagerDelegate, L
         await fetchMyBengkel(uid: uid)
         await loadTodaysEarnings()
         startRealtimeSubscription(uid: uid)
+        if let bengkelId = myBengkel?.id {
+            startEarningsSubscription(bengkelId: bengkelId)
+        }
     }
 
     func loadTodaysEarnings() async {
@@ -240,6 +250,30 @@ class BengkelViewModel: NSObject, ObservableObject, CLLocationManagerDelegate, L
 
     }
 
+    // Recompute "Pendapatan Hari Ini" live: any change to this bengkel's
+    // service_requests (notably status -> 'completed') re-runs the day's sum.
+    // Without this, todaysEarnings only refreshed on first appear / app
+    // foreground, so completing a job never updated the figure.
+    private func startEarningsSubscription(bengkelId: String) {
+        let channel = supabase.channel("bengkel-earnings-\(bengkelId)")
+        self.earningsChannel = channel
+
+        let stream = channel.postgresChange(
+            AnyAction.self,
+            schema: "public",
+            table: "service_requests",
+            filter: "bengkel_id=eq.\(bengkelId)"
+        )
+
+        realtimeReaderTasks.append(Task { [weak self] in
+            guard let self = self else { return }
+            await channel.subscribe()
+            for await _ in stream {
+                await self.loadTodaysEarnings()
+            }
+        })
+    }
+
     func stopWatching() {
         realtimeReaderTasks.forEach { $0.cancel() }
         realtimeReaderTasks.removeAll()
@@ -248,6 +282,12 @@ class BengkelViewModel: NSObject, ObservableObject, CLLocationManagerDelegate, L
                 await supabase.removeChannel(channel)
             }
             realtimeChannel = nil
+        }
+        if let channel = earningsChannel {
+            Task {
+                await supabase.removeChannel(channel)
+            }
+            earningsChannel = nil
         }
     }
 
