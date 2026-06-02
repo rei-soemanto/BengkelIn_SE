@@ -24,8 +24,8 @@ enum ServiceRequestStatus: String, Codable, CaseIterable {
 struct ServiceRequest: Codable, Identifiable {
     var id: String?
     var customerId: String
-    var vehicleId: String
-    var bengkelId: String
+    var vehicleId: String?   // optional: bidding broadcasts may omit a vehicle
+    var bengkelId: String?   // nil until a bid is accepted (bidding) or set directly
     var serviceType: String
     var description: String?
     var status: ServiceRequestStatus

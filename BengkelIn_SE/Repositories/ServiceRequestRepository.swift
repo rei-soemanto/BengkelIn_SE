@@ -18,6 +18,17 @@ class ServiceRequestRepository {
             .value
     }
 
+    /// Insert a bidding broadcast — a request with no bengkel yet (status "pending",
+    /// bengkel_id null). Bengkels then bid via the `bidding` edge function.
+    func insertBroadcast(_ payload: BiddingRequestInsert) async throws -> ServiceRequest {
+        return try await supabase.from("service_requests")
+            .insert(payload)
+            .select()
+            .single()
+            .execute()
+            .value
+    }
+
     func fetchByCustomer(customerId: String) async throws -> [ServiceRequest] {
         return try await supabase.from("service_requests")
             .select()
