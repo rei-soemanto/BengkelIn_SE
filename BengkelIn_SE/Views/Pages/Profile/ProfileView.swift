@@ -192,8 +192,13 @@ struct ProfileView: View {
                         // server enforces this too — see migration
                         // 20260602200000_freeze_dispute_and_admin_role_guards.sql.)
                         if let role = authViewModel.currentUser?.role, role != "PROVIDER", role != "ADMIN" {
-                            NavigationLink(destination: RegisterBengkelView()) {
-                                ActionRow(icon: "wrench.and.screwdriver", title: "Register as Bengkel")
+                            // A mechanic is bound to a bengkel's roster and cannot run their
+                            // own bengkel — they must be removed (fired) from the roster first,
+                            // which resets their role to USER and re-shows this option.
+                            if role != "MECHANIC" {
+                                NavigationLink(destination: RegisterBengkelView()) {
+                                    ActionRow(icon: "wrench.and.screwdriver", title: "Register as Bengkel")
+                                }
                             }
 
                             NavigationLink(destination: MechanicInvitesView(authViewModel: authViewModel)) {
