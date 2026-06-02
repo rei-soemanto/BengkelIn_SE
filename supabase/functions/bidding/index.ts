@@ -4,7 +4,7 @@
 // Open-order status is lowercase 'pending'; the customer's offered price is read
 // from service_requests.price (bigint). accept_bid lives in SQL, not here.
 //
-// DEPLOYED 2026-06-02 to project ipxwpxozreksmuiztwcy (version 4, verify_jwt on).
+// DEPLOYED 2026-06-02 to project ipxwpxozreksmuiztwcy (version 5, verify_jwt on).
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
@@ -101,7 +101,10 @@ Deno.serve(async (req: Request) => {
       }
 
       // Upsert on (service_request_id, provider_uid) so a bengkel can revise a
-      // previously-declined offer; resetting status to 'pending' re-surfaces it.
+      // previously-declined offer; resetting status to 'Pending' re-surfaces it.
+      // Bid statuses are capitalized (Pending/Accepted/Rejected/Expired/AutoRejected)
+      // to match the customer-side card, which is case-sensitive — unlike the lowercase
+      // service_requests.status vocabulary.
       const { data, error } = await supabase
         .from("bids")
         .upsert(
@@ -111,7 +114,7 @@ Deno.serve(async (req: Request) => {
             bengkel_id: payload.bengkelId,
             price,
             notes: payload.notes ?? null,
-            status: "pending",
+            status: "Pending",
           },
           { onConflict: "service_request_id,provider_uid" },
         )
