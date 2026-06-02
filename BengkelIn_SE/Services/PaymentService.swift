@@ -1,11 +1,3 @@
-//
-//  PaymentService.swift
-//  BengkelIn_SE
-//
-//  Ported from MbengkelIn (Eugene's wallet feature). Invokes the `payment`
-//  edge function to start a Midtrans Snap top-up.
-//
-
 import Foundation
 import Supabase
 

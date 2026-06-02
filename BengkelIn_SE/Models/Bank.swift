@@ -1,13 +1,14 @@
 //
 //  Bank.swift
-//  BengkelIn_SE
+//  MbengkelIn
 //
-//  Ported from MbengkelIn. Static reference data for common Indonesian banks
-//  and their account-number length(s).
+//  Created by Bryan on 28/05/26.
 //
 
 import Foundation
 
+// Static reference data for common Indonesian banks and their account-number
+// length(s). Lengths reflect the most common formats per bank.
 struct IndonesianBank: Identifiable, Hashable {
     let id: String
     let name: String

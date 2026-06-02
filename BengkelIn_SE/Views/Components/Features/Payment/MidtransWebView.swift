@@ -1,11 +1,3 @@
-//
-//  MidtransWebView.swift
-//  BengkelIn_SE
-//
-//  Ported from MbengkelIn. Hosts the Midtrans Snap payment page in a WKWebView
-//  and reports back when Midtrans redirects with a transaction result.
-//
-
 import SwiftUI
 import WebKit
 
@@ -13,7 +5,9 @@ struct MidtransWebView: UIViewRepresentable {
     let url: URL
     var onFinish: () -> Void
 
-    func makeCoordinator() -> Coordinator { Coordinator(onFinish: onFinish) }
+    func makeCoordinator() -> Coordinator {
+        Coordinator(onFinish: onFinish)
+    }
 
     func makeUIView(context: Context) -> WKWebView {
         let webView = WKWebView()
@@ -26,7 +20,10 @@ struct MidtransWebView: UIViewRepresentable {
 
     class Coordinator: NSObject, WKNavigationDelegate {
         let onFinish: () -> Void
-        init(onFinish: @escaping () -> Void) { self.onFinish = onFinish }
+
+        init(onFinish: @escaping () -> Void) {
+            self.onFinish = onFinish
+        }
 
         func webView(
             _ webView: WKWebView,

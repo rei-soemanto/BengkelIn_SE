@@ -1,8 +1,8 @@
 //
 //  Withdrawal.swift
-//  BengkelIn_SE
+//  MbengkelIn
 //
-//  Ported from MbengkelIn (Eugene's wallet feature).
+//  Created by Bryan on 28/05/26.
 //
 
 import Foundation

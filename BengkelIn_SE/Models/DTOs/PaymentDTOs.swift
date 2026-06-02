@@ -1,10 +1,3 @@
-//
-//  PaymentDTOs.swift
-//  BengkelIn_SE
-//
-//  Ported from MbengkelIn (Eugene's wallet feature).
-//
-
 import Foundation
 
 // Sent to the `payment` edge function to start a top-up.

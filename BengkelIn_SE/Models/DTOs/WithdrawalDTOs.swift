@@ -1,10 +1,3 @@
-//
-//  WithdrawalDTOs.swift
-//  BengkelIn_SE
-//
-//  Ported from MbengkelIn (Eugene's wallet feature).
-//
-
 import Foundation
 
 // Used by UserRepository to update bank details on the users table.

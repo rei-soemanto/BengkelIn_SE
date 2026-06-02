@@ -1,10 +1,3 @@
-//
-//  WithdrawalRepository.swift
-//  BengkelIn_SE
-//
-//  Ported from MbengkelIn (Eugene's wallet feature).
-//
-
 import Foundation
 import Supabase
 
@@ -18,7 +11,7 @@ class WithdrawalRepository {
             .value
     }
 
-    // Atomic available-balance check + pending withdrawal insert (server-side RPC).
+    // Atomic balance check + hold + pending withdrawal insert (server-side RPC).
     func requestWithdrawal(amount: Double) async throws {
         try await supabase
             .rpc("request_withdrawal", params: RequestWithdrawalParams(p_amount: amount))

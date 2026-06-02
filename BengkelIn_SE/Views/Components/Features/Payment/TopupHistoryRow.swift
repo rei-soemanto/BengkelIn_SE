@@ -1,10 +1,3 @@
-//
-//  TopupHistoryRow.swift
-//  BengkelIn_SE
-//
-//  Ported from MbengkelIn (Eugene's wallet feature).
-//
-
 import SwiftUI
 
 struct TopupHistoryRow: View {

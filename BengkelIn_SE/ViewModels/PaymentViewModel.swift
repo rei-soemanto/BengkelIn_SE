@@ -1,11 +1,3 @@
-//
-//  PaymentViewModel.swift
-//  BengkelIn_SE
-//
-//  Ported from MbengkelIn (Eugene's wallet feature). Balance, Midtrans top-up,
-//  withdrawals, bank details, with realtime on topups/withdrawals.
-//
-
 import SwiftUI
 import Combine
 import Supabase
@@ -35,7 +27,8 @@ class PaymentViewModel: ObservableObject {
 
     let presetAmounts: [Int] = [25000, 50000, 100000, 200000, 500000]
 
-    // Keep in sync with the `payment` edge function amount validation.
+    // Keep these in sync with the `payment` edge function
+    // (supabase/functions/payment/index.ts) amount validation.
     let minTopupAmount = 10_000
     let maxTopupAmount = 10_000_000
 
@@ -55,6 +48,9 @@ class PaymentViewModel: ObservableObject {
     private var realtimeChannel: RealtimeChannelV2?
     private var realtimeReaderTasks: [Task<Void, Never>] = []
 
+    // Track which top-ups have already settled as "success" so we can alert
+    // exactly once when a new one lands (via the realtime subscription) without
+    // re-alerting for history already on screen at first load.
     private var knownSuccessTopupIds: Set<String> = []
     private var didLoadTopupsOnce = false
 
@@ -63,7 +59,9 @@ class PaymentViewModel: ObservableObject {
         realtimeReaderTasks.removeAll()
         if let channel = realtimeChannel {
             let client = supabase
-            Task { await client.removeChannel(channel) }
+            Task {
+                await client.removeChannel(channel)
+            }
         }
     }
 
@@ -81,25 +79,39 @@ class PaymentViewModel: ObservableObject {
         self.realtimeChannel = channel
 
         let topupStream = channel.postgresChange(
-            AnyAction.self, schema: "public", table: "topups", filter: "user_id=eq.\(uid)"
+            AnyAction.self,
+            schema: "public",
+            table: "topups",
+            filter: "user_id=eq.\(uid)"
         )
         let withdrawalStream = channel.postgresChange(
-            AnyAction.self, schema: "public", table: "withdrawals", filter: "user_id=eq.\(uid)"
+            AnyAction.self,
+            schema: "public",
+            table: "withdrawals",
+            filter: "user_id=eq.\(uid)"
         )
 
         realtimeReaderTasks.append(Task { [weak self] in
             guard let self = self else { return }
             await channel.subscribe()
-            Task { [weak self] in for await _ in topupStream { await self?.refresh() } }
-            Task { [weak self] in for await _ in withdrawalStream { await self?.refresh() } }
+
+            Task { [weak self] in
+                for await _ in topupStream { await self?.refresh() }
+            }
+            Task { [weak self] in
+                for await _ in withdrawalStream { await self?.refresh() }
+            }
         })
+
     }
 
     func stop() {
         realtimeReaderTasks.forEach { $0.cancel() }
         realtimeReaderTasks.removeAll()
         if let channel = realtimeChannel {
-            Task { await supabase.removeChannel(channel) }
+            Task {
+                await supabase.removeChannel(channel)
+            }
             realtimeChannel = nil
         }
     }
@@ -113,7 +125,7 @@ class PaymentViewModel: ObservableObject {
             async let withdrawalHistory = withdrawalRepository.fetchWithdrawals(userId: uid)
 
             let fetchedUser = try await user
-            self.balance = fetchedUser.balance ?? 0
+            self.balance = fetchedUser.balance
             self.heldBalance = fetchedUser.heldBalance ?? 0
             self.bankName = fetchedUser.bankName ?? ""
             self.bankAccountNumber = fetchedUser.bankAccountNumber ?? ""
@@ -130,7 +142,11 @@ class PaymentViewModel: ObservableObject {
 
     // Surface a "Top up berhasil!" alert the moment a top-up settles to success.
     private func detectSuccessfulTopups(_ fetched: [Topup]) {
-        let successIds = Set(fetched.filter { $0.status.lowercased() == "success" }.compactMap { $0.id })
+        let successIds = Set(
+            fetched
+                .filter { $0.status.lowercased() == "success" }
+                .compactMap { $0.id }
+        )
         if didLoadTopupsOnce {
             let newlySettled = successIds.subtracting(knownSuccessTopupIds)
             if !newlySettled.isEmpty {
@@ -173,7 +189,9 @@ class PaymentViewModel: ObservableObject {
         errorMessage = nil
         do {
             let payload = BankDetailsUpdatePayload(
-                bank_name: bankName, bank_account_number: accountNumber, bank_account_name: accountName
+                bank_name: bankName,
+                bank_account_number: accountNumber,
+                bank_account_name: accountName
             )
             try await userRepository.updateBankDetails(uid: uid, payload: payload)
             await refresh()
@@ -215,7 +233,8 @@ class PaymentViewModel: ObservableObject {
         }
     }
 
-    // Reopen the Snap session for an unfinished (pending) top-up.
+    // Reopen the Snap session for an unfinished (pending) top-up, using the
+    // redirect_url stored when it was created. Valid until the link expires.
     func resumeTopup(_ topup: Topup) {
         guard topup.status.lowercased() == "pending",
               let urlString = topup.redirectUrl,
@@ -224,8 +243,8 @@ class PaymentViewModel: ObservableObject {
         self.paymentTarget = PaymentTarget(url: url)
     }
 
-    // The webhook credits the balance asynchronously; the realtime topups
-    // subscription reflects it live once the sheet is dismissed.
+    // Called when the Midtrans WebView sheet is dismissed. The webhook credits
+    // the balance asynchronously; the realtime topups subscription reflects it live.
     func paymentFlowFinished() async {
         currentOrderId = nil
         await refresh()

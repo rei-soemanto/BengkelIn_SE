@@ -1,10 +1,3 @@
-//
-//  WithdrawalHistoryRow.swift
-//  BengkelIn_SE
-//
-//  Ported from MbengkelIn (Eugene's wallet feature).
-//
-
 import SwiftUI
 
 struct WithdrawalHistoryRow: View {

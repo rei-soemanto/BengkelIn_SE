@@ -1,14 +1,12 @@
 //
 //  PaymentView.swift
-//  BengkelIn_SE
+//  MbengkelIn
 //
-//  Ported from MbengkelIn (Eugene's wallet feature). Wallet dashboard: balance,
-//  Midtrans top-up, withdrawals, bank details, history. Replaces the placeholder.
+//  Created by Amadeus Eugine Dirgantara on 29/05/26.
 //
 
 import SwiftUI
 
-// Module-wide Rupiah formatter for Int amounts used across the wallet UI.
 extension Int {
     var rupiah: String {
         let formatter = NumberFormatter()
@@ -46,14 +44,6 @@ struct PaymentView: View {
             .task { await viewModel.start() }
             .onDisappear { viewModel.stop() }
             .refreshable { await viewModel.refresh() }
-            .overlay {
-                if viewModel.isLoading {
-                    ProgressView("Memproses...")
-                        .padding(20)
-                        .background(.ultraThinMaterial)
-                        .cornerRadius(12)
-                }
-            }
             .sheet(item: $viewModel.paymentTarget) { target in
                 MidtransPaymentSheet(url: target.url) {
                     Task { await viewModel.paymentFlowFinished() }
@@ -65,6 +55,7 @@ struct PaymentView: View {
             .sheet(isPresented: $showWithdrawSheet) {
                 WithdrawView(viewModel: viewModel)
             }
+            .loadingOverlay(phase: viewModel.isLoading ? .loading(message: "Memproses...") : .idle)
             .alert("Terjadi Kesalahan", isPresented: Binding(
                 get: { viewModel.errorMessage != nil },
                 set: { if !$0 { viewModel.errorMessage = nil } }
@@ -249,16 +240,22 @@ struct MidtransPaymentSheet: View {
 
     var body: some View {
         NavigationStack {
-            MidtransWebView(url: url) { dismiss() }
-                .ignoresSafeArea(edges: .bottom)
-                .navigationTitle("Pembayaran")
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbar {
-                    ToolbarItem(placement: .topBarLeading) {
-                        Button("Tutup") { dismiss() }
-                    }
+            MidtransWebView(url: url) {
+                dismiss()
+            }
+            .ignoresSafeArea(edges: .bottom)
+            .navigationTitle("Pembayaran")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    Button("Tutup") { dismiss() }
                 }
+            }
         }
         .onDisappear { onFinish() }
     }
+}
+
+#Preview {
+    PaymentView()
 }
