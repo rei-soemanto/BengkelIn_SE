@@ -9,6 +9,10 @@ import Supabase
 class CustomerLocationPublishViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
     @Published var isPublishing = false
     @Published var errorMessage: String?
+    // The customer's latest device fix, exposed so the tracking view can judge
+    // real proximity to the bengkel (the order's static location is not the
+    // customer's current position once they move).
+    @Published var currentCoordinate: CLLocationCoordinate2D?
 
     private let locationManager = CLLocationManager()
     private let repository = OrderLocationRepository()
@@ -59,6 +63,9 @@ class CustomerLocationPublishViewModel: NSObject, ObservableObject, CLLocationMa
 
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         guard isPublishing, let location = locations.last, let requestId = serviceRequestId else { return }
+        // Update the exposed coordinate on every fix (the DB publish below is
+        // throttled, but proximity should react to the freshest position).
+        self.currentCoordinate = location.coordinate
         if let last = lastPublishedAt, Date().timeIntervalSince(last) < minInterval { return }
         lastPublishedAt = Date()
         Task { await publish(coordinate: location.coordinate, requestId: requestId) }

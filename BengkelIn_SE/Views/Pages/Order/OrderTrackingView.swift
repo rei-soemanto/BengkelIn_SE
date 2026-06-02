@@ -78,6 +78,9 @@ struct OrderTrackingView: View {
         }
         .task { await trackingViewModel.start(serviceRequestId: bid.serviceRequestId) }
         .task { await chatWatch.start() }
+        // Co-located from the start (e.g. the order was placed at the bengkel,
+        // no one moves): evaluate once using the known shop / order coordinates.
+        .onAppear { evaluateProximity() }
         .onChange(of: trackingViewModel.order?.status) { status in
             if status == "accepted" {
                 locationPublisher.start(serviceRequestId: bid.serviceRequestId)
@@ -97,11 +100,12 @@ struct OrderTrackingView: View {
         }
         .onChange(of: trackingViewModel.providerCoordinate?.latitude) { _ in
             fitBothIfNeeded()
-            if isBengkelNear { hasBeenNear = true }
-            if isBengkelNear, !didNotifyNear {
-                didNotifyNear = true
-                trackingViewModel.notifyBengkelNear()
-            }
+            evaluateProximity()
+        }
+        // The customer may be the one who travels to the bengkel, so re-check
+        // proximity whenever the customer's own live location moves too.
+        .onChange(of: locationPublisher.currentCoordinate?.latitude) { _ in
+            evaluateProximity()
         }
         .sheet(item: $activeSheet) { sheet in
             switch sheet {
@@ -166,13 +170,40 @@ struct OrderTrackingView: View {
         region = .fitting(customerCoordinate, bengkel)
     }
 
+    // Marks arrival sticky-true once the two parties are within range, and fires
+    // the "bengkel sudah dekat" notification once. Driven by both the bengkel's
+    // and the customer's location updates.
+    private func evaluateProximity() {
+        guard isBengkelNear else { return }
+        hasBeenNear = true
+        if !didNotifyNear {
+            didNotifyNear = true
+            trackingViewModel.notifyBengkelNear()
+        }
+    }
+
+    // The customer's real position (their live fix), falling back to the order's
+    // static location before the first GPS fix arrives.
+    private var customerPosition: CLLocationCoordinate2D {
+        locationPublisher.currentCoordinate ?? customerCoordinate
+    }
+    // The bengkel's position: its live published location while travelling, else
+    // its fixed shop coordinate (so "customer arrives at a stationary bengkel"
+    // is detected even when no live location is being published).
+    private var bengkelPosition: CLLocationCoordinate2D? { liveBengkelCoordinate }
+
     private var bengkelDistanceMeters: CLLocationDistance? {
-        guard let p = trackingViewModel.providerCoordinate else { return nil }
-        return CLLocation(latitude: customerCoordinate.latitude, longitude: customerCoordinate.longitude)
+        guard let p = bengkelPosition else { return nil }
+        let c = customerPosition
+        return CLLocation(latitude: c.latitude, longitude: c.longitude)
             .distance(from: CLLocation(latitude: p.latitude, longitude: p.longitude))
     }
     private var isBengkelNear: Bool {
-        if let d = bengkelDistanceMeters { return d <= 80 }
+        // 150 m, not a tight 80 m: "at the same location" (e.g. ordering from
+        // within a large campus where the order pin and the bengkel's registered
+        // pin differ by GPS noise + placement) must still count as arrived.
+        // Safe to be generous — settlement still requires dual completion.
+        if let d = bengkelDistanceMeters { return d <= 150 }
         return false
     }
 
