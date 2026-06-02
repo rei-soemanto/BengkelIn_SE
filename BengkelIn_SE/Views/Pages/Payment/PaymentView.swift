@@ -34,10 +34,6 @@ struct PaymentView: View {
             ScrollView {
                 VStack(spacing: 24) {
                     balanceCard
-                    if showTopUp {
-                        topUpSection
-                            .transition(.opacity.combined(with: .move(edge: .top)))
-                    }
                     withdrawSection
                     historySection
                     withdrawalHistorySection
@@ -53,6 +49,9 @@ struct PaymentView: View {
                 MidtransPaymentSheet(url: target.url) {
                     Task { await viewModel.paymentFlowFinished() }
                 }
+            }
+            .sheet(isPresented: $showTopUp) {
+                topUpModal
             }
             .sheet(isPresented: $showBankSheet) {
                 BankDetailsView(viewModel: viewModel)
@@ -82,7 +81,7 @@ struct PaymentView: View {
 
     private var balanceCard: some View {
         Button {
-            withAnimation(.easeInOut(duration: 0.25)) { showTopUp.toggle() }
+            showTopUp = true
         } label: {
             HStack(alignment: .top, spacing: 12) {
                 VStack(alignment: .leading, spacing: 8) {
@@ -113,14 +112,14 @@ struct PaymentView: View {
 
                 Spacer()
 
-                // Tap to reveal / hide the top-up options.
-                Image(systemName: showTopUp ? "minus" : "plus")
+                // Tap to open the top-up modal.
+                Image(systemName: "plus")
                     .font(.title2.weight(.bold))
                     .foregroundColor(Color.primary.opacity(0.9))
                     .frame(width: 44, height: 44)
                     .background(Color(.systemBackground))
                     .clipShape(Circle())
-                    .accessibilityLabel(showTopUp ? "Sembunyikan Top Up" : "Top Up Saldo")
+                    .accessibilityLabel("Top Up Saldo")
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(24)
@@ -130,10 +129,26 @@ struct PaymentView: View {
         .buttonStyle(.plain)
     }
 
+    // Top-up options, presented as a modal sheet from the balance card's + button.
+    private var topUpModal: some View {
+        NavigationStack {
+            ScrollView {
+                topUpSection.padding()
+            }
+            .background(Color(.systemBackground))
+            .navigationTitle("Top Up Saldo")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("Tutup") { showTopUp = false }
+                }
+            }
+        }
+        .presentationDetents([.medium, .large])
+    }
+
     private var topUpSection: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Top Up Saldo").font(.headline)
-
             LazyVGrid(columns: [GridItem(.flexible()), GridItem(.flexible())], spacing: 12) {
                 ForEach(viewModel.presetAmounts, id: \.self) { amount in
                     Button {
@@ -164,6 +179,7 @@ struct PaymentView: View {
                 .foregroundColor(enteredAmount > viewModel.maxTopupAmount ? .red : .secondary)
 
             Button {
+                showTopUp = false
                 Task { await viewModel.startTopup(amount: enteredAmount) }
             } label: {
                 Text("Top Up Sekarang")
