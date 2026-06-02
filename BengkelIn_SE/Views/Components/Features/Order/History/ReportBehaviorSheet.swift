@@ -61,7 +61,7 @@ struct ReportBehaviorSheet: View {
                 }
             }
         }
-        .presentationBackground(.white)
+        .presentationBackground(Color(.systemBackground))
         .presentationDetents([.medium, .large])
     }
 }

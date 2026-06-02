@@ -29,7 +29,7 @@ struct TrackingMapView: View {
                 VStack(spacing: 2) {
                     Image(systemName: item.icon)
                         .font(.system(size: 22, weight: .bold))
-                        .foregroundColor(.white)
+                        .foregroundColor(Color(.systemBackground))
                         .padding(10)
                         .background(item.tint)
                         .clipShape(Circle())

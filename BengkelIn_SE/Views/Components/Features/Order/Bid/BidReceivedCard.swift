@@ -41,7 +41,7 @@ struct BidReceivedCard: View {
             HStack(alignment: .top, spacing: 12) {
                 Image(systemName: "wrench.and.screwdriver.fill")
                     .font(.system(size: 20))
-                    .foregroundColor(.white)
+                    .foregroundColor(Color(.systemBackground))
                     .padding(12)
                     .background(Color.primary.opacity(0.85))
                     .clipShape(Circle())

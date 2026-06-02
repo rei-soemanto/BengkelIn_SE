@@ -10,21 +10,25 @@ import Combine
 import CoreLocation
 import Supabase
 
-// Bengkel-side: drives the route screen shown after placing an offer. Tracks the
-// bengkel's own live GPS (for the map), watches the order status in realtime, and
-// — once the order is On Progress — publishes the live location to the customer
-// at an adaptive cadence (more frequent when closer).
+// Drives the route/work screen, role-aware so tracking matches who's handling the job:
+//  • Dispatched mechanic  → publishes their live device GPS (they travel to the customer).
+//  • Bengkel "Self"       → the handler is the SHOP, so we publish the bengkel's registered
+//                           coordinates (a shop doesn't move; this avoids the phone's GPS —
+//                           which in a simulator can sit on the customer — "teleporting" onto them).
+//  • Provider monitoring  → doesn't publish; reads the assigned mechanic's order_locations so
+//                           the provider can watch the mechanic + customer.
+// The customer always reads order_locations to see whoever is assigned.
 @MainActor
 class BengkelRouteViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
     @Published var order: NearbyOrder?
-    @Published var bengkelCoordinate: CLLocationCoordinate2D?
+    @Published var bengkelCoordinate: CLLocationCoordinate2D?      // the viewer's own device GPS
     @Published var customerLiveCoordinate: CLLocationCoordinate2D?
-    // The viewing user's uid — lets the route screen tell apart the provider (who may need
-    // to assign), the self-assigned provider, and the dispatched mechanic.
+    @Published var assigneeCoordinate: CLLocationCoordinate2D?     // location shown for the handler
     @Published var myUid: String?
 
     private let locationManager = CLLocationManager()
     private let orderRepository = OrderRepository()
+    private let bengkelRepository = BengkelRepository()
     private let storageService = StorageService()
     private let locationRepository = OrderLocationRepository()
     private let authService = AuthService()
@@ -33,21 +37,28 @@ class BengkelRouteViewModel: NSObject, ObservableObject, CLLocationManagerDelega
 
     private var serviceRequestId: String?
     private var customerCoordinate: CLLocationCoordinate2D?
+    private var providerUid: String?
+    private var shopCoordinate: CLLocationCoordinate2D?
     private var lastPublishedAt: Date?
     private var channel: RealtimeChannelV2?
     private var realtimeReaderTasks: [Task<Void, Never>] = []
 
     var status: String { order?.status ?? "pending" }
 
+    // MARK: Role of the viewer relative to this order
+    private var mechanicId: String? { order?.mechanicId }
+    private var amProvider: Bool { myUid != nil && myUid == providerUid }
+    var selfAssigned: Bool { mechanicId != nil && mechanicId == providerUid }   // bengkel handles it itself
+    var amAssignee: Bool { mechanicId != nil && mechanicId == myUid }           // I'm the one handling it
+    private var monitoringMechanic: Bool { amProvider && mechanicId != nil && mechanicId != providerUid }
+    // Label for the handler pin: "Anda" when I'm the handler, "Mekanik" when I'm just watching.
+    var viewerIsAssignee: Bool { amAssignee }
+
     override init() {
         super.init()
         locationManager.delegate = self
         locationManager.desiredAccuracy = kCLLocationAccuracyNearestTenMeters
         locationManager.pausesLocationUpdatesAutomatically = false
-        // Background location updates require the `location` UIBackgroundMode in
-        // the bundle's Info.plist; enabling them without it throws at runtime.
-        // Guard so the app never crashes if that capability isn't built in — the
-        // mechanic still streams live while the app is in the foreground.
         if let backgroundModes = Bundle.main.object(forInfoDictionaryKey: "UIBackgroundModes") as? [String],
            backgroundModes.contains("location") {
             locationManager.allowsBackgroundLocationUpdates = true
@@ -69,6 +80,13 @@ class BengkelRouteViewModel: NSObject, ObservableObject, CLLocationManagerDelega
         self.customerCoordinate = CLLocationCoordinate2D(latitude: order.latitude, longitude: order.longitude)
         self.myUid = try? await authService.currentUID()
 
+        // Resolve the bengkel (provider uid + shop coordinates) so we can tell self-assignment
+        // (shop is the handler) apart from a dispatched mechanic, and know if we're monitoring.
+        if let bengkelId = order.bengkelId, let bengkel = try? await bengkelRepository.fetchById(id: bengkelId) {
+            self.providerUid = bengkel.providerUid
+            self.shopCoordinate = CLLocationCoordinate2D(latitude: bengkel.latitude, longitude: bengkel.longitude)
+        }
+
         let auth = locationManager.authorizationStatus
         if auth == .notDetermined {
             locationManager.requestWhenInUseAuthorization()
@@ -80,20 +98,19 @@ class BengkelRouteViewModel: NSObject, ObservableObject, CLLocationManagerDelega
             self.customerLiveCoordinate = CLLocationCoordinate2D(latitude: loc.latitude, longitude: loc.longitude)
         }
 
+        await reconfigureForRole()
+
         stopChannel()
         let channel = supabase.channel("bengkel-route-\(order.id)")
         self.channel = channel
         let orderStream = channel.postgresChange(
-            AnyAction.self,
-            schema: "public",
-            table: "service_requests",
-            filter: "id=eq.\(order.id)"
+            AnyAction.self, schema: "public", table: "service_requests", filter: "id=eq.\(order.id)"
         )
         let customerLocationStream = channel.postgresChange(
-            AnyAction.self,
-            schema: "public",
-            table: "customer_locations",
-            filter: "service_request_id=eq.\(order.id)"
+            AnyAction.self, schema: "public", table: "customer_locations", filter: "service_request_id=eq.\(order.id)"
+        )
+        let assigneeLocationStream = channel.postgresChange(
+            AnyAction.self, schema: "public", table: "order_locations", filter: "service_request_id=eq.\(order.id)"
         )
         realtimeReaderTasks.append(Task { [weak self] in
             guard let self else { return }
@@ -104,7 +121,7 @@ class BengkelRouteViewModel: NSObject, ObservableObject, CLLocationManagerDelega
                         let previous = self?.order
                         self?.order = updated
                         self?.notifyOnCancellation(previous: previous, updated: updated)
-                        self?.publishCurrentLocationIfPossible()
+                        await self?.reconfigureForRole()
                     }
                 }
             }
@@ -115,7 +132,35 @@ class BengkelRouteViewModel: NSObject, ObservableObject, CLLocationManagerDelega
                     }
                 }
             }
+            Task { [weak self] in
+                for await _ in assigneeLocationStream {
+                    // Only the monitoring provider needs to mirror the published handler location.
+                    await self?.refreshAssigneeFromOrderLocations()
+                }
+            }
         })
+    }
+
+    // Apply the display + publishing behavior for the current role/assignment.
+    private func reconfigureForRole() async {
+        if selfAssigned {
+            // Bengkel handles it: the shop is the handler position (static, never the customer).
+            if let shop = shopCoordinate { assigneeCoordinate = shop }
+            await publishShopLocation()
+        } else if amAssignee {
+            // Dispatched mechanic: my own live GPS is the handler position (published below).
+            if let me = bengkelCoordinate { assigneeCoordinate = me }
+        } else if monitoringMechanic {
+            // Provider watching a mechanic: mirror the mechanic's published location.
+            await refreshAssigneeFromOrderLocations()
+        }
+    }
+
+    private func refreshAssigneeFromOrderLocations() async {
+        guard monitoringMechanic, let id = serviceRequestId else { return }
+        if let loc = try? await locationRepository.fetchLocation(serviceRequestId: id) {
+            self.assigneeCoordinate = CLLocationCoordinate2D(latitude: loc.latitude, longitude: loc.longitude)
+        }
     }
 
     func stop() {
@@ -123,8 +168,6 @@ class BengkelRouteViewModel: NSObject, ObservableObject, CLLocationManagerDelega
         stopChannel()
     }
 
-    // Re-pull the order on demand (e.g. right after the provider assigns a mechanic) so the
-    // route screen's dispatch gate reflects the new mechanic_id without waiting on realtime.
     func refreshOrder() async {
         guard let id = serviceRequestId else { return }
         if let updated = try? await orderRepository.fetchOrder(id: id) {
@@ -132,10 +175,13 @@ class BengkelRouteViewModel: NSObject, ObservableObject, CLLocationManagerDelega
         }
     }
 
+    // Called right after the provider assigns (Self or a mechanic) so the screen reflects the
+    // new role immediately without waiting on realtime.
     func refreshAfterAssignment() async {
         await refreshOrder()
+        await reconfigureForRole()
         let auth = locationManager.authorizationStatus
-        if auth == .authorizedWhenInUse || auth == .authorizedAlways {
+        if amAssignee, !selfAssigned, auth == .authorizedWhenInUse || auth == .authorizedAlways {
             locationManager.stopUpdatingLocation()
             locationManager.startUpdatingLocation()
         }
@@ -188,8 +234,10 @@ class BengkelRouteViewModel: NSObject, ObservableObject, CLLocationManagerDelega
         guard let location = locations.last else { return }
         self.bengkelCoordinate = location.coordinate
 
-        // Only stream the location to the customer once the order is active.
-        guard status == "accepted", let requestId = serviceRequestId else { return }
+        // Only a dispatched mechanic streams their live GPS as the handler position.
+        // (Self uses the shop location; a monitoring provider only reads.)
+        guard amAssignee, !selfAssigned, status == "accepted", let requestId = serviceRequestId else { return }
+        self.assigneeCoordinate = location.coordinate
         let distance = customerCoordinate.map {
             location.distance(from: CLLocation(latitude: $0.latitude, longitude: $0.longitude))
         } ?? .greatestFiniteMagnitude
@@ -209,10 +257,10 @@ class BengkelRouteViewModel: NSObject, ObservableObject, CLLocationManagerDelega
         }
     }
 
-    private func publishCurrentLocationIfPossible() {
-        guard status == "accepted", let requestId = serviceRequestId, let coord = bengkelCoordinate else { return }
-        lastPublishedAt = Date()
-        Task { await publish(coordinate: coord, requestId: requestId) }
+    // Self-assignment: publish the bengkel's registered shop coordinates as the handler location.
+    private func publishShopLocation() async {
+        guard selfAssigned, let coord = shopCoordinate, let requestId = serviceRequestId else { return }
+        await publish(coordinate: coord, requestId: requestId)
     }
 
     private func publish(coordinate: CLLocationCoordinate2D, requestId: String) async {

@@ -84,7 +84,7 @@ struct MechanicDashboardView: View {
         HStack(spacing: 12) {
             Image(systemName: "wrench.and.screwdriver.fill")
                 .font(.title3)
-                .foregroundColor(.white)
+                .foregroundColor(Color(.systemBackground))
                 .padding(10)
                 .background(Color.primary)
                 .clipShape(Circle())

@@ -17,6 +17,15 @@ class BengkelRepository {
             .execute()
             .value
     }
+
+    func fetchById(id: String) async throws -> Bengkel {
+        return try await supabase.from("bengkels")
+            .select()
+            .eq("id", value: id)
+            .single()
+            .execute()
+            .value
+    }
     
     func insertBengkel(_ bengkel: Bengkel) async throws {
         try await supabase.from("bengkels")

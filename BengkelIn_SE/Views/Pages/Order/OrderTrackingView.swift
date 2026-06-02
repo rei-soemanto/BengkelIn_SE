@@ -161,7 +161,7 @@ struct OrderTrackingView: View {
                         }
                     }
                 }
-                .presentationBackground(.white)
+                .presentationBackground(Color(.systemBackground))
                 .presentationDetents([.large])
             }
         }

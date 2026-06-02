@@ -70,7 +70,7 @@ struct BengkelRouteView: View {
                     VStack(spacing: 2) {
                         Image(systemName: item.icon)
                             .font(.system(size: 22, weight: .bold))
-                            .foregroundColor(.white)
+                            .foregroundColor(Color(.systemBackground))
                             .padding(10)
                             .background(item.tint)
                             .clipShape(Circle())
@@ -97,7 +97,7 @@ struct BengkelRouteView: View {
         .task { await viewModel.start(order: order) }
         .task { await chatWatch.start() }
         .onAppear { OrderRouteState.shared.enter(order.id) }
-        .onChange(of: viewModel.bengkelCoordinate?.latitude) { _ in fitBothIfNeeded() }
+        .onChange(of: viewModel.assigneeCoordinate?.latitude) { _ in fitBothIfNeeded() }
         .onChange(of: viewModel.status) { newStatus in
             if newStatus == "cancelled" {
                 dismiss()
@@ -165,7 +165,7 @@ struct BengkelRouteView: View {
                     }
                 }
             }
-            .presentationBackground(.white)
+            .presentationBackground(Color(.systemBackground))
             .presentationDetents([.large])
         }
         .sheet(isPresented: $showAssignSheet) {
@@ -186,11 +186,11 @@ struct BengkelRouteView: View {
             icon: "person.fill",
             tint: .blue
         )]
-        if let coord = viewModel.bengkelCoordinate {
+        if let coord = viewModel.assigneeCoordinate {
             list.append(TrackingPin(
                 id: "bengkel",
                 coordinate: coord,
-                label: "Anda",
+                label: viewModel.viewerIsAssignee ? "Anda" : "Mekanik",
                 icon: "car.fill",
                 tint: .primary
             ))
@@ -199,7 +199,7 @@ struct BengkelRouteView: View {
     }
 
     private func fitBothIfNeeded() {
-        guard !didFitBoth, let me = viewModel.bengkelCoordinate else { return }
+        guard !didFitBoth, let me = viewModel.assigneeCoordinate else { return }
         didFitBoth = true
         region = .fitting(customerCoordinate, me)
     }
@@ -209,7 +209,7 @@ struct BengkelRouteView: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
                 Image(systemName: "wrench.and.screwdriver.fill")
-                    .font(.title3).foregroundColor(.white)
+                    .font(.title3).foregroundColor(Color(.systemBackground))
                     .padding(10).background(Color.primary).clipShape(Circle())
                 VStack(alignment: .leading, spacing: 4) {
                     Text(order.serviceType ?? order.description ?? "Servis").font(.headline.bold())

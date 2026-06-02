@@ -100,7 +100,7 @@ struct RegistrationView: View {
             if authViewModel.isLoading {
                 ProgressView()
                     .padding()
-                    .background(Color.white)
+                    .background(Color(.systemBackground))
                     .cornerRadius(10)
                     .shadow(radius: 10)
             }

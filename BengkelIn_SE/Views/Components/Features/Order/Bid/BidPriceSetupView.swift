@@ -59,7 +59,7 @@ struct BidPriceSetupView: View {
             HStack {
                 Image(systemName: serviceType.iconName)
                     .font(.title2)
-                    .foregroundColor(.white)
+                    .foregroundColor(Color(.systemBackground))
                     .padding(12)
                     .background(Color.primary)
                     .clipShape(Circle())

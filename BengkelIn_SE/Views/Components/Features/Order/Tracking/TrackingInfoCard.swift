@@ -20,7 +20,7 @@ struct TrackingInfoCard: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack {
                 Image(systemName: "wrench.and.screwdriver.fill")
-                    .font(.title2).foregroundColor(.white)
+                    .font(.title2).foregroundColor(Color(.systemBackground))
                     .padding(12).background(Color.primary).clipShape(Circle())
                 VStack(alignment: .leading, spacing: 4) {
                     Text(bid.bengkel?.name ?? "Bengkel").font(.headline.bold())
