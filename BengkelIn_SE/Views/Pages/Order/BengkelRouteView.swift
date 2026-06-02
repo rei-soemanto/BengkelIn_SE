@@ -104,6 +104,8 @@ struct BengkelRouteView: View {
         .task { await chatWatch.start() }
         .onAppear { OrderRouteState.shared.enter(order.id) }
         .onChange(of: viewModel.assigneeCoordinate?.latitude) { _ in fitBothIfNeeded() }
+        // A new handler was assigned — allow the map to re-fit to the new marker.
+        .onChange(of: viewModel.order?.mechanicId) { _ in didFitBoth = false }
         .onChange(of: viewModel.status) { newStatus in
             if newStatus == "cancelled" {
                 dismiss()

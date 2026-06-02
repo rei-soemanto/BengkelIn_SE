@@ -35,10 +35,14 @@ struct OrderTrackingView: View {
         self.bid = bid
         self.customerCoordinate = customerCoordinate
         self.popToRoot = popToRoot
-        // Default zoom matches the bengkel's route map: start centered on the
-        // customer at the shared default span, then fit both once the bengkel's
-        // live location arrives.
-        _region = State(initialValue: .fitting(customerCoordinate, nil))
+        // Fit both the customer and the bengkel from the start, using the bengkel's
+        // registered location until a live position arrives — so the bengkel marker is
+        // on-screen the moment the order is active.
+        let initialBengkel: CLLocationCoordinate2D? = {
+            guard let lat = bid.bengkel?.latitude, let lon = bid.bengkel?.longitude else { return nil }
+            return CLLocationCoordinate2D(latitude: lat, longitude: lon)
+        }()
+        _region = State(initialValue: .fitting(customerCoordinate, initialBengkel))
         _chatWatch = StateObject(wrappedValue: ChatWatchViewModel(
             serviceRequestId: bid.serviceRequestId,
             counterpartName: bid.bengkel?.name ?? "Bengkel"
@@ -113,6 +117,9 @@ struct OrderTrackingView: View {
         // Re-check when the bengkel assigns a handler: a self-assigned, co-located
         // order becomes "arrived" the moment the assignment lands.
         .onChange(of: trackingViewModel.order?.mechanicId) { _ in
+            // A new handler was assigned — re-fit so the new marker is on-screen.
+            didFitBoth = false
+            fitBothIfNeeded()
             evaluateProximity()
         }
         .sheet(item: $activeSheet) { sheet in
@@ -173,8 +180,10 @@ struct OrderTrackingView: View {
         }
     }
 
+    // Fit to whatever bengkel position is shown (live, else the registered shop), so the
+    // map zooms to include both markers — not only after a live publish arrives.
     private func fitBothIfNeeded() {
-        guard !didFitBoth, let bengkel = trackingViewModel.providerCoordinate else { return }
+        guard !didFitBoth, let bengkel = liveBengkelCoordinate else { return }
         didFitBoth = true
         region = .fitting(customerPosition, bengkel)
     }
