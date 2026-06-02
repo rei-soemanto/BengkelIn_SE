@@ -1,6 +1,6 @@
 //
 //  BengkelServiceFormView.swift
-//  BengkelIn
+//  MbengkelIn
 //
 //  Created by Rei Soemanto on 26/04/26.
 //
@@ -14,7 +14,7 @@ struct BengkelServiceFormView: View {
     
     @Environment(\.dismiss) var dismiss
     
-    @State private var serviceType: ServiceType = .flatTire
+    @State private var serviceType: ServiceType = .akiKering
     @State private var isActive: Bool = true
     
     var body: some View {
@@ -28,7 +28,7 @@ struct BengkelServiceFormView: View {
                         Text(serviceToEdit == nil ? "Add New Service" : "Edit Service")
                             .font(.title2)
                             .fontWeight(.bold)
-                        Text("Select a service category you offer.")
+                        Text("Pilih kategori layanan yang Anda tawarkan.")
                             .font(.subheadline)
                             .foregroundColor(.gray)
                     }
@@ -36,7 +36,7 @@ struct BengkelServiceFormView: View {
                     .padding(.vertical, 10)
                     
                     VStack(alignment: .leading) {
-                        Text("Service Category")
+                        Text("Kategori Layanan")
                             .font(.subheadline)
                             .foregroundColor(.gray)
                             .padding(.leading, 4)

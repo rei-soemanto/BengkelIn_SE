@@ -1,13 +1,10 @@
 //
 //  LocationSearchable.swift
-//  BengkelIn_SE
+//  MbengkelIn
 //
 //  Created by Rei Soemanto on 27/05/26.
 //
-//  Shared contract for any ViewModel that drives the map + search address picker.
-//
 
-import Foundation
 import MapKit
 
 @MainActor

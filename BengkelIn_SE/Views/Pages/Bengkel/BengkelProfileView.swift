@@ -1,6 +1,6 @@
 //
 //  BengkelProfileView.swift
-//  BengkelIn
+//  MbengkelIn
 //
 //  Created by Rei Soemanto on 26/04/26.
 //
@@ -62,7 +62,7 @@ struct BengkelProfileView: View {
                                 .font(.title)
                                 .fontWeight(.bold)
                             
-                            Text((bengkel.status ?? "Pending").uppercased())
+                            Text(bengkel.status.uppercased())
                                 .font(.caption)
                                 .fontWeight(.bold)
                                 .padding(.horizontal, 12)
@@ -74,7 +74,7 @@ struct BengkelProfileView: View {
                         .padding(.top, 20)
                         
                         VStack(alignment: .leading, spacing: 16) {
-                            Text("Shop Details")
+                            Text("Detail Bengkel")
                                 .font(.headline)
                             
                             Divider()
@@ -83,7 +83,7 @@ struct BengkelProfileView: View {
                                 Image(systemName: "mappin.and.ellipse")
                                     .foregroundColor(.gray)
                                     .frame(width: 24)
-                                Text(bengkel.address ?? "No address provided")
+                                Text(bengkel.address)
                                     .font(.subheadline)
                             }
                             
@@ -91,7 +91,7 @@ struct BengkelProfileView: View {
                                 Image(systemName: "star.fill")
                                     .foregroundColor(.yellow)
                                     .frame(width: 24)
-                                Text("\(bengkel.averageRating ?? 0.0, specifier: "%.1f") (\(bengkel.totalReviews ?? 0) Reviews)")
+                                Text("\(bengkel.averageRating, specifier: "%.1f") (\(bengkel.totalReviews) Ulasan)")
                                     .font(.subheadline)
                             }
                         }
@@ -101,7 +101,7 @@ struct BengkelProfileView: View {
                         
                         VStack(alignment: .leading, spacing: 16) {
                             HStack {
-                                Text("Offered Services")
+                                Text("Layanan yang Ditawarkan")
                                     .font(.headline)
                                 Spacer()
                                 
@@ -112,13 +112,13 @@ struct BengkelProfileView: View {
                                 }
                             }
                             
-                            if bengkel.offeredServices?.isEmpty ?? true {
-                                Text("You haven't added any services yet.")
+                            if bengkel.offeredServices.isEmpty {
+                                Text("Anda belum menambahkan layanan apa pun.")
                                     .font(.subheadline)
                                     .foregroundColor(.gray)
                                     .padding(.vertical, 8)
                             } else {
-                                 ForEach(bengkel.offeredServices ?? []) { service in
+                                ForEach(bengkel.offeredServices) { service in
                                     HStack(alignment: .top) {
                                         VStack(alignment: .leading, spacing: 4) {
                                             Text(service.serviceType.rawValue)
@@ -127,7 +127,7 @@ struct BengkelProfileView: View {
                                                 .foregroundColor(service.isActive ? .primary : .gray)
                                             
                                             if !service.isActive {
-                                                Text("Inactive")
+                                                Text("Tidak Aktif")
                                                     .font(.caption2)
                                                     .fontWeight(.bold)
                                                     .foregroundColor(.red)
@@ -175,14 +175,10 @@ struct BengkelProfileView: View {
                             NavigationLink(destination: UpdateBengkelView(bengkelViewModel: bengkelViewModel, authViewModel: authViewModel, bengkel: bengkel)) {
                                 ActionRow(icon: "pencil.circle", title: "Edit Bengkel Settings")
                             }
-                            
-                            NavigationLink(destination: ManageVouchersView(authViewModel: authViewModel, bengkelId: bengkel.id ?? "bengkel-001")) {
-                                ActionRow(icon: "ticket.fill", title: "Manage Vouchers")
-                            }
                         }
                         
                         VStack(alignment: .leading, spacing: 16) {
-                            Text("Danger Zone")
+                            Text("Zona Berbahaya")
                                 .font(.headline)
                                 .foregroundColor(.red)
                             
@@ -212,19 +208,22 @@ struct BengkelProfileView: View {
                     .padding()
             }
         }
-        .navigationTitle("Bengkel Profile")
+        .navigationTitle("Profil Bengkel")
         .navigationBarTitleDisplayMode(.inline)
         .task {
             if let mock = previewBengkel {
                 bengkelViewModel.myBengkel = mock
             } else if let uid = authViewModel.currentUser?.id {
-                await bengkelViewModel.fetchMyBengkel(uid: uid)
+                await bengkelViewModel.startWatching(uid: uid)
             }
         }
+        .onDisappear {
+            bengkelViewModel.stopWatching()
+        }
         .alert("Delete Bengkel", isPresented: $showDeleteBengkelAlert) {
-            SecureField("Enter your password", text: $passwordForDeletion)
-            Button("Cancel", role: .cancel) { passwordForDeletion = "" }
-            Button("Delete", role: .destructive) {
+            SecureField("Masukkan kata sandi Anda", text: $passwordForDeletion)
+            Button("Batal", role: .cancel) { passwordForDeletion = "" }
+            Button("Hapus", role: .destructive) {
                 Task {
                     guard let email = authViewModel.currentUser?.email,
                           let bengkelId = bengkelViewModel.myBengkel?.id else { return }
@@ -239,7 +238,7 @@ struct BengkelProfileView: View {
                 }
             }
         } message: {
-            Text("This action cannot be undone. Your account will be downgraded to a standard user.")
+            Text("Tindakan ini tidak dapat dibatalkan. Akun Anda akan diturunkan menjadi pengguna biasa.")
         }
     }
 }

@@ -1,6 +1,6 @@
 //
 //  ProfileViewModel.swift
-//  BengkelIn_SE
+//  MbengkelIn
 //
 //  Created by Rei Soemanto on 24/04/26.
 //
@@ -14,58 +14,63 @@ class ProfileViewModel: ObservableObject {
     @Published var isLoading = false
     @Published var errorMessage: String?
     @Published var successMessage: String?
-
+    
     private let authService = AuthService()
     private let userRepository = UserRepository()
     private let storageService = StorageService()
-
+    
     func updateProfile(name: String, phoneNumber: String) async -> Bool {
         isLoading = true
         errorMessage = nil
         successMessage = nil
-
+        
         guard let session = try? await authService.getCurrentSession() else {
-            self.errorMessage = "User not authenticated."
+            self.errorMessage = "Pengguna belum terautentikasi."
             isLoading = false
             return false
         }
         let uid = session.user.id.uuidString.lowercased()
-
+        
         let payload = ProfileUpdatePayload(name: name, phone_number: phoneNumber)
-
+        
         do {
             try await userRepository.updateProfile(uid: uid, payload: payload)
-            self.successMessage = "Profile updated successfully!"
+            
+            self.successMessage = "Profil berhasil diperbarui!"
             isLoading = false
             return true
+            
         } catch {
             self.errorMessage = error.localizedDescription
             isLoading = false
             return false
         }
     }
-
+    
     func uploadProfileImage(_ data: Data) async -> Bool {
         isLoading = true
         errorMessage = nil
 
-        guard let session = try? await authService.getCurrentSession() else {
-            self.errorMessage = "You must be logged in to upload an image."
-            isLoading = false
-            return false
-        }
-        let uid = session.user.id.uuidString.lowercased()
-
         do {
-            let publicURLString = try await storageService.uploadAvatar(uid: uid, data: data)
+            guard let session = try? await authService.getCurrentSession() else {
+                self.errorMessage = "Anda harus masuk untuk mengunggah gambar."
+                isLoading = false
+                return false
+            }
+            let uid = session.user.id.uuidString.lowercased()
+
+            let compressed = ImageCompressor.compressed(data)
+            let publicURLString = try await storageService.uploadAvatar(uid: uid, data: compressed)
+            
             let payload = ProfileImageUpdatePayload(profile_image_url: publicURLString)
             try await userRepository.updateProfileImageUrl(uid: uid, payload: payload)
-
-            self.successMessage = "Profile picture updated successfully!"
+            
+            self.successMessage = "Foto profil berhasil diperbarui!"
             isLoading = false
             return true
+            
         } catch {
-            self.errorMessage = "Failed to upload image: \(error.localizedDescription)"
+            self.errorMessage = "Gagal mengunggah gambar: \(error.localizedDescription)"
             isLoading = false
             return false
         }

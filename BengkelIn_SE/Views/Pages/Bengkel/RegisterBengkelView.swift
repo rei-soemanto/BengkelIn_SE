@@ -1,6 +1,6 @@
 //
 //  RegisterBengkelView.swift
-//  BengkelIn_SE
+//  MbengkelIn
 //
 //  Created by Rei Soemanto on 25/04/26.
 //
@@ -16,117 +16,148 @@ struct RegisterBengkelView: View {
     @State private var showSuccessAlert = false
 
     var body: some View {
-        ZStack(alignment: .bottom) {
-            // ── Map background with center pin ──────────────────────────────
-            ZStack {
-                OSMMapView(
-                    region: $viewModel.region,
-                    isEditing: viewModel.isEditingLocation,
-                    onRegionChange: { coord in
-                        viewModel.updateLocationFromMap(coordinate: coord)
+        ZStack(alignment: .topLeading) {
+            VStack(spacing: 0) {
+                // Map
+                ZStack {
+                    OrderMapView(
+                        region: $viewModel.region,
+                        isEditing: viewModel.isEditingLocation,
+                        onRegionChange: { coordinate in
+                            viewModel.updateLocationFromMap(coordinate: coordinate)
+                        }
+                    )
+
+                    VStack(spacing: 0) {
+                        Image(systemName: "mappin")
+                            .font(.system(size: 40, weight: .bold))
+                            .foregroundColor(.primary)
+
+                        Circle()
+                            .fill(Color.primary.opacity(0.3))
+                            .frame(width: 12, height: 12)
+                            .scaleEffect(x: 2, y: 1)
+                            .padding(.top, -2)
                     }
-                )
+                    .offset(y: -19)
+                    .allowsHitTesting(false)
+                }
                 .ignoresSafeArea(edges: .top)
 
-                // Static center pin
-                Image(systemName: "mappin")
-                    .font(.system(size: 36, weight: .bold))
-                    .foregroundColor(.red)
-                    .shadow(radius: 4)
-                    .offset(y: -18)
-                    .allowsHitTesting(false)
-            }
+                // Controls
+                VStack(spacing: 0) {
+                    LocationInputCard(
+                        address: $viewModel.locationAddress,
+                        isFocused: $viewModel.isEditingLocation,
+                        isFetchingLocation: viewModel.isFetchingLocation,
+                        onCurrentLocationTapped: viewModel.useCurrentLocation
+                    )
 
-            // ── Bottom sheet: name + LocationInputCard + submit ─────────────
-            VStack(spacing: 12) {
-                Capsule()
-                    .fill(Color.secondary.opacity(0.3))
-                    .frame(width: 40, height: 4)
-                    .padding(.top, 8)
+                    VStack(alignment: .leading, spacing: 16) {
+                        HStack {
+                            Image(systemName: "building.2")
+                                .foregroundColor(.primary)
+                                .font(.title2)
 
-                Text("Partner With Us")
-                    .font(.title3.bold())
+                            TextField("Nama Bengkel", text: $bengkelName)
+                                .font(.body)
+                                .foregroundColor(.primary)
+                        }
+                        .padding()
+                        .background(Color(.systemGray6))
+                        .cornerRadius(12)
+                        .padding(.horizontal)
 
-                CustomInputField(
-                    iconName: "building.2",
-                    placeholder: "Bengkel Name",
-                    text: $bengkelName
-                )
+                        if let errorMessage = viewModel.errorMessage {
+                            Text(errorMessage)
+                                .foregroundColor(.red)
+                                .font(.footnote)
+                                .multilineTextAlignment(.center)
+                                .padding(.horizontal)
+                        }
 
-                LocationInputCard(
-                    address: $viewModel.locationAddress,
-                    isFocused: $viewModel.isEditingLocation,
-                    isFetchingLocation: viewModel.isFetchingLocation,
-                    onCurrentLocationTapped: { viewModel.useCurrentLocation() }
-                )
+                        HStack(alignment: .top, spacing: 12) {
+                            Image(systemName: "info.circle")
+                                .foregroundColor(.blue)
+                            Text("Pengajuan Anda akan ditinjau secara manual oleh tim kami. Setelah peran Anda diperbarui menjadi Penyedia, Anda akan mendapatkan akses ke Dasbor Bengkel.")
+                                .font(.caption)
+                                .foregroundColor(.gray)
+                        }
+                        .padding()
+                        .background(Color.blue.opacity(0.1))
+                        .cornerRadius(12)
+                        .padding(.horizontal)
 
-                if let errorMessage = viewModel.errorMessage {
-                    Text(errorMessage)
-                        .foregroundColor(.red)
-                        .font(.footnote)
-                        .multilineTextAlignment(.center)
-                }
-
-                Button {
-                    Task {
-                        let success = await viewModel.registerBengkel(name: bengkelName)
-                        if success { showSuccessAlert = true }
+                        Button {
+                            Task {
+                                let success = await viewModel.registerBengkel(name: bengkelName, address: viewModel.locationAddress)
+                                if success {
+                                    showSuccessAlert = true
+                                }
+                            }
+                        } label: {
+                            HStack {
+                                if viewModel.isLoading {
+                                    ProgressView()
+                                        .progressViewStyle(CircularProgressViewStyle(tint: Color(.systemBackground)))
+                                }
+                                Text("Kirim untuk Persetujuan")
+                                    .font(.headline)
+                            }
+                            .foregroundColor(Color(.systemBackground))
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 55)
+                            .background(Color.primary.opacity(bengkelName.isEmpty || viewModel.locationAddress.isEmpty ? 0.4 : 0.9))
+                            .cornerRadius(12)
+                        }
+                        .disabled(bengkelName.isEmpty || viewModel.locationAddress.isEmpty || viewModel.isLoading)
+                        .padding(.horizontal)
+                        .padding(.bottom, 20)
                     }
-                } label: {
-                    Text("Submit for Approval")
-                        .font(.headline)
-                        .foregroundColor(Color(.systemBackground))
-                        .frame(maxWidth: .infinity)
-                        .frame(height: 52)
-                        .background(Color.primary.opacity(canSubmit ? 0.9 : 0.4))
-                        .cornerRadius(16)
+                    .padding(.top, 16)
                 }
-                .disabled(!canSubmit || viewModel.isLoading)
+                .background(Color(.systemBackground))
             }
-            .padding(.horizontal)
-            .padding(.bottom, 16)
-            .background(
-                RoundedRectangle(cornerRadius: 20, style: .continuous)
-                    .fill(Color(.systemBackground))
-                    .shadow(color: Color.black.opacity(0.08), radius: 10, x: 0, y: -2)
-                    .ignoresSafeArea(edges: .bottom)
-            )
 
-            // ── Search overlay (covers everything while active) ─────────────
+            // Back button (sibling, within safe area)
+            Button(action: {
+                dismiss()
+            }) {
+                Image(systemName: "chevron.left")
+                    .font(.title2)
+                    .foregroundColor(.primary)
+                    .padding()
+                    .background(Color(.systemBackground))
+                    .clipShape(Circle())
+                    .shadow(color: .black.opacity(0.1), radius: 5, x: 0, y: 2)
+            }
+            .padding(.top, 8)
+            .padding(.leading, 20)
+
+            // Search overlay
             if viewModel.isEditingLocation {
                 LocationSearchView(viewModel: viewModel)
                     .transition(.move(edge: .bottom))
-            }
-
-            if viewModel.isLoading {
-                Color.black.opacity(0.25).ignoresSafeArea()
-                ProgressView("Submitting…")
-                    .padding()
-                    .background(Color(.systemBackground))
-                    .cornerRadius(10)
-                    .shadow(radius: 10)
+                    .zIndex(2)
             }
         }
-        .navigationTitle("Register Bengkel")
-        .navigationBarTitleDisplayMode(.inline)
+        .navigationBarHidden(true)
+        .ignoresSafeArea(.keyboard, edges: .bottom)
+        .animation(.spring(response: 0.4, dampingFraction: 0.8), value: viewModel.isEditingLocation)
         .alert("Registration Submitted!", isPresented: $showSuccessAlert) {
             Button("OK") { dismiss() }
         } message: {
             Text(viewModel.successMessage ?? "Your application is pending review.")
         }
     }
-
-    private var canSubmit: Bool {
-        !bengkelName.isEmpty && !viewModel.locationAddress.isEmpty
-    }
 }
 
-#Preview("Light Mode") {
+#Preview ("Light Mode") {
     RegisterBengkelView()
         .preferredColorScheme(.light)
 }
 
-#Preview("Dark Mode") {
+#Preview ("Dark Mode") {
     RegisterBengkelView()
         .preferredColorScheme(.dark)
 }

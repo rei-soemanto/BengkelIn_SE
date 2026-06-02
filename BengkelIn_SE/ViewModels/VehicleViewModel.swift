@@ -1,6 +1,6 @@
 //
 //  VehicleViewModel.swift
-//  BengkelIn_SE
+//  MbengkelIn
 //
 //  Created by Rei Soemanto on 24/04/26.
 //
@@ -15,32 +15,32 @@ class VehicleViewModel: ObservableObject {
     @Published var isLoading = false
     @Published var errorMessage: String?
     @Published var successMessage: String?
-
+    
     private let authService = AuthService()
     private let vehicleRepository = VehicleRepository()
-
+    
     func fetchVehicles() async {
         guard let session = try? await authService.getCurrentSession() else { return }
         let uid = session.user.id.uuidString.lowercased()
-
+        
         do {
-            let fetched = try await vehicleRepository.fetchVehicles(customerId: uid)
-            self.userVehicles = fetched
+            let fetchedVehicles = try await vehicleRepository.fetchVehicles(customerId: uid)
+            self.userVehicles = fetchedVehicles
         } catch {
-            print("Failed to fetch vehicles: \(error)")
+            print("Gagal memuat kendaraan: \(error)")
         }
     }
-
+    
     func addVehicle(manufacturer: String, model: String, year: Int, licensePlate: String, color: String) async -> Bool {
         isLoading = true
         errorMessage = nil
-
+        
         guard let session = try? await authService.getCurrentSession() else {
             isLoading = false
             return false
         }
         let uid = session.user.id.uuidString.lowercased()
-
+        
         let newVehicle = Vehicle(
             id: nil,
             customerId: uid,
@@ -51,9 +51,10 @@ class VehicleViewModel: ObservableObject {
             color: color,
             createdAt: nil
         )
-
+        
         do {
             try await vehicleRepository.insertVehicle(newVehicle)
+            
             await fetchVehicles()
             isLoading = false
             return true
@@ -63,11 +64,11 @@ class VehicleViewModel: ObservableObject {
             return false
         }
     }
-
+    
     func updateVehicle(vehicleId: String, manufacturer: String, model: String, year: Int, licensePlate: String, color: String) async -> Bool {
         isLoading = true
         errorMessage = nil
-
+        
         let payload = VehicleUpdatePayload(
             manufacturer: manufacturer,
             model: model,
@@ -75,11 +76,12 @@ class VehicleViewModel: ObservableObject {
             license_plate: licensePlate,
             color: color
         )
-
+            
         do {
             try await vehicleRepository.updateVehicle(vehicleId: vehicleId, payload: payload)
+                
             await fetchVehicles()
-            self.successMessage = "Vehicle updated successfully!"
+            self.successMessage = "Kendaraan berhasil diperbarui!"
             isLoading = false
             return true
         } catch {
@@ -88,13 +90,17 @@ class VehicleViewModel: ObservableObject {
             return false
         }
     }
-
-    func deleteVehicle(vehicleId: String) async {
+    
+    @discardableResult
+    func deleteVehicle(vehicleId: String) async -> Bool {
+        errorMessage = nil
         do {
             try await vehicleRepository.deleteVehicle(vehicleId: vehicleId)
             await fetchVehicles()
+            return true
         } catch {
-            print("Failed to delete vehicle: \(error)")
+            self.errorMessage = error.localizedDescription
+            return false
         }
     }
 }

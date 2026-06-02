@@ -1,13 +1,13 @@
 //
 //  AuthDTOs.swift
-//  BengkelIn_SE
+//  MbengkelIn
 //
 //  Created by Rei Soemanto on 27/05/26.
 //
 
 import Foundation
 
-// Used by AuthService for sign-up
+// Used by AuthService for sign-up metadata
 struct SignUpRequest {
     let email: String
     let password: String
@@ -24,10 +24,4 @@ struct ProfileUpdatePayload: Encodable {
 // Used by UserRepository to update profile image URL
 struct ProfileImageUpdatePayload: Encodable {
     let profile_image_url: String
-}
-
-// Decoded response shape for the `get_user_by_email` RPC
-struct UserLookupResponse: Decodable {
-    let user_id: String
-    let user_name: String
 }

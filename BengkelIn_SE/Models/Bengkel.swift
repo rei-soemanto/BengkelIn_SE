@@ -1,6 +1,6 @@
 //
 //  Bengkel.swift
-//  BengkelIn
+//  MbengkelIn
 //
 //  Created by Rei Soemanto on 23/04/26.
 //
@@ -11,23 +11,19 @@ struct Bengkel: Codable, Identifiable {
     var id: String?
     var providerUid: String
     var name: String
-    var address: String?
+    var address: String
     
-    // Geospatial data for the map queries
-    var latitude: Double?
-    var longitude: Double?
+    var latitude: Double
+    var longitude: Double
     
     // Status for manual Admin Verification
-    var status: String? // Defaults to "Pending", manually change to "Verified"
+    var status: String // Defaults to "Pending", manually change to "Verified"
     
     // The embedded services array (Stored as JSONB in Supabase)
-    var offeredServices: [BengkelService]?
+    var offeredServices: [BengkelService]
     
-    // Rating aggregates
-    var averageRating: Double?
-    var totalReviews: Int?
-    
-    var mechanicUids: [String]?
+    var averageRating: Double
+    var totalReviews: Int
     
     var createdAt: Date?
     
@@ -42,7 +38,6 @@ struct Bengkel: Codable, Identifiable {
         case offeredServices = "offered_services"
         case averageRating = "average_rating"
         case totalReviews = "total_reviews"
-        case mechanicUids = "mechanic_uids"
         case createdAt = "created_at"
     }
 }

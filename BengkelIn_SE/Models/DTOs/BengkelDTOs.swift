@@ -1,6 +1,6 @@
 //
 //  BengkelDTOs.swift
-//  BengkelIn_SE
+//  MbengkelIn
 //
 //  Created by Rei Soemanto on 27/05/26.
 //
@@ -15,7 +15,7 @@ struct BengkelUpdatePayload: Encodable {
     let longitude: Double
 }
 
-// Used by BengkelRepository to update the `mechanic_uids` array column
-struct BengkelMechanicsUpdatePayload: Encodable {
-    let mechanic_uids: [String]
+// Used by BengkelRepository for offered_services array updates
+struct BengkelServicesUpdatePayload: Encodable {
+    let offered_services: [BengkelService]
 }

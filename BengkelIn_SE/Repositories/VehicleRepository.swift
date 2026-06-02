@@ -1,6 +1,6 @@
 //
 //  VehicleRepository.swift
-//  BengkelIn_SE
+//  MbengkelIn
 //
 //  Created by Rei Soemanto on 27/05/26.
 //
@@ -16,20 +16,20 @@ class VehicleRepository {
             .execute()
             .value
     }
-
+    
     func insertVehicle(_ vehicle: Vehicle) async throws {
         try await supabase.from("vehicles")
             .insert(vehicle)
             .execute()
     }
-
+    
     func updateVehicle(vehicleId: String, payload: VehicleUpdatePayload) async throws {
         try await supabase.from("vehicles")
             .update(payload)
             .eq("id", value: vehicleId)
             .execute()
     }
-
+    
     func deleteVehicle(vehicleId: String) async throws {
         try await supabase.from("vehicles")
             .delete()

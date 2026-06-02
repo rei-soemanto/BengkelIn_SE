@@ -1,6 +1,6 @@
 //
 //  ProfileView.swift
-//  BengkelIn
+//  MbengkelIn
 //
 //  Created by Rei Soemanto on 23/04/26.
 //
@@ -13,7 +13,6 @@ struct ProfileView: View {
     
     @StateObject private var profileViewModel = ProfileViewModel()
     @StateObject private var vehicleViewModel = VehicleViewModel()
-    @StateObject private var invitationVM = InvitationViewModel()
     
     @State private var showDeleteAlert = false
     @State private var passwordForDeletion = ""
@@ -25,21 +24,18 @@ struct ProfileView: View {
     
     var body: some View {
         NavigationStack {
-            Group {
-                if authViewModel.appMode == .customer {
+            VStack(spacing: 0) {
+                if authViewModel.appMode == .customer || authViewModel.currentUser?.role != "PROVIDER" {
                     customerProfileContent
-                } else if authViewModel.appMode == .mechanic { 
-                    MechanicProfileView(authViewModel: authViewModel)
                 } else {
                     BengkelProfileView(authViewModel: authViewModel)
                 }
             }
-            .navigationTitle(authViewModel.appMode == .customer || !authViewModel.isBengkelProvider ? "Profile" : "Bengkel Profile")
+            .navigationTitle(authViewModel.appMode == .customer || authViewModel.currentUser?.role != "PROVIDER" ? "Profile" : "Profil Bengkel")
             .navigationBarTitleDisplayMode(.inline)
             
             .task {
                 await vehicleViewModel.fetchVehicles()
-                await invitationVM.fetchPendingInvitations()
             }
             
             .alert("Password Reset Sent", isPresented: $showResetPasswordAlert) {
@@ -49,16 +45,16 @@ struct ProfileView: View {
             }
             
             .alert("Delete Account", isPresented: $showDeleteAlert) {
-                SecureField("Enter your password", text: $passwordForDeletion)
-                Button("Cancel", role: .cancel) { passwordForDeletion = "" }
-                Button("Delete", role: .destructive) {
+                SecureField("Masukkan kata sandi Anda", text: $passwordForDeletion)
+                Button("Batal", role: .cancel) { passwordForDeletion = "" }
+                Button("Hapus", role: .destructive) {
                     Task {
                         await authViewModel.deleteAccount(password: passwordForDeletion)
                         passwordForDeletion = ""
                     }
                 }
             } message: {
-                Text("This action cannot be undone. Please enter your password to confirm.")
+                Text("Tindakan ini tidak dapat dibatalkan. Masukkan kata sandi Anda untuk konfirmasi.")
             }
         }
         .preferredColorScheme(isDarkMode ? .dark : .light)
@@ -163,39 +159,8 @@ struct ProfileView: View {
                     .padding(.top, 20)
                     
                     VStack(alignment: .leading, spacing: 16) {
-                        Text("My Career")
-                            .font(.headline)
-                        
-                        NavigationLink(destination: InvitationsView(authViewModel: authViewModel)) {
-                            HStack {
-                                Image(systemName: "envelope.fill")
-                                    .frame(width: 30)
-                                    .foregroundColor(Color.primary)
-                                Text("Job Invitations")
-                                    .foregroundColor(Color.primary)
-                                Spacer()
-                                if !invitationVM.pendingInvitations.isEmpty {
-                                    Text("\(invitationVM.pendingInvitations.count)")
-                                        .font(.caption)
-                                        .fontWeight(.bold)
-                                        .foregroundColor(.white)
-                                        .padding(.horizontal, 8)
-                                        .padding(.vertical, 4)
-                                        .background(Color.red)
-                                        .clipShape(Capsule())
-                                }
-                                Image(systemName: "chevron.right")
-                                    .foregroundColor(.gray)
-                            }
-                            .padding()
-                            .background(Color(.systemGray6))
-                            .cornerRadius(12)
-                        }
-                    }
-                    
-                    VStack(alignment: .leading, spacing: 16) {
                         HStack {
-                            Text("My Vehicles").font(.headline)
+                            Text("Kendaraan Saya").font(.headline)
                             Spacer()
                             NavigationLink(destination: VehicleFormView(vehicleViewModel: vehicleViewModel)) {
                                 Image(systemName: "plus.circle.fill").font(.title2).foregroundColor(Color.primary.opacity(0.9))
@@ -203,7 +168,7 @@ struct ProfileView: View {
                         }
                         
                         if vehicleViewModel.userVehicles.isEmpty {
-                            Text("No vehicles added yet.")
+                            Text("Belum ada kendaraan ditambahkan.")
                                 .foregroundColor(.gray)
                                 .font(.subheadline)
                                 .padding(.vertical, 10)
@@ -222,15 +187,7 @@ struct ProfileView: View {
                             ActionRow(icon: "person.text.rectangle", title: "Profile Settings")
                         }
                         
-                        if authViewModel.isBengkelProvider {
-                            Button(action: {
-                                withAnimation {
-                                    authViewModel.appMode = .bengkel
-                                }
-                            }) {
-                                ActionRow(icon: "briefcase.fill", title: "Manage My Bengkel")
-                            }
-                        } else if authViewModel.currentUser?.role != "PROVIDER" {
+                        if authViewModel.currentUser?.role != "PROVIDER" {
                             NavigationLink(destination: RegisterBengkelView()) {
                                 ActionRow(icon: "wrench.and.screwdriver", title: "Register as Bengkel")
                             }
@@ -238,7 +195,7 @@ struct ProfileView: View {
                     }
                     
                     VStack(alignment: .leading, spacing: 16) {
-                        Text("App Settings")
+                        Text("Pengaturan Aplikasi")
                             .font(.headline)
                         
                         HStack {
@@ -256,7 +213,7 @@ struct ProfileView: View {
                     .padding(.top, 10)
                     
                     VStack(alignment: .leading, spacing: 16) {
-                        Text("Danger Zone")
+                        Text("Zona Berbahaya")
                             .font(.headline)
                             .foregroundColor(.red)
                         
