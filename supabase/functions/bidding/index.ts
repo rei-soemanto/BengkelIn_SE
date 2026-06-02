@@ -2,9 +2,9 @@
 // Actions: ordersForMechanic (nearby open orders), mechanicsForCustomer
 // (nearby verified bengkels), placeBid (upsert a revisable offer).
 // Open-order status is lowercase 'pending'; the customer's offered price is read
-// from service_requests.estimated_price. accept_bid lives in SQL, not here.
+// from service_requests.price (bigint). accept_bid lives in SQL, not here.
 //
-// DEPLOYED 2026-06-02 to project ipxwpxozreksmuiztwcy (version 2, verify_jwt on).
+// DEPLOYED 2026-06-02 to project ipxwpxozreksmuiztwcy (version 4, verify_jwt on).
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
@@ -70,7 +70,7 @@ Deno.serve(async (req: Request) => {
     case "placeBid": {
       const { data: order, error: orderError } = await supabase
         .from("service_requests")
-        .select("id, status, bengkel_id, customer_id, estimated_price")
+        .select("id, status, bengkel_id, customer_id, price")
         .eq("id", payload.serviceRequestId)
         .single();
       if (orderError || !order) return json({ error: "Order not found" }, 404);
@@ -96,7 +96,7 @@ Deno.serve(async (req: Request) => {
       if (!Number.isFinite(price) || price <= 0) {
         return json({ error: "Harga tidak valid" }, 400);
       }
-      if (order.estimated_price != null && price < Number(order.estimated_price)) {
+      if (order.price != null && price < Number(order.price)) {
         return json({ error: "Tawaran di bawah harga pelanggan" }, 400);
       }
 

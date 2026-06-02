@@ -56,13 +56,6 @@ struct ContentView: View {
                 Task { await authViewModel.loadInitialSession() }
             }
         }
-        .task(id: authViewModel.userSession?.id) {
-            if let uid = authViewModel.userSession?.id.uuidString.lowercased() {
-                WatchSessionManager.shared.startObserving(customerId: uid)
-            } else {
-                WatchSessionManager.shared.stop()
-            }
-        }
     }
 
     private var mainTabView: some View {
