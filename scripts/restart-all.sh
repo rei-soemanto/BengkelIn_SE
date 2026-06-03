@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 #
 # restart-all.sh
-# Shut down all simulators, boot 3 devices, build BengkelIn_SE once,
-# then install + (re)launch the app on all three — useful for testing
+# Shut down all simulators, boot 4 devices, build BengkelIn_SE once,
+# then install + (re)launch the app on all four — useful for testing
 # multi-user flows (customer ↔ bengkel bidding) side by side.
 #
 # NOTE: BengkelIn_SE deploys to iOS 26.2, so devices are resolved on the
@@ -20,7 +20,7 @@ PROJECT="$PROJECT_DIR/BengkelIn_SE.xcodeproj"
 DERIVED="$PROJECT_DIR/build"
 
 # Device names to boot — resolved on the newest iOS runtime (edit freely).
-DEVICES=("iPhone 17 Pro" "iPhone 17e" "iPhone Air")
+DEVICES=("iPhone 17 Pro" "iPhone 17e" "iPhone Air" "iPhone 17 Pro Max")
 # -------------------------------------------------------------------------
 
 echo "==> Shutting down all simulators"

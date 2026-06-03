@@ -17,7 +17,6 @@ struct OrderReviewSheet: View {
     @Environment(\.dismiss) private var dismiss
     @StateObject private var viewModel = OrderRatingViewModel()
     @State private var rating: Int = 0
-    @State private var reviewText: String = ""
 
     var body: some View {
         NavigationStack {
@@ -103,18 +102,11 @@ struct OrderReviewSheet: View {
 
             InteractiveStarRating(rating: $rating)
 
-            TextField("Tulis ulasan (opsional)", text: $reviewText, axis: .vertical)
-                .lineLimit(3...6)
-                .padding()
-                .background(Color(.systemGray6))
-                .cornerRadius(12)
-
             Button {
                 Task {
                     let ok = await viewModel.submit(
                         requestId: requestId,
-                        rating: rating,
-                        review: reviewText
+                        rating: rating
                     )
                     if ok {
                         onSubmitted()

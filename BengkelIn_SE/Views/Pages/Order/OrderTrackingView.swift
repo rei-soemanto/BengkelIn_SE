@@ -29,7 +29,6 @@ struct OrderTrackingView: View {
         var id: Int { self == .review ? 0 : 1 }
     }
     @State private var didNotifyNear = false
-    @State private var hasBeenNear = false
 
     init(bid: Bid, customerCoordinate: CLLocationCoordinate2D, popToRoot: @escaping () -> Void = {}) {
         self.bid = bid
@@ -188,16 +187,12 @@ struct OrderTrackingView: View {
         region = .fitting(customerPosition, bengkel)
     }
 
-    // Marks arrival sticky-true once the two parties are within range, and fires
-    // the "bengkel sudah dekat" notification once. Driven by both the bengkel's
-    // and the customer's location updates.
+    // Fires the "bengkel sudah dekat" notification once when the handler first comes within
+    // range. Completion eligibility itself uses live `isBengkelNear`, not a sticky flag.
     private func evaluateProximity() {
-        guard isBengkelNear else { return }
-        hasBeenNear = true
-        if !didNotifyNear {
-            didNotifyNear = true
-            trackingViewModel.notifyBengkelNear()
-        }
+        guard isBengkelNear, !didNotifyNear else { return }
+        didNotifyNear = true
+        trackingViewModel.notifyBengkelNear()
     }
 
     // The customer's real position (their live fix), falling back to the order's
@@ -231,9 +226,10 @@ struct OrderTrackingView: View {
         return false
     }
 
-    // The customer may only complete once a handler is assigned AND has arrived.
-    // Before assignment the status stays "Menunggu bengkel tiba di lokasi".
-    private var canCustomerComplete: Bool { isAssigned && hasBeenNear }
+    // The customer may only complete while a handler is assigned AND CURRENTLY within range
+    // (not merely "was near once") — matching the bengkel side. If the handler moves back out
+    // of range the button reverts to "Menunggu bengkel tiba di lokasi".
+    private var canCustomerComplete: Bool { isAssigned && isBengkelNear }
 
     // The handler's marker: the live published location of whoever the bengkel
     // assigned (the bengkel itself when self-handling, or the dispatched mechanic).

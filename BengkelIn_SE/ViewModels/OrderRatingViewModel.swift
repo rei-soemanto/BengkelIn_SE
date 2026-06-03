@@ -16,20 +16,15 @@ class OrderRatingViewModel: ObservableObject {
 
     private let orderRepository = OrderRepository()
 
-    func submit(requestId: String, rating: Int, review: String) async -> Bool {
+    func submit(requestId: String, rating: Int) async -> Bool {
         guard (1...5).contains(rating) else {
             errorMessage = "Pilih jumlah bintang terlebih dahulu."
             return false
         }
         isSubmitting = true
         errorMessage = nil
-        let trimmed = review.trimmingCharacters(in: .whitespacesAndNewlines)
         do {
-            try await orderRepository.submitRating(
-                requestId: requestId,
-                rating: rating,
-                review: trimmed.isEmpty ? nil : trimmed
-            )
+            try await orderRepository.submitRating(requestId: requestId, rating: rating)
             isSubmitting = false
             return true
         } catch {

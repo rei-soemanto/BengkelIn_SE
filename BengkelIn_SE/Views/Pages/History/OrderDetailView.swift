@@ -17,11 +17,9 @@ struct OrderDetailView: View {
     @StateObject private var locationPublisher = LocationPublishViewModel()
     @State private var region: MKCoordinateRegion
 
-    // Local copies so the view reflects a freshly-submitted rating without a refetch.
+    // Local copy so the view reflects a freshly-submitted rating without a refetch.
     @State private var localRating: Int?
-    @State private var localReview: String?
     @State private var selectedRating: Int = 0
-    @State private var reviewText: String = ""
 
     init(order: NearbyOrder, isCustomer: Bool = false) {
         self.order = order
@@ -31,7 +29,6 @@ struct OrderDetailView: View {
             span: MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)
         ))
         _localRating = State(initialValue: order.rating)
-        _localReview = State(initialValue: order.review)
     }
 
     private var hasRating: Bool { (localRating ?? 0) > 0 }
@@ -139,11 +136,6 @@ struct OrderDetailView: View {
                             .frame(height: 16)
                     }
                     .font(.subheadline)
-                    if let review = localReview, !review.isEmpty {
-                        Text(review)
-                            .font(.subheadline)
-                            .foregroundColor(.primary)
-                    }
                 }
             }
         }
@@ -167,22 +159,14 @@ struct OrderDetailView: View {
                 Spacer()
             }
 
-            TextField("Tulis ulasan (opsional)", text: $reviewText, axis: .vertical)
-                .lineLimit(3...6)
-                .padding()
-                .background(Color(.systemGray6))
-                .cornerRadius(12)
-
             Button {
                 Task {
                     let ok = await ratingViewModel.submit(
                         requestId: order.id,
-                        rating: selectedRating,
-                        review: reviewText
+                        rating: selectedRating
                     )
                     if ok {
                         localRating = selectedRating
-                        localReview = reviewText.trimmingCharacters(in: .whitespacesAndNewlines)
                     }
                 }
             } label: {

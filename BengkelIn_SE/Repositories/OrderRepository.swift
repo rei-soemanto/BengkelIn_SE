@@ -90,10 +90,10 @@ class OrderRepository {
         return bids.first
     }
 
-    func submitRating(requestId: String, rating: Int, review: String?) async throws {
+    func submitRating(requestId: String, rating: Int) async throws {
         try await supabase.rpc(
             "rate_order",
-            params: RateOrderParams(p_request_id: requestId, p_rating: rating, p_review: review)
+            params: RateOrderParams(p_request_id: requestId, p_rating: rating)
         )
         .execute()
     }

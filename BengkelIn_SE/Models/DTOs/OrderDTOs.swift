@@ -49,13 +49,12 @@ struct StartSearchPayload: Encodable {
     let price: Int
 }
 
-// Customer rating of a completed order, via the rate_order RPC. The RPC's UPDATE
+// Customer star rating of a completed order, via the rate_order RPC. The RPC's UPDATE
 // of the `rating` column fires the trigger that recomputes the bengkel's
 // average_rating / total_reviews. Enforces customer-owned + Done + not-yet-rated.
 struct RateOrderParams: Encodable {
     let p_request_id: String
     let p_rating: Int
-    let p_review: String?
 }
 
 // Mechanic Bidding DTOs
