@@ -78,7 +78,7 @@ struct BengkelProfileView: View {
                                 HStack(alignment: .top, spacing: 12) {
                                     Image(systemName: "person.fill.badge.plus")
                                         .font(.title2)
-                                        .foregroundColor(.orange)
+                                        .foregroundColor(.primary)
                                     VStack(alignment: .leading, spacing: 4) {
                                         Text("Tambahkan mekanik untuk mulai menerima order")
                                             .font(.subheadline)
@@ -94,7 +94,7 @@ struct BengkelProfileView: View {
                                         .foregroundColor(.secondary)
                                 }
                                 .padding()
-                                .background(Color.orange.opacity(0.12))
+                                .background(Color(.systemGray6))
                                 .cornerRadius(12)
                             }
                             .buttonStyle(.plain)
