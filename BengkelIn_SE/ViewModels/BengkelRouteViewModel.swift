@@ -72,6 +72,7 @@ class BengkelRouteViewModel: NSObject, ObservableObject, CLLocationManagerDelega
     private var lastPublishedAt: Date?
     private var channel: RealtimeChannelV2?
     private var realtimeReaderTasks: [Task<Void, Never>] = []
+    private var reassignObserver: NSObjectProtocol?
 
     var status: String { order?.status ?? "pending" }
 
@@ -99,11 +100,24 @@ class BengkelRouteViewModel: NSObject, ObservableObject, CLLocationManagerDelega
            backgroundModes.contains("location") {
             locationManager.allowsBackgroundLocationUpdates = true
         }
+        // Flip to the "Pesanan Dialihkan" screen the instant the broadcast lands,
+        // rather than waiting for the ~4s reconcile poll. Only if I was the assignee
+        // (the provider who reassigned must never be bumped off the screen).
+        reassignObserver = NotificationCenter.default.addObserver(
+            forName: .mechanicReassignedAway, object: nil, queue: .main
+        ) { [weak self] note in
+            guard let id = note.object as? String else { return }
+            Task { @MainActor in
+                guard let self else { return }
+                if id == self.serviceRequestId, self.wasAssignee { self.reassignedAway = true }
+            }
+        }
     }
 
     deinit {
         realtimeReaderTasks.forEach { $0.cancel() }
         realtimeReaderTasks.removeAll()
+        if let reassignObserver { NotificationCenter.default.removeObserver(reassignObserver) }
         if let channel = channel {
             let client = supabase
             Task { await client.removeChannel(channel) }

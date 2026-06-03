@@ -26,10 +26,24 @@ class MechanicHistoryViewModel: ObservableObject {
     private var channel: RealtimeChannelV2?
     private var mechanicId: String?
     private var realtimeReaderTasks: [Task<Void, Never>] = []
+    private var reassignObserver: NSObjectProtocol?
+
+    init() {
+        // RLS blocks the realtime row update when this mechanic is reassigned away,
+        // so the order would linger in the list. The app-level broadcast watcher
+        // posts this; drop the order the moment we hear it.
+        reassignObserver = NotificationCenter.default.addObserver(
+            forName: .mechanicReassignedAway, object: nil, queue: .main
+        ) { [weak self] note in
+            guard let id = note.object as? String else { return }
+            Task { @MainActor in self?.orders.removeAll { $0.id == id } }
+        }
+    }
 
     deinit {
         realtimeReaderTasks.forEach { $0.cancel() }
         realtimeReaderTasks.removeAll()
+        if let reassignObserver { NotificationCenter.default.removeObserver(reassignObserver) }
         if let channel = channel {
             let client = supabase
             Task { await client.removeChannel(channel) }

@@ -25,6 +25,10 @@ class MechanicDashboardViewModel: ObservableObject {
     private let notificationService = NotificationService()
 
     private var channel: RealtimeChannelV2?
+    // Separate channel for the per-mechanic broadcast topic. postgres_changes can't
+    // tell a reassigned-away mechanic they were replaced (they lose RLS SELECT on the
+    // row the instant it's reassigned), so assign_mechanic broadcasts to this topic.
+    private var broadcastChannel: RealtimeChannelV2?
     private var realtimeReaderTasks: [Task<Void, Never>] = []
     // id -> assignment token (assigned_at). Keyed on the assignment timestamp, not
     // just the id, so a re-assignment (which bumps assigned_at) re-notifies even
@@ -38,10 +42,9 @@ class MechanicDashboardViewModel: ObservableObject {
     deinit {
         realtimeReaderTasks.forEach { $0.cancel() }
         realtimeReaderTasks.removeAll()
-        if let channel = channel {
-            let client = supabase
-            Task { await client.removeChannel(channel) }
-        }
+        let client = supabase
+        if let channel = channel { Task { await client.removeChannel(channel) } }
+        if let broadcastChannel = broadcastChannel { Task { await client.removeChannel(broadcastChannel) } }
     }
 
     func start() async {
@@ -68,6 +71,10 @@ class MechanicDashboardViewModel: ObservableObject {
         if let channel = channel {
             Task { await supabase.removeChannel(channel) }
             self.channel = nil
+        }
+        if let broadcastChannel = broadcastChannel {
+            Task { await supabase.removeChannel(broadcastChannel) }
+            self.broadcastChannel = nil
         }
     }
 
@@ -117,5 +124,42 @@ class MechanicDashboardViewModel: ObservableObject {
             await self?.loadJobs()
             for await _ in stream { await self?.loadJobs() }
         })
+
+        subscribeReassignBroadcast(uid: uid)
     }
+
+    private func subscribeReassignBroadcast(uid: String) {
+        let channel = supabase.channel("mechanic:\(uid)")
+        self.broadcastChannel = channel
+        let stream = channel.broadcastStream(event: "reassigned_away")
+        realtimeReaderTasks.append(Task { [weak self] in
+            await channel.subscribe()
+            for await message in stream { await self?.handleReassignedAway(message) }
+        })
+    }
+
+    // The provider replaced this mechanic on an order. Tell them, drop the stale job
+    // from the active feed, and let other screens (history, route) react.
+    private func handleReassignedAway(_ message: [String: AnyJSON]) async {
+        let payload = message["payload"]?.objectValue ?? message
+        guard let requestId = payload["request_id"]?.stringValue else { return }
+        let serviceType = payload["service_type"]?.stringValue
+        let label = (serviceType?.isEmpty == false) ? serviceType! : "servis"
+
+        notificationService.notifyNewOrder(
+            title: "Order Dialihkan",
+            body: "Order \(label) telah dialihkan ke mekanik lain. Anda tidak lagi menanganinya."
+        )
+        jobs.removeAll { $0.id == requestId }
+        knownAssignments.removeValue(forKey: requestId)
+        if newAssignmentAlert?.id == requestId { newAssignmentAlert = nil }
+        NotificationCenter.default.post(name: .mechanicReassignedAway, object: requestId)
+    }
+}
+
+extension Notification.Name {
+    // Posted (main thread) when the signed-in mechanic is replaced on an order.
+    // object is the affected request id (String). Screens with their own order
+    // lists/state observe this to self-heal, since RLS blocks the realtime row update.
+    static let mechanicReassignedAway = Notification.Name("mechanicReassignedAway")
 }
