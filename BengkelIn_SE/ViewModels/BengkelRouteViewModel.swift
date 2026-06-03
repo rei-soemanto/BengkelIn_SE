@@ -112,12 +112,10 @@ class BengkelRouteViewModel: NSObject, ObservableObject, CLLocationManagerDelega
         self.customerCoordinate = CLLocationCoordinate2D(latitude: order.latitude, longitude: order.longitude)
         self.myUid = try? await authService.currentUID()
 
-        // Resolve the bengkel (provider uid + shop coordinates) so we can tell self-assignment
-        // (shop is the handler) apart from a dispatched mechanic, and know if we're monitoring.
-        if let bengkelId = order.bengkelId, let bengkel = try? await bengkelRepository.fetchById(id: bengkelId) {
-            self.providerUid = bengkel.providerUid
-            self.shopCoordinate = CLLocationCoordinate2D(latitude: bengkel.latitude, longitude: bengkel.longitude)
-        }
+        // Resolve the bengkel (provider uid + shop coords) so we know if we're the provider
+        // monitoring a mechanic. Entering via the won-bid path the order has no bengkel_id yet,
+        // so this also runs whenever the order updates (see the order stream below).
+        await resolveBengkelIfNeeded()
 
         let auth = locationManager.authorizationStatus
         if auth == .notDetermined {
@@ -153,6 +151,7 @@ class BengkelRouteViewModel: NSObject, ObservableObject, CLLocationManagerDelega
                         let previous = self?.order
                         self?.order = updated
                         self?.notifyOnCancellation(previous: previous, updated: updated)
+                        await self?.resolveBengkelIfNeeded()
                         await self?.reconfigureForRole()
                     }
                 }
@@ -171,6 +170,16 @@ class BengkelRouteViewModel: NSObject, ObservableObject, CLLocationManagerDelega
                 }
             }
         })
+    }
+
+    // Resolve provider uid + shop coords from the order's bengkel once it's known. Idempotent:
+    // does nothing once resolved, or while the order still has no bengkel_id (pre-acceptance).
+    private func resolveBengkelIfNeeded() async {
+        guard providerUid == nil,
+              let bengkelId = order?.bengkelId,
+              let bengkel = try? await bengkelRepository.fetchById(id: bengkelId) else { return }
+        self.providerUid = bengkel.providerUid
+        self.shopCoordinate = CLLocationCoordinate2D(latitude: bengkel.latitude, longitude: bengkel.longitude)
     }
 
     // Apply the display + publishing behavior for the current role/assignment.
@@ -214,6 +223,7 @@ class BengkelRouteViewModel: NSObject, ObservableObject, CLLocationManagerDelega
     // new role immediately without waiting on realtime.
     func refreshAfterAssignment() async {
         await refreshOrder()
+        await resolveBengkelIfNeeded()
         await reconfigureForRole()
         let auth = locationManager.authorizationStatus
         if amAssignee, auth == .authorizedWhenInUse || auth == .authorizedAlways {
