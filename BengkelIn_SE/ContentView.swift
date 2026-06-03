@@ -120,11 +120,21 @@ struct ContentView: View {
                     )
                 }
         }
-        .task(id: authViewModel.currentUser?.role) {
-            if authViewModel.currentUser?.role == "PROVIDER" {
-                await bengkelBiddingViewModel.start()
-            } else if authViewModel.currentUser?.role == "MECHANIC" {
+        // Key on the user id, not the role: two mechanics share role "MECHANIC", so a
+        // role-keyed task never re-fires on a mechanic→mechanic account switch and the
+        // app-level VM stays subscribed as the previous user. Re-run per identity, and
+        // reset the VM that doesn't match the current role so it can't fire stale alerts.
+        .task(id: authViewModel.currentUser?.id) {
+            let role = authViewModel.currentUser?.role
+            if role == "MECHANIC" {
                 await mechanicDashboardViewModel.start()
+            } else {
+                mechanicDashboardViewModel.reset()
+            }
+            if role == "PROVIDER" {
+                await bengkelBiddingViewModel.start()
+            } else {
+                bengkelBiddingViewModel.reset()
             }
         }
         // Arrived-order style modal when the provider dispatches a new job to this mechanic —

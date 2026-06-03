@@ -48,14 +48,34 @@ class MechanicDashboardViewModel: ObservableObject {
     }
 
     func start() async {
-        if hasStarted { return }
+        let uid = try? await authService.currentUID()
+        guard let uid else { reset(); return }
+        // Already running for this exact user — no-op. A DIFFERENT uid means the
+        // account was switched (logout → login as another mechanic) without killing
+        // the app, which keeps this app-level @StateObject — and its old subscription
+        // filtered on the previous mechanic's id — alive. Tear down and re-subscribe
+        // as the new user, else assignments to the new mechanic are never delivered.
+        if hasStarted, uid == myUid { return }
+        reset()
         hasStarted = true
+        myUid = uid
         isLoading = true
         notificationService.requestAuthorization()
-        if let uid = try? await authService.currentUID() { myUid = uid }
         await loadJobs()
         subscribe()
         isLoading = false
+    }
+
+    // Detach from the current identity: used on logout and when the signed-in user
+    // isn't a mechanic, so a stale subscription can't keep firing the old user's alerts.
+    func reset() {
+        stop()
+        hasStarted = false
+        myUid = nil
+        knownAssignments = [:]
+        didInitialLoad = false
+        newAssignmentAlert = nil
+        jobs = []
     }
 
     // Realtime sockets can die while backgrounded; reload + resubscribe on foreground.

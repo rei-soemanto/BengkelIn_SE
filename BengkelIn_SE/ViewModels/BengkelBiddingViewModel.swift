@@ -53,14 +53,20 @@ class BengkelBiddingViewModel: ObservableObject {
     }
 
     func start() async {
-        if hasStarted { return }
+        let uid = try? await authService.currentUID()
+        guard let uid else { reset(); return }
+        // No-op if already running for this provider. A different uid means the account
+        // was switched without killing the app (this app-level @StateObject survives),
+        // so tear down and re-init as the new user instead of keeping the old bengkel's
+        // subscription alive.
+        if hasStarted, uid == providerUid { return }
+        reset()
         hasStarted = true
+        providerUid = uid
         isLoading = true
         errorMessage = nil
         notificationService.requestAuthorization()
         do {
-            let uid = try await authService.currentUID()
-            self.providerUid = uid
             let fetched: Bengkel = try await supabase.from("bengkels")
                 .select()
                 .eq("provider_uid", value: uid)
@@ -73,11 +79,33 @@ class BengkelBiddingViewModel: ObservableObject {
             self.errorMessage = error.localizedDescription
             isLoading = false
             hasStarted = false
+            providerUid = nil
             return
         }
         await loadOrders()
         startRealtimeSubscription()
         isLoading = false
+    }
+
+    // Detach from the current identity: used on logout and when the signed-in user
+    // isn't a provider, so a stale subscription can't keep firing the old bengkel's alerts.
+    func reset() {
+        stopRealtimeSubscription()
+        hasStarted = false
+        providerUid = nil
+        didInitialLoad = false
+        knownOrderIds = []
+        bidStatusById = [:]
+        orders = []
+        myBengkel = nil
+        myPendingBids = []
+        myRejectedBids = []
+        newOrderAlert = nil
+        lostBidAlert = nil
+        expiredBidAlert = nil
+        rejectedBidAlert = nil
+        orderUnavailableAlert = nil
+        activeBengkelOrder = nil
     }
 
     // Called when the app returns to the foreground: realtime sockets can die
