@@ -8,6 +8,16 @@
 import Foundation
 import Supabase
 
+enum AuthServiceError: LocalizedError {
+    case emailAlreadyRegistered
+    var errorDescription: String? {
+        switch self {
+        case .emailAlreadyRegistered:
+            return "Email sudah terdaftar. Silakan masuk atau gunakan email lain."
+        }
+    }
+}
+
 class AuthService {
     func getCurrentSession() async throws -> Session {
         return try await supabase.auth.session
@@ -43,7 +53,7 @@ class AuthService {
     }
     
     func signUp(request: SignUpRequest) async throws {
-        try await supabase.auth.signUp(
+        let response = try await supabase.auth.signUp(
             email: request.email,
             password: request.password,
             data: [
@@ -51,6 +61,12 @@ class AuthService {
                 "phone_number": .string(request.phoneNumber)
             ]
         )
+        // Supabase does NOT error when the email is already registered (anti-enumeration);
+        // it returns an obfuscated user with an empty `identities` array. Detect that and
+        // surface a real error, otherwise registration always reports success.
+        if response.user.identities?.isEmpty ?? false {
+            throw AuthServiceError.emailAlreadyRegistered
+        }
     }
     
     func signOut() async throws {
