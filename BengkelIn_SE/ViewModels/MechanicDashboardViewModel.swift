@@ -80,7 +80,7 @@ class MechanicDashboardViewModel: ObservableObject {
 
     // Realtime sockets can die while backgrounded; reload + resubscribe on foreground.
     func refreshOnForeground() async {
-        guard hasStarted else { return }
+        guard hasStarted else { await start(); return }
         await loadJobs()
         subscribe()
     }
