@@ -25,6 +25,7 @@ struct NearbyOrder: Codable, Identifiable {
     var pointsUsed: Int?
     var pointsEarned: Int?
     var createdAt: String?
+    var assignedAt: String?
     var distanceM: Double?
 
     enum CodingKeys: String, CodingKey {
@@ -52,6 +53,7 @@ struct NearbyOrder: Codable, Identifiable {
         case pointsUsed = "points_used"
         case pointsEarned = "points_earned"
         case createdAt = "created_at"
+        case assignedAt = "assigned_at"
         case distanceM = "distance_m"
     }
 }

@@ -32,6 +32,10 @@ final class RouteLocationStore: ObservableObject {
 class BengkelRouteViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
     @Published var order: NearbyOrder?
     @Published var myUid: String?
+    // True once the viewer was the assigned mechanic but the order has since been reassigned to
+    // someone else — the route screen dismisses so the old mechanic can no longer work the order.
+    @Published var reassignedAway = false
+    private var wasAssignee = false
 
     // Per-frame GPS lives in a SEPARATE observable. If these were @Published on this view
     // model, every location update would fire objectWillChange and invalidate the route
@@ -170,6 +174,26 @@ class BengkelRouteViewModel: NSObject, ObservableObject, CLLocationManagerDelega
                 }
             }
         })
+
+        // Reassignment watch (separate, cancellable task). Realtime CANNOT notify a reassigned-
+        // away mechanic: every mechanic RLS policy on service_requests is `mechanic_id =
+        // auth.uid()`, so the moment the order is reassigned the old mechanic loses SELECT on the
+        // row and never receives the change. So the assignee re-checks: if the order is no longer
+        // fetchable (RLS denied) or no longer theirs, surface the "reassigned" screen.
+        realtimeReaderTasks.append(Task { [weak self] in
+            var misses = 0
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 4_000_000_000)
+                guard let self else { return }
+                guard self.wasAssignee, !self.reassignedAway, let id = self.serviceRequestId else { misses = 0; continue }
+                if let fresh = try? await self.orderRepository.fetchOrder(id: id) {
+                    if fresh.mechanicId != self.myUid { self.reassignedAway = true } else { misses = 0 }
+                } else {
+                    misses += 1
+                    if misses >= 2 { self.reassignedAway = true }   // two strikes ⇒ not a transient blip
+                }
+            }
+        })
     }
 
     // Resolve provider uid + shop coords from the order's bengkel once it's known. Idempotent:
@@ -184,6 +208,15 @@ class BengkelRouteViewModel: NSObject, ObservableObject, CLLocationManagerDelega
 
     // Apply the display + publishing behavior for the current role/assignment.
     private func reconfigureForRole() async {
+        // Reassignment guard: a mechanic who was the handler but is no longer it (the bengkel
+        // reassigned the order) must be kicked off the screen. The provider is never the
+        // assignee, so this never affects the monitoring provider.
+        if amAssignee {
+            wasAssignee = true
+        } else if wasAssignee, mechanicId != nil {
+            reassignedAway = true
+        }
+
         if amAssignee {
             // I'm handling the job — mechanic OR bengkel "Self". Publish my live device GPS
             // so the customer (and a monitoring provider) sees me travel to them. Distinct

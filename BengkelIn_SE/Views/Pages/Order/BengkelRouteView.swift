@@ -49,18 +49,24 @@ struct BengkelRouteView: View {
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            // The map fully owns its region/camera state. If region were a @State here, the
-            // map's continuous region writeback would recompute THIS view mid-presentation and
-            // tear down the assign/report sheets (the bug you saw).
-            RouteTrackingMap(
-                store: viewModel.locationStore,
-                order: order,
-                handlerLabel: viewModel.handlerLabel
-            )
-            controlCard
+        Group {
+            if viewModel.reassignedAway {
+                reassignedScreen
+            } else {
+                VStack(spacing: 0) {
+                    // The map fully owns its region/camera state. If region were a @State here,
+                    // the map's continuous region writeback would recompute THIS view mid-
+                    // presentation and tear down the assign/report sheets (the bug you saw).
+                    RouteTrackingMap(
+                        store: viewModel.locationStore,
+                        order: order,
+                        handlerLabel: viewModel.handlerLabel
+                    )
+                    controlCard
+                }
+            }
         }
-        .navigationTitle("Menuju Lokasi Pelanggan")
+        .navigationTitle(viewModel.reassignedAway ? "Pemberitahuan" : "Menuju Lokasi Pelanggan")
         .navigationBarTitleDisplayMode(.inline)
         .navigationBarBackButtonHidden(true)
         .toolbar {
@@ -99,6 +105,36 @@ struct BengkelRouteView: View {
                 reportSheet
             }
         }
+    }
+
+    // Shown to a mechanic whose order was reassigned to someone else: they can no longer work it.
+    private var reassignedScreen: some View {
+        VStack(spacing: 16) {
+            Spacer()
+            Image(systemName: "person.2.slash.fill")
+                .font(.system(size: 56))
+                .foregroundColor(.secondary)
+            Text("Pesanan Dialihkan")
+                .font(.title2.bold())
+            Text("Pesanan ini telah ditugaskan ke mekanik lain. Anda tidak lagi menangani permintaan ini.")
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal, 32)
+            Spacer()
+            Button { dismiss() } label: {
+                Text("Kembali")
+                    .fontWeight(.bold)
+                    .foregroundColor(Color(.systemBackground))
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(Color.primary.opacity(0.9))
+                    .cornerRadius(12)
+            }
+            .padding()
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(Color(.systemBackground))
     }
 
     private var reportSheet: some View {

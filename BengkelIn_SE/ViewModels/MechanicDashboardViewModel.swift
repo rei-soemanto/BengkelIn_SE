@@ -26,7 +26,11 @@ class MechanicDashboardViewModel: ObservableObject {
 
     private var channel: RealtimeChannelV2?
     private var realtimeReaderTasks: [Task<Void, Never>] = []
-    private var knownJobIds: Set<String> = []
+    // id -> assignment token (assigned_at). Keyed on the assignment timestamp, not
+    // just the id, so a re-assignment (which bumps assigned_at) re-notifies even
+    // though the request id is unchanged — a reassigned-away mechanic never sees
+    // the job leave (RLS), so an id-only set would stay stale and miss the return.
+    private var knownAssignments: [String: String] = [:]
     private var didInitialLoad = false
     private var hasStarted = false
     private var myUid: String?
@@ -74,7 +78,7 @@ class MechanicDashboardViewModel: ObservableObject {
             // Alert + notify for any job not seen before — but seed quietly on first load
             // so pre-existing assignments don't trigger a burst of notifications.
             if didInitialLoad {
-                for job in fetched where !knownJobIds.contains(job.id) {
+                for job in fetched where knownAssignments[job.id] != (job.assignedAt ?? job.id) {
                     newAssignmentAlert = job
                     notificationService.notifyNewOrder(
                         title: "Pekerjaan Baru",
@@ -82,7 +86,10 @@ class MechanicDashboardViewModel: ObservableObject {
                     )
                 }
             }
-            knownJobIds = Set(fetched.map { $0.id })
+            knownAssignments = Dictionary(
+                fetched.map { ($0.id, $0.assignedAt ?? $0.id) },
+                uniquingKeysWith: { _, latest in latest }
+            )
             didInitialLoad = true
             self.jobs = fetched
         } catch {
