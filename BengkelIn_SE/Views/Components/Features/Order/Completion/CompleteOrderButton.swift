@@ -42,7 +42,7 @@ struct CompleteOrderButton: View {
         } else if viewModel.mySideCompleted {
             VStack(spacing: 6) {
                 statusLabel(text: "Menunggu konfirmasi pihak lain", icon: "clock.fill", color: .orange)
-                Text("Dana ditahan sampai kedua pihak menyelesaikan pesanan.")
+                Text("Dana ditahan sampai kedua pihak menyelesaikan pesanan. Jika pihak lain tidak konfirmasi dalam 24 jam, pesanan otomatis diselesaikan.")
                     .font(.caption)
                     .foregroundColor(.secondary)
                     .multilineTextAlignment(.center)
