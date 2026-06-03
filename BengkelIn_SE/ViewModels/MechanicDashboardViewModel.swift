@@ -113,12 +113,19 @@ class MechanicDashboardViewModel: ObservableObject {
                     )
                 }
             }
-            knownAssignments = Dictionary(
+            let updated = Dictionary(
                 fetched.map { ($0.id, $0.assignedAt ?? $0.id) },
                 uniquingKeysWith: { _, latest in latest }
             )
+            let changed = updated != knownAssignments
+            knownAssignments = updated
             didInitialLoad = true
             self.jobs = fetched
+            // Fan out to other screens (history) only when the assignment set actually
+            // changed, so the reconcile poll doesn't spam reloads every tick.
+            if changed {
+                NotificationCenter.default.post(name: .mechanicOrdersChanged, object: nil)
+            }
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -142,27 +149,51 @@ class MechanicDashboardViewModel: ObservableObject {
             // Cold-start reconcile: the first events can arrive during the subscribe
             // handshake and be missed, so refetch once subscribed.
             await self?.loadJobs()
-            for await _ in stream {
-                await self?.loadJobs()
-                // This always-on subscription is the single source of truth for live
-                // service_requests changes on this mechanic. Other screens (history) ride
-                // it via NotificationCenter rather than opening a duplicate postgres_changes
-                // subscription on the same filter, which Realtime delivers to unreliably.
-                NotificationCenter.default.post(name: .mechanicOrdersChanged, object: nil)
-            }
+            for await _ in stream { await self?.loadJobs() }
         })
 
-        subscribeReassignBroadcast(uid: uid)
+        subscribeMechanicBroadcast(uid: uid)
+        startReconcilePoll()
     }
 
-    private func subscribeReassignBroadcast(uid: String) {
+    // Realtime delivery here is best-effort, not guaranteed: postgres_changes + RLS races
+    // across subscribers, and this project's Realtime tenant shuts down on idle so ephemeral
+    // broadcasts sent during a reconnect are lost ("sometimes the notification shows"). A
+    // periodic re-read makes the active-job feed and the assignment alert eventually correct
+    // regardless — loadJobs dedups on assigned_at, so it still notifies at most once.
+    private func startReconcilePoll() {
+        realtimeReaderTasks.append(Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(nanoseconds: 10_000_000_000) // 10s
+                if Task.isCancelled { return }
+                await self?.loadJobs()
+            }
+        })
+    }
+
+    // Broadcast is the RELIABLE per-mechanic delivery path. postgres_changes with RLS
+    // does not dependably reach concurrent per-user subscribers (only one device gets
+    // the event, and which one flips on resubscribe), so assignment alerts raced across
+    // mechanics. assign_mechanic broadcasts straight to this mechanic's topic instead.
+    private func subscribeMechanicBroadcast(uid: String) {
         let channel = supabase.channel("mechanic:\(uid)")
         self.broadcastChannel = channel
-        let stream = channel.broadcastStream(event: "reassigned_away")
+        let assignedStream = channel.broadcastStream(event: "assigned")
+        let reassignedStream = channel.broadcastStream(event: "reassigned_away")
         realtimeReaderTasks.append(Task { [weak self] in
             await channel.subscribe()
-            for await message in stream { await self?.handleReassignedAway(message) }
+            for await message in assignedStream { await self?.handleAssigned(message) }
         })
+        realtimeReaderTasks.append(Task { [weak self] in
+            for await message in reassignedStream { await self?.handleReassignedAway(message) }
+        })
+    }
+
+    // A new order was dispatched to this mechanic (instant path when realtime is up).
+    // Funnel through loadJobs so the assigned_at dedup fires the notification + modal
+    // exactly once and fans out the change, even if the poll or postgres_changes also land.
+    private func handleAssigned(_ message: [String: AnyJSON]) async {
+        await loadJobs()
     }
 
     // The provider replaced this mechanic on an order. Tell them, drop the stale job
