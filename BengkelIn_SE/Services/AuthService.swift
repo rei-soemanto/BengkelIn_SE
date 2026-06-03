@@ -76,4 +76,12 @@ class AuthService {
     func resetPassword(email: String) async throws {
         try await supabase.auth.resetPasswordForEmail(email)
     }
+
+    // Phone number lives in auth user_metadata (fetchUser reads it from there), not the
+    // `users` table — so a profile edit updates it through the Auth SDK.
+    func updatePhoneNumber(_ phoneNumber: String) async throws {
+        _ = try await supabase.auth.update(
+            user: UserAttributes(data: ["phone_number": .string(phoneNumber)])
+        )
+    }
 }

@@ -31,11 +31,12 @@ class ProfileViewModel: ObservableObject {
         }
         let uid = session.user.id.uuidString.lowercased()
         
-        let payload = ProfileUpdatePayload(name: name, phone_number: phoneNumber)
-        
+        let payload = ProfileUpdatePayload(name: name)
+
         do {
             try await userRepository.updateProfile(uid: uid, payload: payload)
-            
+            try await authService.updatePhoneNumber(phoneNumber)
+
             self.successMessage = "Profil berhasil diperbarui!"
             isLoading = false
             return true

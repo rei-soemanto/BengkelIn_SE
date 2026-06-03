@@ -15,10 +15,11 @@ struct SignUpRequest {
     let phoneNumber: String
 }
 
-// Used by UserRepository to update the "users" table
+// Used by UserRepository to update the "users" table.
+// Phone number is NOT a column on `users` — it lives in auth user_metadata and is
+// updated via AuthService.updatePhoneNumber, so it is intentionally absent here.
 struct ProfileUpdatePayload: Encodable {
     let name: String
-    let phone_number: String
 }
 
 // Used by UserRepository to update profile image URL
