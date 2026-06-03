@@ -251,14 +251,21 @@ final class CustomerBiddingViewModel: ObservableObject {
 
     func cancel() async {
         showRetryPrompt = false
-        searchCountdownTask?.cancel()
-        decisionCountdownTask?.cancel()
-        bidExpiryTask?.cancel()
-        bidExpiryTask = nil
-        stopRealtimeSubscription()
-        if let id = serviceRequestId {
-            try? await orderRepository.cancelOrder(id: id)
+        guard let id = serviceRequestId else {
+            stopSearchingState()
+            stopRealtimeSubscription()
+            shouldDismiss = true
+            return
         }
+        errorMessage = nil
+        do {
+            try await orderRepository.cancelOrder(id: id)
+        } catch {
+            errorMessage = error.localizedDescription
+            return
+        }
+        stopSearchingState()
+        stopRealtimeSubscription()
         shouldDismiss = true
     }
 

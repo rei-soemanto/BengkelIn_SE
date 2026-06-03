@@ -72,7 +72,34 @@ struct BengkelProfileView: View {
                                 .cornerRadius(8)
                         }
                         .padding(.top, 20)
-                        
+
+                        if !bengkelViewModel.hasAcceptedMechanic {
+                            NavigationLink(destination: ManageRosterView()) {
+                                HStack(alignment: .top, spacing: 12) {
+                                    Image(systemName: "person.fill.badge.plus")
+                                        .font(.title2)
+                                        .foregroundColor(.orange)
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text("Tambahkan mekanik untuk mulai menerima order")
+                                            .font(.subheadline)
+                                            .fontWeight(.semibold)
+                                            .foregroundColor(.primary)
+                                        Text("Bengkel Anda belum punya mekanik. Tanpa mekanik, bengkel tidak akan menerima permintaan order. Undang minimal satu mekanik agar bisa mulai menerima dan mengambil order.")
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                    }
+                                    Spacer()
+                                    Image(systemName: "chevron.right")
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                }
+                                .padding()
+                                .background(Color.orange.opacity(0.12))
+                                .cornerRadius(12)
+                            }
+                            .buttonStyle(.plain)
+                        }
+
                         VStack(alignment: .leading, spacing: 16) {
                             Text("Detail Bengkel")
                                 .font(.headline)

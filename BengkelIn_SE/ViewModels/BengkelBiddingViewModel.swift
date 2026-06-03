@@ -29,6 +29,7 @@ class BengkelBiddingViewModel: ObservableObject {
     @Published var orderUnavailableAlert: String?
     // Orders where our latest bid was declined (kept visible so we can re-bid).
     @Published var myRejectedBids: [Bid] = []
+    @Published var hasMechanics = true
 
     private var realtimeChannel: RealtimeChannelV2?
     private var realtimeReaderTasks: [Task<Void, Never>] = []
@@ -36,6 +37,7 @@ class BengkelBiddingViewModel: ObservableObject {
     private let bengkelRepository = BengkelRepository()
     private let bidRepository = BidRepository()
     private let biddingService = BiddingService()
+    private let mechanicRepository = MechanicRepository()
     private let notificationService = NotificationService()
     private var knownOrderIds: Set<String> = []
     private var bidStatusById: [String: String] = [:]
@@ -179,6 +181,17 @@ class BengkelBiddingViewModel: ObservableObject {
     func loadOrders() async {
         guard let bengkel = myBengkel, let bengkelId = bengkel.id else { return }
         errorMessage = nil
+        if let roster = try? await mechanicRepository.fetchRoster() {
+            hasMechanics = roster.contains { $0.isAccepted }
+        }
+        guard hasMechanics else {
+            orders = []
+            myPendingBids = []
+            myRejectedBids = []
+            newOrderAlert = nil
+            knownOrderIds = []
+            return
+        }
         do {
             let nearbyOrders = try await biddingService.fetchOrdersForMechanic(
                 latitude: bengkel.latitude,
@@ -271,6 +284,13 @@ class BengkelBiddingViewModel: ObservableObject {
 
     func placeBid(order: NearbyOrder, price: Int, notes: String) async {
         guard let bengkel = myBengkel, let bengkelId = bengkel.id else { return }
+        if let roster = try? await mechanicRepository.fetchRoster() {
+            hasMechanics = roster.contains { $0.isAccepted }
+        }
+        guard hasMechanics else {
+            self.errorMessage = "Tambahkan mekanik terlebih dahulu sebelum mengambil order."
+            return
+        }
         // Re-verify the order is still open before bidding. It may have been
         // cancelled or taken while sitting in the feed; bidding on a dead order
         // pushes the mechanic into a stale active-order screen and crashes.

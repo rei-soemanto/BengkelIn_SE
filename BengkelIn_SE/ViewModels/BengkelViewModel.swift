@@ -18,6 +18,7 @@ class BengkelViewModel: NSObject, ObservableObject, CLLocationManagerDelegate, L
     @Published var errorMessage: String?
     @Published var successMessage: String?
     @Published var todaysEarnings: Double = 0
+    @Published var hasAcceptedMechanic = true
 
     // Location / Map state
     @Published var locationAddress: String = ""
@@ -32,6 +33,7 @@ class BengkelViewModel: NSObject, ObservableObject, CLLocationManagerDelegate, L
     private let authService = AuthService()
     private let bengkelRepository = BengkelRepository()
     private let orderRepository = OrderRepository()
+    private let mechanicRepository = MechanicRepository()
     private let locationService = LocationService()
     private let locationManager = CLLocationManager()
     private var cancellables = Set<AnyCancellable>()
@@ -213,9 +215,16 @@ class BengkelViewModel: NSObject, ObservableObject, CLLocationManagerDelegate, L
     func startWatching(uid: String) async {
         await fetchMyBengkel(uid: uid)
         await loadTodaysEarnings()
+        await loadMechanicStatus()
         startRealtimeSubscription(uid: uid)
         if let bengkelId = myBengkel?.id {
             startEarningsSubscription(bengkelId: bengkelId)
+        }
+    }
+
+    func loadMechanicStatus() async {
+        if let roster = try? await mechanicRepository.fetchRoster() {
+            hasAcceptedMechanic = roster.contains { $0.isAccepted }
         }
     }
 

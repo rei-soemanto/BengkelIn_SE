@@ -128,6 +128,28 @@ struct BengkelDashboardView: View {
                         .padding(.vertical, 30)
                         .background(Color(.systemGray6))
                         .cornerRadius(12)
+                    } else if !bengkelBiddingViewModel.hasMechanics {
+                        NavigationLink(destination: ManageRosterView()) {
+                            VStack(spacing: 12) {
+                                Image(systemName: "person.fill.badge.plus")
+                                    .font(.largeTitle)
+                                    .foregroundColor(.primary)
+                                Text("Tambahkan mekanik untuk menerima order")
+                                    .font(.subheadline)
+                                    .fontWeight(.semibold)
+                                    .foregroundColor(.primary)
+                                Text("Bengkel tanpa mekanik tidak akan menerima permintaan order. Undang minimal satu mekanik untuk mulai.")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                    .multilineTextAlignment(.center)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 30)
+                            .padding(.horizontal)
+                            .background(Color(.systemGray6))
+                            .cornerRadius(12)
+                        }
+                        .buttonStyle(.plain)
                     } else if bengkelBiddingViewModel.orders.isEmpty {
                         VStack(spacing: 12) {
                             Image(systemName: "checkmark.circle.fill")
