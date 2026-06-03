@@ -16,8 +16,6 @@ struct BengkelRouteView: View {
     @StateObject private var viewModel = BengkelRouteViewModel()
     @StateObject private var chatWatch: ChatWatchViewModel
     @Environment(\.dismiss) private var dismiss
-    @State private var region: MKCoordinateRegion
-    @State private var didFitBoth = false
     @State private var activeSheet: RouteSheet?
     @State private var reportReason = ""
     @State private var reportPhotoItem: PhotosPickerItem?
@@ -32,29 +30,10 @@ struct BengkelRouteView: View {
 
     init(order: NearbyOrder) {
         self.order = order
-        _region = State(initialValue: MKCoordinateRegion(
-            center: CLLocationCoordinate2D(latitude: order.latitude, longitude: order.longitude),
-            span: MKCoordinateSpan(latitudeDelta: 0.02, longitudeDelta: 0.02)
-        ))
         _chatWatch = StateObject(wrappedValue: ChatWatchViewModel(
             serviceRequestId: order.id,
             counterpartName: order.customerName ?? "Pelanggan"
         ))
-    }
-
-    private var customerCoordinate: CLLocationCoordinate2D {
-        viewModel.customerLiveCoordinate
-            ?? CLLocationCoordinate2D(latitude: order.latitude, longitude: order.longitude)
-    }
-
-    private var customerDistanceMeters: CLLocationDistance? {
-        guard let me = viewModel.bengkelCoordinate else { return nil }
-        return CLLocation(latitude: customerCoordinate.latitude, longitude: customerCoordinate.longitude)
-            .distance(from: CLLocation(latitude: me.latitude, longitude: me.longitude))
-    }
-    private var isCustomerNear: Bool {
-        if let d = customerDistanceMeters { return d <= 80 }
-        return false
     }
 
     // Assignment state (drives the dispatch gate). Reads the live order from the VM so it
@@ -71,23 +50,14 @@ struct BengkelRouteView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            Map(coordinateRegion: $region, annotationItems: pins) { item in
-                MapAnnotation(coordinate: item.coordinate) {
-                    VStack(spacing: 2) {
-                        Image(systemName: item.icon)
-                            .font(.system(size: 22, weight: .bold))
-                            .foregroundColor(Color(.systemBackground))
-                            .padding(10)
-                            .background(item.tint)
-                            .clipShape(Circle())
-                        Text(item.label)
-                            .font(.caption2.bold())
-                            .padding(.horizontal, 6).padding(.vertical, 2)
-                            .background(Color(.systemBackground))
-                            .cornerRadius(6)
-                    }
-                }
-            }
+            // The map fully owns its region/camera state. If region were a @State here, the
+            // map's continuous region writeback would recompute THIS view mid-presentation and
+            // tear down the assign/report sheets (the bug you saw).
+            RouteTrackingMap(
+                store: viewModel.locationStore,
+                order: order,
+                handlerLabel: viewModel.handlerLabel
+            )
             controlCard
         }
         .navigationTitle("Menuju Lokasi Pelanggan")
@@ -103,9 +73,9 @@ struct BengkelRouteView: View {
         .task { await viewModel.start(order: order) }
         .task { await chatWatch.start() }
         .onAppear { OrderRouteState.shared.enter(order.id) }
-        .onChange(of: viewModel.assigneeCoordinate?.latitude) { _ in fitBothIfNeeded() }
-        // A new handler was assigned — allow the map to re-fit to the new marker.
-        .onChange(of: viewModel.order?.mechanicId) { _ in didFitBoth = false }
+        // Freeze the live map while a modal is up so MapKit's annotation churn doesn't
+        // dismiss the sheet (worst for the mechanic, whose marker tracks per-frame GPS).
+        .onChange(of: activeSheet != nil) { isModalOpen in viewModel.isPaused = isModalOpen }
         .onChange(of: viewModel.status) { newStatus in
             if newStatus == "cancelled" {
                 dismiss()
@@ -192,31 +162,6 @@ struct BengkelRouteView: View {
         .presentationDetents([.large])
     }
 
-    private var pins: [TrackingPin] {
-        var list = [TrackingPin(
-            id: "customer",
-            coordinate: customerCoordinate,
-            label: "Pelanggan",
-            icon: "person.fill",
-            tint: .blue
-        )]
-        if let coord = viewModel.assigneeCoordinate {
-            list.append(TrackingPin(
-                id: "bengkel",
-                coordinate: coord,
-                label: viewModel.handlerLabel,
-                icon: "car.fill",
-                tint: .primary
-            ))
-        }
-        return list
-    }
-
-    private func fitBothIfNeeded() {
-        guard !didFitBoth, let me = viewModel.assigneeCoordinate else { return }
-        didFitBoth = true
-        region = .fitting(customerCoordinate, me)
-    }
 
     @ViewBuilder
     private var controlCard: some View {
@@ -281,7 +226,6 @@ struct BengkelRouteView: View {
                         .background(Color.primary.opacity(0.9))
                         .cornerRadius(12)
                     }
-                    reportButton
                 } else if assignedToOther {
                     // Provider delegated to a mechanic — monitor only; the mechanic completes.
                     // The provider can reassign on the go if the mechanic is wrong/unavailable.
@@ -302,10 +246,10 @@ struct BengkelRouteView: View {
                             .cornerRadius(12)
                         }
                     }
-                    reportButton
                 } else {
-                    // The dispatched mechanic does the work and completes it.
-                    CompleteOrderButton(requestId: order.id, isCustomer: false, canComplete: isCustomerNear)
+                    // The dispatched mechanic does the work, completes it, and is the only
+                    // party who can report a kendala (the provider just monitors).
+                    MechanicCompleteButton(store: viewModel.locationStore, order: order)
                     reportButton
                 }
             case "completed":
@@ -353,5 +297,85 @@ struct BengkelRouteView: View {
         .padding()
         .background(color.opacity(0.12))
         .cornerRadius(12)
+    }
+}
+
+// Self-contained tracking map. Observes ONLY the location store (not the route view model),
+// and owns its region — so neither the rapid GPS updates nor the map's region writeback
+// recompute the parent route screen that hosts the assign/report sheets.
+private struct RouteTrackingMap: View {
+    @ObservedObject var store: RouteLocationStore
+    let order: NearbyOrder
+    let handlerLabel: String
+
+    @State private var region: MKCoordinateRegion
+    @State private var didFit = false
+
+    init(store: RouteLocationStore, order: NearbyOrder, handlerLabel: String) {
+        self.store = store
+        self.order = order
+        self.handlerLabel = handlerLabel
+        _region = State(initialValue: MKCoordinateRegion(
+            center: CLLocationCoordinate2D(latitude: order.latitude, longitude: order.longitude),
+            span: MKCoordinateSpan(latitudeDelta: 0.02, longitudeDelta: 0.02)
+        ))
+    }
+
+    private var customerCoordinate: CLLocationCoordinate2D {
+        store.customer ?? CLLocationCoordinate2D(latitude: order.latitude, longitude: order.longitude)
+    }
+
+    var body: some View {
+        Map(coordinateRegion: $region, annotationItems: pins) { item in
+            MapAnnotation(coordinate: item.coordinate) {
+                VStack(spacing: 2) {
+                    Image(systemName: item.icon)
+                        .font(.system(size: 22, weight: .bold))
+                        .foregroundColor(Color(.systemBackground))
+                        .padding(10).background(item.tint).clipShape(Circle())
+                    Text(item.label)
+                        .font(.caption2.bold())
+                        .padding(.horizontal, 6).padding(.vertical, 2)
+                        .background(Color(.systemBackground)).cornerRadius(6)
+                }
+            }
+        }
+        .onAppear { fitIfNeeded() }
+        .onChange(of: store.handler?.latitude) { _ in fitIfNeeded() }
+    }
+
+    private func fitIfNeeded() {
+        guard !didFit, let handler = store.handler else { return }
+        didFit = true
+        region = .fitting(customerCoordinate, handler)
+    }
+
+    private var pins: [TrackingPin] {
+        var list = [TrackingPin(id: "customer", coordinate: customerCoordinate,
+                                label: "Pelanggan", icon: "person.fill", tint: .blue)]
+        if let coord = store.handler {
+            list.append(TrackingPin(id: "handler", coordinate: coord,
+                                    label: handlerLabel, icon: "car.fill", tint: .primary))
+        }
+        return list
+    }
+}
+
+// The mechanic's completion button. Observes the location store (not the route view model) so
+// proximity recomputes here, off the sheet-hosting parent. Enabled within 80 m of the customer.
+private struct MechanicCompleteButton: View {
+    @ObservedObject var store: RouteLocationStore
+    let order: NearbyOrder
+
+    private var isCustomerNear: Bool {
+        guard let me = store.me else { return false }
+        let customer = store.customer ?? CLLocationCoordinate2D(latitude: order.latitude, longitude: order.longitude)
+        let meters = CLLocation(latitude: customer.latitude, longitude: customer.longitude)
+            .distance(from: CLLocation(latitude: me.latitude, longitude: me.longitude))
+        return meters <= 80
+    }
+
+    var body: some View {
+        CompleteOrderButton(requestId: order.id, isCustomer: false, canComplete: isCustomerNear)
     }
 }

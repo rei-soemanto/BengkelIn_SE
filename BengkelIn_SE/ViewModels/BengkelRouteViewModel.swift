@@ -10,6 +10,16 @@ import Combine
 import CoreLocation
 import Supabase
 
+// Holds only the fast-moving GPS coordinates for the route screen, kept apart from
+// BengkelRouteViewModel so per-frame location updates don't invalidate (and dismiss the
+// sheets on) the screen that observes the view model. The map + proximity views observe this.
+@MainActor
+final class RouteLocationStore: ObservableObject {
+    @Published var me: CLLocationCoordinate2D?        // the viewer's own device GPS
+    @Published var customer: CLLocationCoordinate2D?  // customer's published live location
+    @Published var handler: CLLocationCoordinate2D?   // the handler marker (self/mechanic)
+}
+
 // Drives the route/work screen, role-aware so tracking matches who's handling the job:
 //  • Dispatched mechanic  → publishes their live device GPS (they travel to the customer).
 //  • Bengkel "Self"       → the handler is the SHOP, so we publish the bengkel's registered
@@ -21,10 +31,26 @@ import Supabase
 @MainActor
 class BengkelRouteViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
     @Published var order: NearbyOrder?
-    @Published var bengkelCoordinate: CLLocationCoordinate2D?      // the viewer's own device GPS
-    @Published var customerLiveCoordinate: CLLocationCoordinate2D?
-    @Published var assigneeCoordinate: CLLocationCoordinate2D?     // location shown for the handler
     @Published var myUid: String?
+
+    // Per-frame GPS lives in a SEPARATE observable. If these were @Published on this view
+    // model, every location update would fire objectWillChange and invalidate the route
+    // screen that owns this VM — which dismisses any presented sheet (assign/report) mid-flow.
+    // Only the map + proximity children observe `locationStore`; the parent does not.
+    let locationStore = RouteLocationStore()
+    // While a modal (assign/report) is open, freeze the map markers. MapKit churning its
+    // annotations under a sheet-over-fullScreenCover dismisses the sheet — most visibly for
+    // the mechanic, whose marker updates on every device GPS frame.
+    var isPaused = false
+    var bengkelCoordinate: CLLocationCoordinate2D? {              // the viewer's own device GPS
+        get { locationStore.me } set { guard !isPaused else { return }; locationStore.me = newValue }
+    }
+    var customerLiveCoordinate: CLLocationCoordinate2D? {
+        get { locationStore.customer } set { guard !isPaused else { return }; locationStore.customer = newValue }
+    }
+    var assigneeCoordinate: CLLocationCoordinate2D? {             // location shown for the handler
+        get { locationStore.handler } set { guard !isPaused else { return }; locationStore.handler = newValue }
+    }
 
     private let locationManager = CLLocationManager()
     private let orderRepository = OrderRepository()

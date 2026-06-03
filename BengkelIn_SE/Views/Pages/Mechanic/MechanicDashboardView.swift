@@ -14,7 +14,9 @@ import SwiftUI
 struct MechanicDashboardView: View {
     @ObservedObject var authViewModel: AuthViewModel
     @ObservedObject var viewModel: MechanicDashboardViewModel
-    @State private var jobToOpen: NearbyOrder?
+    // Tapping a job asks the enclosing DashboardView to PUSH the route screen (the single
+    // push point for this tab), so the route screen's sheets aren't dismissed by a cover.
+    var onOpenRoute: (NearbyOrder) -> Void = { _ in }
 
     var body: some View {
         ScrollView {
@@ -46,7 +48,7 @@ struct MechanicDashboardView: View {
                         emptyState
                     } else {
                         ForEach(viewModel.jobs) { job in
-                            Button { jobToOpen = job } label: { jobCard(job) }
+                            Button { onOpenRoute(job) } label: { jobCard(job) }
                                 .buttonStyle(.plain)
                         }
                     }
@@ -58,10 +60,6 @@ struct MechanicDashboardView: View {
             .padding()
         }
         .task { await authViewModel.fetchUser() }
-        // Tapping a job in the active-jobs list opens the shared route/work screen.
-        .fullScreenCover(item: $jobToOpen) { order in
-            NavigationStack { BengkelRouteView(order: order) }
-        }
     }
 
     private func jobCard(_ job: NearbyOrder) -> some View {

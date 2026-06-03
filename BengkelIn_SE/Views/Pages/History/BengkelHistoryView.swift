@@ -10,22 +10,23 @@ import SwiftUI
 struct BengkelHistoryView: View {
     @StateObject private var viewModel = BengkelHistoryViewModel()
     @State private var reportOrder: NearbyOrder?
-    // The active-order route screen is shown full-screen (not pushed) so it
-    // covers the app-mode role switcher that sits above the tab bar.
-    @State private var routeOrder: NearbyOrder?
 
     var body: some View {
         content
             .background(Color(.systemGroupedBackground))
             .task { await viewModel.loadOrders() }
             .refreshable { await viewModel.loadOrders() }
+            // Active orders PUSH the route screen (not a fullScreenCover): a sheet presented
+            // from inside a fullScreenCover gets dismissed when its map updates. The role
+            // switcher is hidden via OrderRouteState while the route screen is up.
             .navigationDestination(isPresented: detailBinding) {
                 if let order = viewModel.detailOrder {
-                    OrderDetailView(order: order, isCustomer: false)
+                    if order.status == "accepted" {
+                        BengkelRouteView(order: order)
+                    } else {
+                        OrderDetailView(order: order, isCustomer: false)
+                    }
                 }
-            }
-            .fullScreenCover(item: $routeOrder) { order in
-                NavigationStack { BengkelRouteView(order: order) }
             }
             .sheet(item: $reportOrder) { order in
                 ReportBehaviorSheet(order: order) {
@@ -51,13 +52,8 @@ struct BengkelHistoryView: View {
             LazyVStack(spacing: 12) {
                 ForEach(viewModel.orders) { order in
                     OrderHistoryRow(order: order, onTap: {
-                        // Active orders open the full-screen route/work screen;
-                        // finished ones push to a detail view.
-                        if order.status == "accepted" {
-                            routeOrder = order
-                        } else {
-                            viewModel.select(order)
-                        }
+                        // Active → route/work screen, finished → detail; both pushed.
+                        viewModel.select(order)
                     }, onReport: {
                         reportOrder = order
                     }, hasReported: viewModel.reportedOrderIds.contains(order.id))

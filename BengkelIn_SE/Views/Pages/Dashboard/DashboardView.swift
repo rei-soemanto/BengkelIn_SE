@@ -19,6 +19,10 @@ struct DashboardView: View {
     @ObservedObject var bengkelBiddingViewModel: BengkelBiddingViewModel
     @ObservedObject var mechanicDashboardViewModel: MechanicDashboardViewModel
     var onOpenSaldo: () -> Void = {}
+    // The active route/work screen is PUSHED here (not a fullScreenCover) so its assign/report
+    // sheets aren't dismissed by the live map. Fed by the mechanic's job taps and by the
+    // app-level triggers (won bid / incoming assignment) routed in from ContentView.
+    @Binding var routeOrder: NearbyOrder?
     @State private var recentOrders: [String] = []
     @State private var path = NavigationPath()
     @Environment(\.scenePhase) private var scenePhase
@@ -27,7 +31,7 @@ struct DashboardView: View {
         NavigationStack(path: $path) {
             VStack(spacing: 0) {
                 if authViewModel.appMode == .mechanic && authViewModel.currentUser?.role == "MECHANIC" {
-                    MechanicDashboardView(authViewModel: authViewModel, viewModel: mechanicDashboardViewModel)
+                    MechanicDashboardView(authViewModel: authViewModel, viewModel: mechanicDashboardViewModel, onOpenRoute: { routeOrder = $0 })
                 } else if authViewModel.appMode == .bengkel && authViewModel.currentUser?.role == "PROVIDER" {
                     BengkelDashboardView(authViewModel: authViewModel, bengkelBiddingViewModel: bengkelBiddingViewModel)
                 } else {
@@ -39,6 +43,12 @@ struct DashboardView: View {
                 case .createOrder:
                     OrderView(popToRoot: { path = NavigationPath() })
                 }
+            }
+            .navigationDestination(isPresented: Binding(
+                get: { routeOrder != nil },
+                set: { if !$0 { routeOrder = nil } }
+            )) {
+                if let order = routeOrder { BengkelRouteView(order: order) }
             }
             .task { await authViewModel.fetchUser() }
             .onChange(of: scenePhase) { phase in
@@ -147,7 +157,8 @@ struct DashboardView: View {
     DashboardView(
         authViewModel: AuthViewModel(),
         bengkelBiddingViewModel: BengkelBiddingViewModel(),
-        mechanicDashboardViewModel: MechanicDashboardViewModel()
+        mechanicDashboardViewModel: MechanicDashboardViewModel(),
+        routeOrder: .constant(nil)
     )
     .preferredColorScheme(.light)
 }
@@ -156,7 +167,8 @@ struct DashboardView: View {
     DashboardView(
         authViewModel: AuthViewModel(),
         bengkelBiddingViewModel: BengkelBiddingViewModel(),
-        mechanicDashboardViewModel: MechanicDashboardViewModel()
+        mechanicDashboardViewModel: MechanicDashboardViewModel(),
+        routeOrder: .constant(nil)
     )
     .preferredColorScheme(.dark)
 }

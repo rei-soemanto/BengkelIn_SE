@@ -20,7 +20,7 @@ struct ContentView: View {
     @StateObject private var mechanicDashboardViewModel = MechanicDashboardViewModel()
     @ObservedObject private var orderRoute = OrderRouteState.shared
     @State private var bidOrder: NearbyOrder?
-    @State private var mechanicJobToOpen: NearbyOrder?
+    @State private var routeOrder: NearbyOrder?
     @State private var selectedTab = 0
     @Environment(\.scenePhase) private var scenePhase
 
@@ -84,7 +84,7 @@ struct ContentView: View {
 
     private var mainTabView: some View {
         TabView(selection: $selectedTab) {
-            DashboardView(authViewModel: authViewModel, bengkelBiddingViewModel: bengkelBiddingViewModel, mechanicDashboardViewModel: mechanicDashboardViewModel, onOpenSaldo: { selectedTab = 1 })
+            DashboardView(authViewModel: authViewModel, bengkelBiddingViewModel: bengkelBiddingViewModel, mechanicDashboardViewModel: mechanicDashboardViewModel, onOpenSaldo: { selectedTab = 1 }, routeOrder: $routeOrder)
                 .tag(0)
                 .tabItem {
                     Label(
@@ -134,14 +134,12 @@ struct ContentView: View {
                 order: order,
                 onView: {
                     mechanicDashboardViewModel.newAssignmentAlert = nil
-                    mechanicJobToOpen = order
+                    routeOrder = order
+                    selectedTab = 0
                 },
                 onDismiss: { mechanicDashboardViewModel.newAssignmentAlert = nil }
             )
             .presentationDetents([.medium])
-        }
-        .fullScreenCover(item: $mechanicJobToOpen) { order in
-            NavigationStack { BengkelRouteView(order: order) }
         }
         .sheet(item: $bengkelBiddingViewModel.newOrderAlert) { order in
             IncomingJobModal(
@@ -159,9 +157,13 @@ struct ContentView: View {
                 Task { await bengkelBiddingViewModel.placeBid(order: order, price: price, notes: notes) }
             }
         }
-        .fullScreenCover(item: $bengkelBiddingViewModel.activeBengkelOrder) { order in
-            NavigationStack {
-                BengkelRouteView(order: order)
+        // Won-bid: route the provider to the route screen via a PUSH in the Dashboard tab
+        // (not a fullScreenCover — the route screen's sheets break inside a cover).
+        .onChange(of: bengkelBiddingViewModel.activeBengkelOrder?.id) { _ in
+            if let order = bengkelBiddingViewModel.activeBengkelOrder {
+                routeOrder = order
+                selectedTab = 0
+                bengkelBiddingViewModel.activeBengkelOrder = nil
             }
         }
         .alert(
