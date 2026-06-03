@@ -18,6 +18,26 @@ struct BengkelBiddingView: View {
                     ProgressView()
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 60)
+                } else if viewModel.myBengkel == nil {
+                    VStack(spacing: 16) {
+                        BiddingEmptyState(
+                            icon: "exclamationmark.triangle",
+                            title: "Gagal memuat",
+                            subtitle: "Order tidak dapat dimuat. Ini mungkin gangguan sementara."
+                        )
+                        Button {
+                            Task { await viewModel.start() }
+                        } label: {
+                            Text("Coba Lagi")
+                                .fontWeight(.semibold)
+                                .foregroundColor(Color(.systemBackground))
+                                .padding(.horizontal, 24)
+                                .padding(.vertical, 10)
+                                .background(Color.primary.opacity(0.9))
+                                .cornerRadius(12)
+                        }
+                    }
+                    .frame(maxWidth: .infinity)
                 } else if viewModel.orders.isEmpty {
                     BiddingEmptyState(
                         icon: "tray",
@@ -50,6 +70,14 @@ struct BengkelBiddingView: View {
             PlaceBidSheet(minPrice: order.price ?? 0) { price, notes in
                 Task { await viewModel.placeBid(order: order, price: price, notes: notes) }
             }
+        }
+        .alert("Terjadi Kesalahan", isPresented: Binding(
+            get: { viewModel.errorMessage != nil },
+            set: { if !$0 { viewModel.errorMessage = nil } }
+        )) {
+            Button("OK", role: .cancel) { viewModel.errorMessage = nil }
+        } message: {
+            Text(viewModel.errorMessage ?? "")
         }
     }
 }

@@ -33,6 +33,9 @@ class BengkelBiddingViewModel: ObservableObject {
     private var realtimeChannel: RealtimeChannelV2?
     private var realtimeReaderTasks: [Task<Void, Never>] = []
     private let orderRepository = OrderRepository()
+    private let bengkelRepository = BengkelRepository()
+    private let bidRepository = BidRepository()
+    private let biddingService = BiddingService()
     private let notificationService = NotificationService()
     private var knownOrderIds: Set<String> = []
     private var bidStatusById: [String: String] = [:]
@@ -67,14 +70,7 @@ class BengkelBiddingViewModel: ObservableObject {
         errorMessage = nil
         notificationService.requestAuthorization()
         do {
-            let fetched: Bengkel = try await supabase.from("bengkels")
-                .select()
-                .eq("provider_uid", value: uid)
-                .limit(1)
-                .single()
-                .execute()
-                .value
-            self.myBengkel = fetched
+            self.myBengkel = try await bengkelRepository.fetchBengkel(providerUid: uid)
         } catch {
             self.errorMessage = error.localizedDescription
             isLoading = false
@@ -184,23 +180,13 @@ class BengkelBiddingViewModel: ObservableObject {
         guard let bengkel = myBengkel, let bengkelId = bengkel.id else { return }
         errorMessage = nil
         do {
-            let body = OrdersRequest(
-                action: "ordersForMechanic",
+            let nearbyOrders = try await biddingService.fetchOrdersForMechanic(
                 latitude: bengkel.latitude,
                 longitude: bengkel.longitude,
                 radiusMeters: 5000
             )
-            let response: OrdersResponse = try await supabase.functions.invoke(
-                "bidding",
-                options: FunctionInvokeOptions(body: body)
-            )
-            let nearbyOrders = response.orders
 
-            let allMyBids: [Bid] = try await supabase.from("bids")
-                .select()
-                .eq("bengkel_id", value: bengkelId)
-                .execute()
-                .value
+            let allMyBids = try await bidRepository.fetchBidsForBengkel(bengkelId: bengkelId)
 
             // Detect bids the customer rejected by choosing another bengkel.
             // A pending bid changing state tells us why we no longer have the job:
@@ -306,16 +292,11 @@ class BengkelBiddingViewModel: ObservableObject {
         errorMessage = nil
         successMessage = nil
         do {
-            let body = PlaceBidRequest(
-                action: "placeBid",
+            _ = try await biddingService.placeBid(
                 serviceRequestId: order.id,
                 bengkelId: bengkelId,
                 price: price,
                 notes: notes.isEmpty ? nil : notes
-            )
-            let _: PlaceBidResponse = try await supabase.functions.invoke(
-                "bidding",
-                options: FunctionInvokeOptions(body: body)
             )
             self.successMessage = "Tawaran terkirim. Menunggu pelanggan menerima."
             // Do NOT navigate to the route screen yet — the bid is only placed, not won.
@@ -342,10 +323,7 @@ class BengkelBiddingViewModel: ObservableObject {
     // not "Rejected"/"AutoRejected".
     func expireBid(_ bid: Bid) async {
         do {
-            try await supabase.from("bids")
-                .update(BidStatusUpdate(status: "Expired"))
-                .eq("id", value: bid.id)
-                .execute()
+            try await bidRepository.updateStatus(bidId: bid.id, status: "Expired")
             await loadOrders()
         } catch {
             self.errorMessage = error.localizedDescription
@@ -354,10 +332,7 @@ class BengkelBiddingViewModel: ObservableObject {
 
     func rejectBid(_ bid: Bid) async {
         do {
-            try await supabase.from("bids")
-                .update(BidStatusUpdate(status: "Rejected"))
-                .eq("id", value: bid.id)
-                .execute()
+            try await bidRepository.updateStatus(bidId: bid.id, status: "Rejected")
             await loadOrders()
         } catch {
             self.errorMessage = error.localizedDescription

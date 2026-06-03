@@ -49,6 +49,7 @@ final class CustomerBiddingViewModel: ObservableObject {
     private var realtimeReaderTasks: [Task<Void, Never>] = []
     private let userRepository = UserRepository()
     private let orderRepository = OrderRepository()
+    private let bidRepository = BidRepository()
     private let storageService = StorageService()
     private let notificationService = NotificationService()
     private var knownBidIds: Set<String> = []
@@ -136,10 +137,7 @@ final class CustomerBiddingViewModel: ObservableObject {
             }
 
             if let existingId = serviceRequestId {
-                try await supabase.from("service_requests")
-                    .update(StartSearchPayload(price: price))
-                    .eq("id", value: existingId)
-                    .execute()
+                try await orderRepository.updateOrderPrice(id: existingId, price: price)
             } else {
                 let payload = ServiceRequestPayload(
                     customer_id: uid,
@@ -306,12 +304,7 @@ final class CustomerBiddingViewModel: ObservableObject {
     func loadReceivedBids() async {
         guard let serviceRequestId = serviceRequestId else { return }
         do {
-            let fetched: [Bid] = try await supabase.from("bids")
-                .select("*, bengkel:bengkels(*)")
-                .eq("service_request_id", value: serviceRequestId)
-                .order("price", ascending: true)
-                .execute()
-                .value
+            let fetched = try await bidRepository.fetchBids(serviceRequestId: serviceRequestId)
             let pending = fetched.filter { $0.status.lowercased() == "pending" }
 
             // Push a notification for each offer that arrived since the last load.
@@ -382,11 +375,7 @@ final class CustomerBiddingViewModel: ObservableObject {
         isLoading = true
         errorMessage = nil
         do {
-            try await supabase.from("bids")
-                .update(BidStatusUpdate(status: "Rejected"))
-                .eq("id", value: bid.id)
-                .execute()
-
+            try await bidRepository.updateStatus(bidId: bid.id, status: "Rejected")
             await loadReceivedBids()
         } catch {
             self.errorMessage = error.localizedDescription
@@ -399,11 +388,7 @@ final class CustomerBiddingViewModel: ObservableObject {
     // the customer accepted a different bengkel.
     func expireBid(_ bid: Bid) async {
         do {
-            try await supabase.from("bids")
-                .update(BidStatusUpdate(status: "Expired"))
-                .eq("id", value: bid.id)
-                .execute()
-
+            try await bidRepository.updateStatus(bidId: bid.id, status: "Expired")
             await loadReceivedBids()
         } catch {
             self.errorMessage = error.localizedDescription
@@ -437,10 +422,7 @@ final class CustomerBiddingViewModel: ObservableObject {
         }
         guard !overdue.isEmpty else { scheduleBidExpiry(); return } // woke early -> re-arm
         for bid in overdue {
-            try? await supabase.from("bids")
-                .update(BidStatusUpdate(status: "Expired"))
-                .eq("id", value: bid.id)
-                .execute()
+            try? await bidRepository.updateStatus(bidId: bid.id, status: "Expired")
         }
         await loadReceivedBids() // re-arms watcher, or resumes search if none remain
     }

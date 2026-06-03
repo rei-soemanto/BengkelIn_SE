@@ -72,6 +72,14 @@ class OrderRepository {
             .execute()
     }
 
+    // Re-price an existing pending order when the customer re-searches at a new offer.
+    func updateOrderPrice(id: String, price: Int) async throws {
+        try await supabase.from("service_requests")
+            .update(StartSearchPayload(price: price))
+            .eq("id", value: id)
+            .execute()
+    }
+
     func cancelOrder(id: String) async throws {
         try await supabase.rpc(
             "cancel_order",
