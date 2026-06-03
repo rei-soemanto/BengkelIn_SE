@@ -44,6 +44,18 @@ class OrderRepository {
             .value
     }
 
+    // The mechanic's full order history: everything ever dispatched to them, any
+    // status (accepted in-progress, completed, cancelled). RLS "Mechanics can view
+    // their assigned requests" (mechanic_id = auth.uid()) permits this directly.
+    func fetchMechanicOrders(mechanicId: String) async throws -> [NearbyOrder] {
+        return try await supabase.from("service_requests")
+            .select()
+            .eq("mechanic_id", value: mechanicId)
+            .order("created_at", ascending: false)
+            .execute()
+            .value
+    }
+
     func fetchOrder(id: String) async throws -> NearbyOrder {
         return try await supabase.from("service_requests")
             .select()

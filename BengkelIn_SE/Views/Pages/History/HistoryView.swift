@@ -13,10 +13,12 @@ struct HistoryView: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                if authViewModel.appMode == .customer || authViewModel.currentUser?.role != "PROVIDER" {
-                    CustomerHistoryView()
-                } else {
+                if authViewModel.appMode == .mechanic && authViewModel.currentUser?.role == "MECHANIC" {
+                    MechanicHistoryView()
+                } else if authViewModel.appMode == .bengkel && authViewModel.currentUser?.role == "PROVIDER" {
                     BengkelHistoryView()
+                } else {
+                    CustomerHistoryView()
                 }
             }
             .navigationTitle("Riwayat Pesanan")
