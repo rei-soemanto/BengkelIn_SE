@@ -23,15 +23,22 @@ class MechanicHistoryViewModel: ObservableObject {
     private let orderRepository = OrderRepository()
     private let behaviorReportRepository = BehaviorReportRepository()
     private let authService = AuthService()
-    private var channel: RealtimeChannelV2?
     private var mechanicId: String?
-    private var realtimeReaderTasks: [Task<Void, Never>] = []
+    private var ordersChangedObserver: NSObjectProtocol?
     private var reassignObserver: NSObjectProtocol?
 
     init() {
-        // RLS blocks the realtime row update when this mechanic is reassigned away,
-        // so the order would linger in the list. The app-level broadcast watcher
-        // posts this; drop the order the moment we hear it.
+        // Live sync rides the app-level dashboard subscription (the single source of
+        // truth for this mechanic's service_requests changes) instead of opening a
+        // second postgres_changes subscription on the same filter, which Realtime
+        // delivers to unreliably. A live change → refetch the full history.
+        ordersChangedObserver = NotificationCenter.default.addObserver(
+            forName: .mechanicOrdersChanged, object: nil, queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in await self?.reload() }
+        }
+        // Reassigned-away events can't come through that path (RLS hides the row),
+        // so the broadcast watcher posts this; drop the order the moment we hear it.
         reassignObserver = NotificationCenter.default.addObserver(
             forName: .mechanicReassignedAway, object: nil, queue: .main
         ) { [weak self] note in
@@ -41,13 +48,8 @@ class MechanicHistoryViewModel: ObservableObject {
     }
 
     deinit {
-        realtimeReaderTasks.forEach { $0.cancel() }
-        realtimeReaderTasks.removeAll()
+        if let ordersChangedObserver { NotificationCenter.default.removeObserver(ordersChangedObserver) }
         if let reassignObserver { NotificationCenter.default.removeObserver(reassignObserver) }
-        if let channel = channel {
-            let client = supabase
-            Task { await client.removeChannel(channel) }
-        }
     }
 
     func loadOrders() async {
@@ -61,7 +63,6 @@ class MechanicHistoryViewModel: ObservableObject {
             if let reported = try? await behaviorReportRepository.fetchReportedRequestIds(reporterId: uid) {
                 self.reportedOrderIds = Set(reported)
             }
-            startRealtimeIfNeeded()
         } catch {
             self.errorMessage = error.localizedDescription
         }
@@ -74,24 +75,6 @@ class MechanicHistoryViewModel: ObservableObject {
 
     func select(_ order: NearbyOrder) {
         self.detailOrder = order
-    }
-
-    private func startRealtimeIfNeeded() {
-        guard channel == nil, let mechanicId else { return }
-        let channel = supabase.channel("mechanic-history-\(mechanicId)")
-        self.channel = channel
-        let stream = channel.postgresChange(
-            AnyAction.self,
-            schema: "public",
-            table: "service_requests",
-            filter: "mechanic_id=eq.\(mechanicId)"
-        )
-        realtimeReaderTasks.append(Task { [weak self] in
-            await channel.subscribe()
-            for await _ in stream {
-                await self?.reload()
-            }
-        })
     }
 
     private func reload() async {

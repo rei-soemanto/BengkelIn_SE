@@ -122,7 +122,14 @@ class MechanicDashboardViewModel: ObservableObject {
             // Cold-start reconcile: the first events can arrive during the subscribe
             // handshake and be missed, so refetch once subscribed.
             await self?.loadJobs()
-            for await _ in stream { await self?.loadJobs() }
+            for await _ in stream {
+                await self?.loadJobs()
+                // This always-on subscription is the single source of truth for live
+                // service_requests changes on this mechanic. Other screens (history) ride
+                // it via NotificationCenter rather than opening a duplicate postgres_changes
+                // subscription on the same filter, which Realtime delivers to unreliably.
+                NotificationCenter.default.post(name: .mechanicOrdersChanged, object: nil)
+            }
         })
 
         subscribeReassignBroadcast(uid: uid)
@@ -162,4 +169,9 @@ extension Notification.Name {
     // object is the affected request id (String). Screens with their own order
     // lists/state observe this to self-heal, since RLS blocks the realtime row update.
     static let mechanicReassignedAway = Notification.Name("mechanicReassignedAway")
+
+    // Posted whenever a live service_requests change lands for the signed-in mechanic
+    // (assigned, completed, cancelled). Screens with their own order lists observe this
+    // to refresh, instead of opening a second postgres_changes subscription.
+    static let mechanicOrdersChanged = Notification.Name("mechanicOrdersChanged")
 }
