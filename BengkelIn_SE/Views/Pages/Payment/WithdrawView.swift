@@ -87,15 +87,18 @@ struct WithdrawView: View {
                             if ok { dismiss() }
                         }
                     } label: {
-                        Text("Ajukan Penarikan")
-                            .font(.headline)
-                            .foregroundColor(Color(.systemBackground))
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(Color.primary.opacity(isValid ? 0.9 : 0.3))
-                            .cornerRadius(16)
+                        HStack(spacing: 8) {
+                            if viewModel.isLoading { ProgressView().tint(Color(.systemBackground)) }
+                            Text(viewModel.isLoading ? "Memproses…" : "Ajukan Penarikan")
+                                .font(.headline)
+                        }
+                        .foregroundColor(Color(.systemBackground))
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color.primary.opacity((isValid && !viewModel.isLoading) ? 0.9 : 0.3))
+                        .cornerRadius(16)
                     }
-                    .disabled(!isValid)
+                    .disabled(!isValid || viewModel.isLoading)
 
                     Text("Penarikan akan diproses setelah disetujui admin.")
                         .font(.caption)

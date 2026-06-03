@@ -23,7 +23,10 @@ struct DashboardView: View {
     // sheets aren't dismissed by the live map. Fed by the mechanic's job taps and by the
     // app-level triggers (won bid / incoming assignment) routed in from ContentView.
     @Binding var routeOrder: NearbyOrder?
-    @State private var recentOrders: [String] = []
+    // Drives the customer's "Pesanan Terbaru" list — reused from the History tab so a
+    // pending order stranded by an app-kill is reachable (and resumable) from the home
+    // screen, instead of forcing a re-order that drains more held balance.
+    @StateObject private var customerOrdersVM = HistoryViewModel()
     @State private var path = NavigationPath()
     @Environment(\.scenePhase) private var scenePhase
 
@@ -49,6 +52,39 @@ struct DashboardView: View {
                 set: { if !$0 { routeOrder = nil } }
             )) {
                 if let order = routeOrder { BengkelRouteView(order: order) }
+            }
+            // Resume routing for the customer's recent-orders list (same targets as the
+            // History tab): pending -> bidding, accepted -> tracking, else -> detail.
+            .navigationDestination(isPresented: Binding(
+                get: { customerOrdersVM.detailOrder != nil },
+                set: { if !$0 { customerOrdersVM.detailOrder = nil; Task { await customerOrdersVM.loadOrders() } } }
+            )) {
+                if let order = customerOrdersVM.detailOrder {
+                    OrderDetailView(order: order, isCustomer: true)
+                }
+            }
+            .navigationDestination(isPresented: Binding(
+                get: { customerOrdersVM.trackingBid != nil },
+                set: { if !$0 { customerOrdersVM.trackingBid = nil; customerOrdersVM.trackingCoordinate = nil } }
+            )) {
+                if let bid = customerOrdersVM.trackingBid, let coordinate = customerOrdersVM.trackingCoordinate {
+                    OrderTrackingView(bid: bid, customerCoordinate: coordinate, popToRoot: {
+                        customerOrdersVM.trackingBid = nil
+                        customerOrdersVM.trackingCoordinate = nil
+                        Task { await customerOrdersVM.loadOrders() }
+                    })
+                }
+            }
+            .navigationDestination(isPresented: Binding(
+                get: { customerOrdersVM.biddingOrder != nil },
+                set: { if !$0 { customerOrdersVM.biddingOrder = nil } }
+            )) {
+                if let order = customerOrdersVM.biddingOrder {
+                    CustomerBiddingView(resuming: order, popToRoot: {
+                        customerOrdersVM.biddingOrder = nil
+                        Task { await customerOrdersVM.loadOrders() }
+                    })
+                }
             }
             .task { await authViewModel.fetchUser() }
             .onChange(of: scenePhase) { phase in
@@ -124,8 +160,8 @@ struct DashboardView: View {
                     Text("Pesanan Terbaru")
                         .font(.title2)
                         .fontWeight(.bold)
-                    
-                    if recentOrders.isEmpty {
+
+                    if customerOrdersVM.orders.isEmpty {
                         VStack(spacing: 12) {
                             Image(systemName: "doc.text.magnifyingglass")
                                 .font(.largeTitle)
@@ -139,16 +175,24 @@ struct DashboardView: View {
                         .background(Color(.systemGray6))
                         .cornerRadius(12)
                     } else {
-                        ForEach(recentOrders.prefix(3), id: \.self) { order in
-                            Text("Data Pesanan di Sini")
+                        ForEach(customerOrdersVM.orders.prefix(3)) { order in
+                            OrderHistoryRow(order: order, onTap: {
+                                // Pending = an order still mid-search: tapping resumes the
+                                // bidding screen so the customer doesn't strand it and re-order.
+                                Task { await customerOrdersVM.select(order) }
+                            })
                         }
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                
+
                 Spacer()
             }
             .padding()
+        }
+        .task { await customerOrdersVM.loadOrders() }
+        .onChange(of: scenePhase) { phase in
+            if phase == .active { Task { await customerOrdersVM.loadOrders() } }
         }
     }
 }

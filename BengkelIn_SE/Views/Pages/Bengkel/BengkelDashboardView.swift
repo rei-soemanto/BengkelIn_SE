@@ -104,7 +104,31 @@ struct BengkelDashboardView: View {
                         }
                     }
 
-                    if bengkelBiddingViewModel.orders.isEmpty {
+                    if bengkelBiddingViewModel.myBengkel == nil {
+                        // The feed never initialized (e.g. the bengkel fetch failed). Don't
+                        // show this as "no demand" — offer a retry so it isn't wedged.
+                        VStack(spacing: 12) {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .font(.largeTitle)
+                                .foregroundColor(.orange)
+                            Text("Gagal memuat permintaan.")
+                                .font(.subheadline)
+                                .foregroundColor(.secondary)
+                            Button {
+                                Task { await bengkelBiddingViewModel.start() }
+                            } label: {
+                                Text("Coba Lagi").fontWeight(.semibold)
+                                    .padding(.horizontal, 20).padding(.vertical, 8)
+                                    .background(Color.primary.opacity(0.9))
+                                    .foregroundColor(Color(.systemBackground))
+                                    .cornerRadius(10)
+                            }
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 30)
+                        .background(Color(.systemGray6))
+                        .cornerRadius(12)
+                    } else if bengkelBiddingViewModel.orders.isEmpty {
                         VStack(spacing: 12) {
                             Image(systemName: "checkmark.circle.fill")
                                 .font(.largeTitle)
@@ -153,6 +177,17 @@ struct BengkelDashboardView: View {
             PlaceBidSheet(minPrice: order.price ?? 0) { price, notes in
                 Task { await bengkelBiddingViewModel.placeBid(order: order, price: price, notes: notes) }
             }
+        }
+        // Without this, every failure path (bid rejected by the floor check, load error,
+        // bengkel fetch error) only set errorMessage and was never shown — failures looked
+        // like "nothing happened" or "no demand".
+        .alert("Terjadi Kesalahan", isPresented: Binding(
+            get: { bengkelBiddingViewModel.errorMessage != nil },
+            set: { if !$0 { bengkelBiddingViewModel.errorMessage = nil } }
+        )) {
+            Button("OK", role: .cancel) { bengkelBiddingViewModel.errorMessage = nil }
+        } message: {
+            Text(bengkelBiddingViewModel.errorMessage ?? "")
         }
     }
 }

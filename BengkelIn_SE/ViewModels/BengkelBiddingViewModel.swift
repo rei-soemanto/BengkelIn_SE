@@ -111,7 +111,10 @@ class BengkelBiddingViewModel: ObservableObject {
     // Called when the app returns to the foreground: realtime sockets can die
     // while backgrounded, so reload missed orders and re-establish the channel.
     func refreshOnForeground() async {
-        guard hasStarted else { return }
+        // If the initial start() failed (e.g. the bengkel fetch errored), hasStarted is
+        // false and ContentView's identity-keyed .task won't re-fire — so the feed would
+        // stay wedged. Retry the full start here instead of silently no-oping.
+        guard hasStarted else { await start(); return }
         print("[BengkelRT] foreground refresh + resubscribe")
         await loadOrders()
         startRealtimeSubscription()
@@ -314,9 +317,10 @@ class BengkelBiddingViewModel: ObservableObject {
                 "bidding",
                 options: FunctionInvokeOptions(body: body)
             )
-            self.successMessage = "Tawaran terkirim."
-            // Take the bengkel to the live route-to-customer screen.
-            self.activeBengkelOrder = order
+            self.successMessage = "Tawaran terkirim. Menunggu pelanggan menerima."
+            // Do NOT navigate to the route screen yet — the bid is only placed, not won.
+            // The provider stays on the feed with a pending bid; loadOrders() promotes
+            // this order to the route screen only when the customer accepts (bid -> accepted).
             await loadOrders()
         } catch {
             self.errorMessage = error.localizedDescription

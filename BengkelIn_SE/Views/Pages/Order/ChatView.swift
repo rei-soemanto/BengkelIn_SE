@@ -68,6 +68,16 @@ struct ChatView: View {
         .fullScreenCover(item: $fullScreenImage) { item in
             FullScreenImageView(urlString: item.url)
         }
+        // Send / image-upload failures only set errorMessage before — the message stayed
+        // in the field and it looked like the send button did nothing. Surface it.
+        .alert("Gagal Mengirim", isPresented: Binding(
+            get: { viewModel.errorMessage != nil },
+            set: { if !$0 { viewModel.errorMessage = nil } }
+        )) {
+            Button("OK", role: .cancel) { viewModel.errorMessage = nil }
+        } message: {
+            Text(viewModel.errorMessage ?? "")
+        }
     }
 
     private var messagesList: some View {

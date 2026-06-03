@@ -156,6 +156,12 @@ struct OrderTrackingView: View {
                                 .cornerRadius(12)
                         }
                         .disabled(cancelReason.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                        if let error = trackingViewModel.errorMessage {
+                            Text(error)
+                                .font(.caption)
+                                .foregroundColor(.red)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
                         Spacer()
                     }
                     .padding()

@@ -20,6 +20,7 @@ class OrderTrackingViewModel: ObservableObject, Sendable {
     @Published var lastUpdated: String?
     @Published var order: NearbyOrder?
     @Published var isLive = false
+    @Published var errorMessage: String?
 
     private let locationRepository = OrderLocationRepository()
     private let orderRepository = OrderRepository()
@@ -113,12 +114,15 @@ class OrderTrackingViewModel: ObservableObject, Sendable {
 
     func openDispute(reason: String) async -> Bool {
         guard let id = serviceRequestId else { return false }
+        errorMessage = nil
         do {
             iInitiatedCancel = true
             _ = try await orderRepository.openDispute(requestId: id, reason: reason)
             return true
         } catch {
             iInitiatedCancel = false
+            // Was returned silently before — the cancel sheet just sat there doing nothing.
+            errorMessage = error.localizedDescription
             return false
         }
     }

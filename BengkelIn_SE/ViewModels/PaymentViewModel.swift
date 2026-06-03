@@ -214,11 +214,16 @@ class PaymentViewModel: ObservableObject {
     }
 
     func requestWithdrawal(amount: Int) async -> Bool {
+        // Block re-entry: a tap-happy or double-tapped submit must not fire two requests.
+        guard !isLoading else { return false }
         guard amount >= 10000 else {
             self.errorMessage = "Minimal penarikan Rp10.000"
             return false
         }
-        guard Double(amount) <= balance else {
+        // Guard against AVAILABLE balance (excludes escrowed held_balance), not the total —
+        // otherwise escrowed funds could be withdrawn. This is the real server-of-record
+        // check; the View's disable is only cosmetic.
+        guard Double(amount) <= availableBalance else {
             self.errorMessage = "Saldo tidak mencukupi."
             return false
         }
