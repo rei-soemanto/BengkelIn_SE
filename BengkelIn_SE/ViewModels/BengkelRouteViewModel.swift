@@ -50,6 +50,7 @@ class BengkelRouteViewModel: NSObject, ObservableObject, CLLocationManagerDelega
     private var amProvider: Bool { myUid != nil && myUid == providerUid }
     var selfAssigned: Bool { mechanicId != nil && mechanicId == providerUid }   // bengkel handles it itself
     var amAssignee: Bool { mechanicId != nil && mechanicId == myUid }           // I'm the one handling it
+    var viewerIsProvider: Bool { amProvider }                                   // I own this bengkel (can assign/reassign)
     private var monitoringMechanic: Bool { amProvider && mechanicId != nil && mechanicId != providerUid }
     // Label for the handler pin.
     var viewerIsAssignee: Bool { amAssignee }

@@ -7,13 +7,13 @@
 
 import SwiftUI
 
-// Home screen shown when a MECHANIC switches to Mekanik mode. The "Pekerjaan Aktif" feed
-// updates in realtime; a brand-new assignment from the provider fires a notification and
-// pops IncomingAssignmentModal — mirroring the bengkel's arrived-order experience.
+// Home screen shown when a MECHANIC switches to Mekanik mode. Shows the "Pekerjaan Aktif"
+// feed. The realtime watch + the arrived-assignment IncomingAssignmentModal are owned by
+// ContentView (app-wide, like the bengkel's incoming-order modal), so this screen only
+// renders the shared view model's state and handles tapping a job in the list.
 struct MechanicDashboardView: View {
     @ObservedObject var authViewModel: AuthViewModel
-    @StateObject private var viewModel = MechanicDashboardViewModel()
-    @Environment(\.scenePhase) private var scenePhase
+    @ObservedObject var viewModel: MechanicDashboardViewModel
     @State private var jobToOpen: NearbyOrder?
 
     var body: some View {
@@ -57,24 +57,8 @@ struct MechanicDashboardView: View {
             }
             .padding()
         }
-        .task { await viewModel.start() }
         .task { await authViewModel.fetchUser() }
-        .onChange(of: scenePhase) { phase in
-            if phase == .active { Task { await viewModel.refreshOnForeground() } }
-        }
-        .onDisappear { viewModel.stop() }
-        // Arrived-order style modal when the provider dispatches a new job in realtime.
-        .sheet(item: $viewModel.newAssignmentAlert) { order in
-            IncomingAssignmentModal(
-                order: order,
-                onView: {
-                    viewModel.newAssignmentAlert = nil
-                    jobToOpen = order
-                },
-                onDismiss: { viewModel.newAssignmentAlert = nil }
-            )
-            .presentationDetents([.medium])
-        }
+        // Tapping a job in the active-jobs list opens the shared route/work screen.
         .fullScreenCover(item: $jobToOpen) { order in
             NavigationStack { BengkelRouteView(order: order) }
         }

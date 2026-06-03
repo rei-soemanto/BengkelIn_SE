@@ -7,8 +7,9 @@
 
 import SwiftUI
 
-// Provider picks a roster mechanic — or "Saya Sendiri" (Self) — for an accepted job (UC2).
-// An empty roster collapses to Self only (doc UC2-2a).
+// Provider dispatches an accepted job to a roster mechanic — or reassigns it. Bengkel "Self"
+// was removed, so a mechanic is required. Busy mechanics (already on another active order)
+// are shown disabled; the mechanic currently on this order is marked.
 struct AssignMechanicSheet: View {
     let requestId: String
     var onAssigned: () -> Void = {}
@@ -32,47 +33,18 @@ struct AssignMechanicSheet: View {
                         .cornerRadius(10)
                     }
 
-                    // Self option — always available.
-                    assignRow(
-                        title: "Saya Sendiri",
-                        subtitle: "Tangani pekerjaan ini sendiri",
-                        icon: "person.fill.checkmark"
-                    ) {
-                        Task {
-                            if await viewModel.assign(requestId: requestId, mechanicId: nil) {
-                                onAssigned(); dismiss()
-                            }
-                        }
-                    }
-
-                    if viewModel.isLoading {
-                        ProgressView().padding(.top, 20)
-                    } else if !viewModel.availableMechanics.isEmpty {
+                    if viewModel.isLoading && viewModel.availableMechanics.isEmpty {
+                        ProgressView().padding(.top, 30)
+                    } else if viewModel.availableMechanics.isEmpty {
+                        emptyState
+                    } else {
                         HStack {
                             Text("Mekanik Bengkel").font(.headline)
                             Spacer()
                         }
-                        .padding(.top, 8)
-
                         ForEach(viewModel.availableMechanics) { mechanic in
-                            assignRow(
-                                title: mechanic.mechanicName,
-                                subtitle: "Tugaskan ke mekanik ini",
-                                icon: "wrench.and.screwdriver.fill"
-                            ) {
-                                Task {
-                                    if await viewModel.assign(requestId: requestId, mechanicId: mechanic.mechanicId) {
-                                        onAssigned(); dismiss()
-                                    }
-                                }
-                            }
+                            mechanicRow(mechanic)
                         }
-                    } else {
-                        Text("Belum ada mekanik di roster. Undang mekanik dari Profil Bengkel, atau tangani sendiri.")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                            .multilineTextAlignment(.center)
-                            .padding(.top, 8)
                     }
                 }
                 .padding()
@@ -86,27 +58,67 @@ struct AssignMechanicSheet: View {
                 }
             }
             .disabled(viewModel.isAssigning)
-            .task { await viewModel.fetchAvailableMechanics() }
+            .task { await viewModel.fetchAvailableMechanics(requestId: requestId) }
         }
     }
 
-    private func assignRow(title: String, subtitle: String, icon: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
+    private func mechanicRow(_ mechanic: AvailableMechanic) -> some View {
+        let disabled = mechanic.busy || mechanic.isCurrent
+        let subtitle: String = {
+            if mechanic.isCurrent { return "Mekanik saat ini" }
+            if mechanic.busy { return "Sedang menangani order lain" }
+            return "Tugaskan ke mekanik ini"
+        }()
+        return Button {
+            Task {
+                if await viewModel.assign(requestId: requestId, mechanicId: mechanic.mechanicId) {
+                    onAssigned(); dismiss()
+                }
+            }
+        } label: {
             HStack(spacing: 12) {
-                Image(systemName: icon)
+                Image(systemName: "wrench.and.screwdriver.fill")
                     .font(.title3)
-                    .foregroundColor(Color.primary.opacity(0.8))
+                    .foregroundColor(disabled ? .secondary : Color.primary.opacity(0.8))
                     .frame(width: 32)
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(title).font(.body).fontWeight(.semibold).foregroundColor(.primary)
-                    Text(subtitle).font(.caption).foregroundColor(.secondary)
+                    Text(mechanic.mechanicName)
+                        .font(.body).fontWeight(.semibold)
+                        .foregroundColor(disabled ? .secondary : .primary)
+                    Text(subtitle)
+                        .font(.caption)
+                        .foregroundColor(mechanic.busy ? .red : .secondary)
                 }
                 Spacer()
-                Image(systemName: "chevron.right").foregroundColor(.secondary)
+                if mechanic.isCurrent {
+                    Image(systemName: "checkmark.circle.fill").foregroundColor(.green)
+                } else if mechanic.busy {
+                    Image(systemName: "clock.badge.exclamationmark").foregroundColor(.secondary)
+                } else {
+                    Image(systemName: "chevron.right").foregroundColor(.secondary)
+                }
             }
             .padding()
             .background(Color(.systemBackground))
             .cornerRadius(12)
+            .opacity(disabled ? 0.6 : 1)
         }
+        .disabled(disabled)
+    }
+
+    private var emptyState: some View {
+        VStack(spacing: 10) {
+            Image(systemName: "person.2.slash")
+                .font(.largeTitle)
+                .foregroundColor(.secondary)
+            Text("Belum ada mekanik di roster")
+                .font(.subheadline).fontWeight(.semibold)
+            Text("Undang mekanik dari Profil Bengkel untuk bisa menugaskan order ini.")
+                .font(.caption)
+                .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 30)
     }
 }

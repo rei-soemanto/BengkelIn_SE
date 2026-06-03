@@ -94,6 +94,7 @@ class OrderTrackingViewModel: ObservableObject, Sendable {
                         let previous = self.order
                         self.order = updated
                         self.notifyOnCancellation(previous: previous, updated: updated)
+                        self.notifyOnAssignment(previous: previous, updated: updated)
                     }
                 }
             }
@@ -128,6 +129,16 @@ class OrderTrackingViewModel: ObservableObject, Sendable {
         notificationService.notifyNewOrder(
             title: "Pesanan dibatalkan",
             body: "Bengkel membatalkan pesanan ini."
+        )
+    }
+
+    // Fires once when the bengkel assigns a handler (itself or a mechanic), i.e.
+    // mechanic_id goes from unset to set — the customer learns help is en route.
+    private func notifyOnAssignment(previous: NearbyOrder?, updated: NearbyOrder) {
+        guard previous?.mechanicId == nil, updated.mechanicId != nil else { return }
+        notificationService.notifyNewOrder(
+            title: "Bengkel menuju lokasimu",
+            body: "Bengkel sudah menugaskan dan sedang dalam perjalanan ke lokasimu."
         )
     }
 

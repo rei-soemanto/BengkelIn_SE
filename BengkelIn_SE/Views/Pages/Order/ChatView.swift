@@ -15,13 +15,22 @@ private struct ZoomableImageURL: Identifiable {
 
 struct ChatView: View {
     let title: String
+    // View-only: the bengkel provider can read the mechanic <-> customer thread but
+    // can't send (enforced server-side too — the provider is off the chat send RLS).
+    let readOnly: Bool
+    // When set (e.g. the provider observing), messages from this sender align right and the
+    // rest align left — so the bengkel sees the mechanic on the right, customer on the left.
+    // Nil falls back to the viewer's own id (the normal "my messages on the right").
+    let rightSenderId: String?
 
     @StateObject private var viewModel: ChatViewModel
     @State private var photoItem: PhotosPickerItem?
     @State private var fullScreenImage: ZoomableImageURL?
 
-    init(serviceRequestId: String, title: String = "Chat") {
+    init(serviceRequestId: String, title: String = "Chat", readOnly: Bool = false, rightSenderId: String? = nil) {
         self.title = title
+        self.readOnly = readOnly
+        self.rightSenderId = rightSenderId
         _viewModel = StateObject(wrappedValue: ChatViewModel(serviceRequestId: serviceRequestId))
     }
 
@@ -30,6 +39,8 @@ struct ChatView: View {
             messagesList
             if viewModel.isLocked {
                 lockedBanner
+            } else if readOnly {
+                readOnlyBanner
             } else {
                 inputBar
             }
@@ -84,7 +95,7 @@ struct ChatView: View {
     }
 
     private func bubble(_ message: ChatMessage) -> some View {
-        let mine = message.senderId == viewModel.currentUserId
+        let mine = message.senderId == (rightSenderId ?? viewModel.currentUserId)
         return HStack {
             if mine { Spacer(minLength: 48) }
             VStack(alignment: mine ? .trailing : .leading, spacing: 6) {
@@ -156,6 +167,18 @@ struct ChatView: View {
         HStack(spacing: 8) {
             Image(systemName: "lock.fill")
             Text("Pesanan telah selesai. Chat ditutup.")
+        }
+        .font(.subheadline)
+        .foregroundColor(.secondary)
+        .frame(maxWidth: .infinity)
+        .padding()
+        .background(Color(.systemBackground))
+    }
+
+    private var readOnlyBanner: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "eye.fill")
+            Text("Hanya melihat percakapan mekanik & pelanggan.")
         }
         .font(.subheadline)
         .foregroundColor(.secondary)

@@ -36,11 +36,15 @@ class MechanicRepository {
         .execute()
     }
 
-    // Accepted mechanics for the caller's bengkel — used by the assignment picker.
-    func fetchAvailableMechanics() async throws -> [AvailableMechanic] {
-        return try await supabase.rpc("available_mechanics")
-            .execute()
-            .value
+    // Accepted mechanics for the caller's bengkel — used by the assignment picker. Takes the
+    // order id so each mechanic carries a `busy` flag and the current assignee is marked.
+    func fetchAvailableMechanics(requestId: String) async throws -> [AvailableMechanic] {
+        return try await supabase.rpc(
+            "available_mechanics",
+            params: AvailableMechanicsParams(p_request_id: requestId)
+        )
+        .execute()
+        .value
     }
 
     // MARK: Mechanic side

@@ -17,6 +17,7 @@ enum DashboardRoute: Hashable {
 struct DashboardView: View {
     @ObservedObject var authViewModel: AuthViewModel
     @ObservedObject var bengkelBiddingViewModel: BengkelBiddingViewModel
+    @ObservedObject var mechanicDashboardViewModel: MechanicDashboardViewModel
     var onOpenSaldo: () -> Void = {}
     @State private var recentOrders: [String] = []
     @State private var path = NavigationPath()
@@ -26,7 +27,7 @@ struct DashboardView: View {
         NavigationStack(path: $path) {
             VStack(spacing: 0) {
                 if authViewModel.appMode == .mechanic && authViewModel.currentUser?.role == "MECHANIC" {
-                    MechanicDashboardView(authViewModel: authViewModel)
+                    MechanicDashboardView(authViewModel: authViewModel, viewModel: mechanicDashboardViewModel)
                 } else if authViewModel.appMode == .bengkel && authViewModel.currentUser?.role == "PROVIDER" {
                     BengkelDashboardView(authViewModel: authViewModel, bengkelBiddingViewModel: bengkelBiddingViewModel)
                 } else {
@@ -145,7 +146,8 @@ struct DashboardView: View {
 #Preview("Light Theme") {
     DashboardView(
         authViewModel: AuthViewModel(),
-        bengkelBiddingViewModel: BengkelBiddingViewModel()
+        bengkelBiddingViewModel: BengkelBiddingViewModel(),
+        mechanicDashboardViewModel: MechanicDashboardViewModel()
     )
     .preferredColorScheme(.light)
 }
@@ -153,7 +155,8 @@ struct DashboardView: View {
 #Preview("Dark Theme") {
     DashboardView(
         authViewModel: AuthViewModel(),
-        bengkelBiddingViewModel: BengkelBiddingViewModel()
+        bengkelBiddingViewModel: BengkelBiddingViewModel(),
+        mechanicDashboardViewModel: MechanicDashboardViewModel()
     )
     .preferredColorScheme(.dark)
 }

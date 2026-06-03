@@ -19,6 +19,14 @@ final class NetworkMonitor: ObservableObject {
         monitor.start(queue: queue)
     }
 
+    // Forces an immediate re-evaluation against the monitor's current path. Used by the
+    // offline screen's "Coba Lagi" button so a tap re-checks connectivity instead of
+    // waiting for the next passive path update (which may never come if the path didn't
+    // change from the monitor's point of view).
+    func recheck() {
+        isConnected = monitor.currentPath.status == .satisfied
+    }
+
     deinit {
         monitor.cancel()
     }

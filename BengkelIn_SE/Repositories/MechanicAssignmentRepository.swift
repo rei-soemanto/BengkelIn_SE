@@ -13,9 +13,10 @@ import Supabase
 // assigned requests" RLS policy.
 class MechanicAssignmentRepository {
 
-    // p_mechanic_id == nil → "Self" (provider works it). Returns the updated order row.
+    // Dispatch the order to a roster mechanic (bengkel "Self" was removed). Returns the
+    // updated order row. The RPC enforces roster membership, the busy guard, and reassignment.
     @discardableResult
-    func assignMechanic(requestId: String, mechanicId: String?) async throws -> NearbyOrder {
+    func assignMechanic(requestId: String, mechanicId: String) async throws -> NearbyOrder {
         return try await supabase.rpc(
             "assign_mechanic",
             params: AssignMechanicParams(p_request_id: requestId, p_mechanic_id: mechanicId)

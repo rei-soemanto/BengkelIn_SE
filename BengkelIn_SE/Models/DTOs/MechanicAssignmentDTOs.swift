@@ -7,9 +7,15 @@
 
 import Foundation
 
-// Param for the assign_mechanic RPC. p_mechanic_id == nil means "Self" (the provider
-// works the job), which the SQL resolves to the caller's own uid.
+// Param for the assign_mechanic RPC. A mechanic is required — bengkel "Self" assignment
+// was removed, so the RPC rejects a null mechanic.
 struct AssignMechanicParams: Encodable {
     let p_request_id: String
-    let p_mechanic_id: String?
+    let p_mechanic_id: String
+}
+
+// Param for the available_mechanics RPC — the order being assigned, so the picker can flag
+// busy mechanics and the one currently assigned.
+struct AvailableMechanicsParams: Encodable {
+    let p_request_id: String
 }

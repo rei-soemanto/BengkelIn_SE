@@ -55,16 +55,21 @@ struct MechanicInvite: Codable, Identifiable {
     }
 }
 
-// Accepted roster mechanic offered for job assignment — return of `available_mechanics()`.
-// Consumed by Eugene's assignment picker (the read half of the roster seam contract).
+// Accepted roster mechanic offered for job assignment — return of
+// `available_mechanics(p_request_id)`. `busy` = already on another active order;
+// `isCurrent` = the one currently assigned to this order (for reassignment).
 struct AvailableMechanic: Codable, Identifiable {
     var mechanicId: String
     var mechanicName: String
+    var busy: Bool
+    var isCurrent: Bool
 
     var id: String { mechanicId }
 
     enum CodingKeys: String, CodingKey {
         case mechanicId = "mechanic_id"
         case mechanicName = "mechanic_name"
+        case busy
+        case isCurrent = "is_current"
     }
 }

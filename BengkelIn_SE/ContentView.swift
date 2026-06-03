@@ -13,8 +13,14 @@ struct ContentView: View {
     @StateObject private var authViewModel = AuthViewModel()
     @StateObject private var network = NetworkMonitor()
     @StateObject private var bengkelBiddingViewModel = BengkelBiddingViewModel()
+    // App-level so the mechanic is watched for new assignments anywhere in the app —
+    // mirroring how bengkelBiddingViewModel watches incoming orders app-wide. Lives at
+    // ContentView level (not inside MechanicDashboardView) so switching tabs never tears
+    // down the realtime subscription.
+    @StateObject private var mechanicDashboardViewModel = MechanicDashboardViewModel()
     @ObservedObject private var orderRoute = OrderRouteState.shared
     @State private var bidOrder: NearbyOrder?
+    @State private var mechanicJobToOpen: NearbyOrder?
     @State private var selectedTab = 0
     @Environment(\.scenePhase) private var scenePhase
 
@@ -26,7 +32,9 @@ struct ContentView: View {
         Group {
             if !network.isConnected {
                 OfflineView {
-                    Task { await authViewModel.loadInitialSession() }
+                    // Re-check connectivity. If we're back online, isConnected flips true
+                    // and the .onChange below reloads the session.
+                    network.recheck()
                 }
             } else if authViewModel.isInitializing {
                 SplashView()
@@ -64,6 +72,7 @@ struct ContentView: View {
         .onChange(of: scenePhase) { phase in
             if phase == .active {
                 Task { await bengkelBiddingViewModel.refreshOnForeground() }
+                Task { await mechanicDashboardViewModel.refreshOnForeground() }
             }
         }
         .onChange(of: network.isConnected) { connected in
@@ -75,7 +84,7 @@ struct ContentView: View {
 
     private var mainTabView: some View {
         TabView(selection: $selectedTab) {
-            DashboardView(authViewModel: authViewModel, bengkelBiddingViewModel: bengkelBiddingViewModel, onOpenSaldo: { selectedTab = 1 })
+            DashboardView(authViewModel: authViewModel, bengkelBiddingViewModel: bengkelBiddingViewModel, mechanicDashboardViewModel: mechanicDashboardViewModel, onOpenSaldo: { selectedTab = 1 })
                 .tag(0)
                 .tabItem {
                     Label(
@@ -114,7 +123,25 @@ struct ContentView: View {
         .task(id: authViewModel.currentUser?.role) {
             if authViewModel.currentUser?.role == "PROVIDER" {
                 await bengkelBiddingViewModel.start()
+            } else if authViewModel.currentUser?.role == "MECHANIC" {
+                await mechanicDashboardViewModel.start()
             }
+        }
+        // Arrived-order style modal when the provider dispatches a new job to this mechanic —
+        // the mechanic-side counterpart of the bengkel's IncomingJobModal, presented app-wide.
+        .sheet(item: $mechanicDashboardViewModel.newAssignmentAlert) { order in
+            IncomingAssignmentModal(
+                order: order,
+                onView: {
+                    mechanicDashboardViewModel.newAssignmentAlert = nil
+                    mechanicJobToOpen = order
+                },
+                onDismiss: { mechanicDashboardViewModel.newAssignmentAlert = nil }
+            )
+            .presentationDetents([.medium])
+        }
+        .fullScreenCover(item: $mechanicJobToOpen) { order in
+            NavigationStack { BengkelRouteView(order: order) }
         }
         .sheet(item: $bengkelBiddingViewModel.newOrderAlert) { order in
             IncomingJobModal(

@@ -21,20 +21,20 @@ class AssignMechanicViewModel: ObservableObject {
     private let mechanicRepository = MechanicRepository()              // Bryan's roster read
     private let assignmentRepository = MechanicAssignmentRepository()
 
-    func fetchAvailableMechanics() async {
+    func fetchAvailableMechanics(requestId: String) async {
         isLoading = true
         errorMessage = nil
         do {
-            availableMechanics = try await mechanicRepository.fetchAvailableMechanics()
+            availableMechanics = try await mechanicRepository.fetchAvailableMechanics(requestId: requestId)
         } catch {
             errorMessage = error.localizedDescription
         }
         isLoading = false
     }
 
-    // mechanicId == nil → assign to Self (provider). Returns true on success.
+    // Dispatch (or reassign) the order to a roster mechanic. Returns true on success.
     @discardableResult
-    func assign(requestId: String, mechanicId: String?) async -> Bool {
+    func assign(requestId: String, mechanicId: String) async -> Bool {
         isAssigning = true
         errorMessage = nil
         do {

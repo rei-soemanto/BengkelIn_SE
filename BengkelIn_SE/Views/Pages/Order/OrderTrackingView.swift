@@ -235,12 +235,12 @@ struct OrderTrackingView: View {
     // Before assignment the status stays "Menunggu bengkel tiba di lokasi".
     private var canCustomerComplete: Bool { isAssigned && hasBeenNear }
 
+    // The handler's marker: the live published location of whoever the bengkel
+    // assigned (the bengkel itself when self-handling, or the dispatched mechanic).
+    // No marker until a handler is assigned and starts publishing — the static shop
+    // coordinate is never shown, so the customer never sees a phantom bengkel.
     private var liveBengkelCoordinate: CLLocationCoordinate2D? {
-        if let live = trackingViewModel.providerCoordinate { return live }
-        if let lat = bid.bengkel?.latitude, let lon = bid.bengkel?.longitude {
-            return CLLocationCoordinate2D(latitude: lat, longitude: lon)
-        }
-        return nil
+        trackingViewModel.providerCoordinate
     }
 }
 

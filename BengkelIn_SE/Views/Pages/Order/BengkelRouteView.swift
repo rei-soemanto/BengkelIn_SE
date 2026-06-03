@@ -196,11 +196,11 @@ struct BengkelRouteView: View {
         var list = [TrackingPin(
             id: "customer",
             coordinate: customerCoordinate,
-            label: order.customerName ?? "Pelanggan",
+            label: "Pelanggan",
             icon: "person.fill",
             tint: .blue
         )]
-        if let coord = viewModel.assigneeCoordinate ?? viewModel.bengkelCoordinate {
+        if let coord = viewModel.assigneeCoordinate {
             list.append(TrackingPin(
                 id: "bengkel",
                 coordinate: coord,
@@ -213,7 +213,7 @@ struct BengkelRouteView: View {
     }
 
     private func fitBothIfNeeded() {
-        guard !didFitBoth, let me = viewModel.assigneeCoordinate ?? viewModel.bengkelCoordinate else { return }
+        guard !didFitBoth, let me = viewModel.assigneeCoordinate else { return }
         didFitBoth = true
         region = .fitting(customerCoordinate, me)
     }
@@ -231,8 +231,15 @@ struct BengkelRouteView: View {
                         .font(.caption).foregroundColor(.secondary)
                 }
                 Spacer()
-                if viewModel.status == "accepted" {
-                    NavigationLink(destination: ChatView(serviceRequestId: order.id, title: order.customerName ?? "Pelanggan")) {
+                // Chat exists only once a mechanic is assigned. The mechanic chats; the
+                // provider can only VIEW the mechanic <-> customer thread (read-only).
+                if viewModel.status == "accepted", assignedMechanicId != nil {
+                    NavigationLink(destination: ChatView(
+                        serviceRequestId: order.id,
+                        title: order.customerName ?? "Pelanggan",
+                        readOnly: !viewModel.viewerIsAssignee,
+                        rightSenderId: viewModel.viewerIsAssignee ? nil : assignedMechanicId
+                    )) {
                         Image(systemName: "message.fill")
                             .font(.title3)
                             .foregroundColor(.primary)
@@ -277,11 +284,27 @@ struct BengkelRouteView: View {
                     reportButton
                 } else if assignedToOther {
                     // Provider delegated to a mechanic — monitor only; the mechanic completes.
+                    // The provider can reassign on the go if the mechanic is wrong/unavailable.
                     statusLine(text: "Ditugaskan ke mekanik. Memantau pekerjaan…",
                                icon: "person.fill.checkmark", color: .blue)
+                    if viewModel.viewerIsProvider {
+                        Button {
+                            activeSheet = .assign
+                        } label: {
+                            HStack {
+                                Image(systemName: "arrow.triangle.2.circlepath")
+                                Text("Ganti Mekanik").fontWeight(.semibold)
+                            }
+                            .foregroundColor(.primary)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 12)
+                            .background(Color(.systemGray6))
+                            .cornerRadius(12)
+                        }
+                    }
                     reportButton
                 } else {
-                    // Self-provider or the dispatched mechanic does the work.
+                    // The dispatched mechanic does the work and completes it.
                     CompleteOrderButton(requestId: order.id, isCustomer: false, canComplete: isCustomerNear)
                     reportButton
                 }

@@ -3,23 +3,24 @@
 # sim-route.sh
 # BengkelIn_SE
 #
-# Drive a booted iOS Simulator's GPS along a route, ending AT a seeded
-# bengkel so you can exercise the live order-tracking / location flow.
+# Drive a booted iOS Simulator's GPS (the handler's device — bengkel or
+# mechanic) along a route, ending AT the customer's order location so you can
+# exercise the live order-tracking / location flow.
 #
 # Unlike a static GPX, this script GENERATES simulation/route.gpx by
 # interpolating START -> END, so the route is editable via env vars and
-# always lands on the workshop you want to test against.
+# always lands on the customer you want to test against.
 #
-#   Default route:  (-7.2820000,112.6285000)  ->  Bengkel Eugene
-#                                                  (-7.2865722,112.6320953)
-#   ~650 m NW approach. Override with START / END env vars (see below).
+#   Default route:  Bengkel Eugene (shop)        ->  Customer order location
+#                   (-7.2865722,112.6320953)         (-7.2811623,112.6320675)
+#   ~600 m N approach. Override with START / END env vars (see below).
 #
 # Usage:
 #   scripts/sim-route.sh gen               # (re)generate simulation/route.gpx only
 #   scripts/sim-route.sh init              # set the simulator to the START point
 #   scripts/sim-route.sh go                # generate (if needed) + replay START -> END
 #   scripts/sim-route.sh go --speed=25     # replay slower (m/s, default 40)
-#   scripts/sim-route.sh end               # jump straight to the bengkel (END point)
+#   scripts/sim-route.sh end               # jump straight to the customer (END point)
 #   scripts/sim-route.sh clear             # stop the sim & clear the GPS override
 #
 # Target device: defaults to "iPhone 17 Pro", resolved on the NEWEST installed
@@ -37,8 +38,8 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 GPX="$HERE/simulation/route.gpx"
 
 DEVICE="${DEVICE:-iPhone 17 Pro}"
-START="${START:--7.2820000,112.6285000}"
-END="${END:--7.2865722,112.6320953}"   # Bengkel Eugene (seeded, Verified)
+START="${START:--7.2865722,112.6320953}"   # Bengkel Eugene shop (handler origin)
+END="${END:--7.2811623,112.6320675}"       # customer order location (destination)
 POINTS="${POINTS:-40}"
 
 cmd="${1:-go}"
@@ -130,7 +131,7 @@ case "$cmd" in
     ;;
   end)
     udid="$(resolve_udid)"
-    echo "Jumping to END (bengkel) on '$DEVICE' ($udid) -> $END_LAT,$END_LON"
+    echo "Jumping to END (customer) on '$DEVICE' ($udid) -> $END_LAT,$END_LON"
     xcrun simctl location "$udid" set "$END_LAT,$END_LON"
     ;;
   go)
