@@ -155,6 +155,11 @@ classDiagram
     class ProfileImageUpdatePayload {
         +String profile_image_url
     }
+    class BankDetailsUpdatePayload {
+        +String bank_name
+        +String bank_account_number
+        +String bank_account_name
+    }
 
     AuthViewModel ..> AuthService
     AuthViewModel ..> UserRepository
@@ -167,6 +172,7 @@ classDiagram
     UserRepository ..> User
     UserRepository ..> ProfileUpdatePayload
     UserRepository ..> ProfileImageUpdatePayload
+    UserRepository ..> BankDetailsUpdatePayload
 
 ```
 
@@ -546,6 +552,22 @@ classDiagram
         +Int totalReviews
         +Date? createdAt
     }
+    class Vehicle {
+        +String? id
+        +String customerId
+        +String manufacturer
+        +String model
+        +Int year
+        +String licensePlate
+        +String color
+        +Date? createdAt
+    }
+    class LoadingPhase {
+        <<enumeration>>
+        idle
+        loading(message)
+        failed(title, message)
+    }
     class OrderViewModel {
         +String locationAddress
         +String? selectedService
@@ -573,7 +595,7 @@ classDiagram
         +Int maxRedeemablePreview
         +Bool requiresTireCount
         +String[] services
-        +CLLocationCoordinate2D defaultCenter
+        +CLLocationCoordinate2D defaultCenter$
         -AuthService authService
         -LocationService locationService
         -OrderRepository orderRepository
@@ -661,7 +683,7 @@ classDiagram
         +acceptBid(bid)
         +rejectBid(bid)
         +expireBid(bid)
-        +parseISODate(s) Date?
+        +parseISODate(s) Date?$
         -startSearchCountdown()
         -expireSearch()
         -stopSearchingState()
@@ -745,6 +767,33 @@ classDiagram
     class AcceptBidParams {
         +String p_bid_id
     }
+    class CreatedServiceRequest {
+        +String id
+    }
+    class CancelOrderParams {
+        +String p_request_id
+    }
+    class StartSearchPayload {
+        +Int price
+    }
+    class TodaysEarningRow {
+        +Int? price
+    }
+    class BidStatusUpdate {
+        +String status
+    }
+    class OrdersRequest {
+        +String action
+        +Double latitude
+        +Double longitude
+        +Double radiusMeters
+    }
+    class OrdersResponse {
+        +NearbyOrder[] orders
+    }
+    class PlaceBidResponse {
+        +Bid bid
+    }
 
     OrderViewModel ..> OrderRepository
     OrderViewModel ..> LocationService
@@ -767,11 +816,22 @@ classDiagram
     BengkelBiddingViewModel ..> NotificationService
     BengkelBiddingViewModel ..> AuthService
     BengkelBiddingViewModel --> NearbyOrder
+    OrderViewModel --> Vehicle
+    OrderViewModel --> LoadingPhase
+    CustomerBiddingViewModel --> LoadingPhase
     OrderRepository ..> ServiceRequestPayload
     OrderRepository ..> NearbyOrder
     OrderRepository ..> AcceptBidParams
+    OrderRepository ..> CreatedServiceRequest
+    OrderRepository ..> CancelOrderParams
+    OrderRepository ..> StartSearchPayload
+    OrderRepository ..> TodaysEarningRow
     BidRepository ..> Bid
+    BidRepository ..> BidStatusUpdate
     BiddingService ..> PlaceBidRequest
+    BiddingService ..> PlaceBidResponse
+    BiddingService ..> OrdersRequest
+    BiddingService ..> OrdersResponse
     BiddingService ..> NearbyOrder
     Bid --> "0..1" Bengkel : bengkel
 
@@ -851,6 +911,8 @@ classDiagram
     }
     class BengkelRosterViewModel {
         +RosterMember[] roster
+        +RosterMember[] pendingMembers
+        +RosterMember[] acceptedMembers
         +String inviteEmail
         +Bool isInviting
         +Bool isLoading
@@ -862,6 +924,7 @@ classDiagram
     }
     class MechanicInviteViewModel {
         +MechanicInvite[] invites
+        +MechanicInvite[] pendingInvites
         +Bool isLoading
         +String? errorMessage
         +Bool hasPendingInvites
@@ -927,6 +990,12 @@ classDiagram
         +String p_registration_id
         +Bool p_accept
     }
+    class InviteMechanicParams {
+        +String p_email
+    }
+    class RemoveMechanicParams {
+        +String p_registration_id
+    }
 
     BengkelRosterViewModel ..> MechanicRepository
     MechanicInviteViewModel ..> MechanicRepository
@@ -941,6 +1010,8 @@ classDiagram
     MechanicRepository ..> MechanicInvite
     MechanicRepository ..> AvailableMechanic
     MechanicRepository ..> RespondInviteParams
+    MechanicRepository ..> InviteMechanicParams
+    MechanicRepository ..> RemoveMechanicParams
     MechanicAssignmentRepository ..> AssignMechanicParams
     MechanicAssignmentRepository ..> NearbyOrder
 
@@ -1005,6 +1076,8 @@ classDiagram
         +sendMessage(payload)
     }
     class ChatViewModel {
+        +String serviceRequestId
+        +String currentUserId
         +ChatMessage[] messages
         +String draft
         +Bool isSending
@@ -1136,6 +1209,8 @@ classDiagram
         +NearbyOrder? order
         +Bool isLive
         +String? lastUpdated
+        +String status
+        +Bool alreadyRated
         +String? errorMessage
         +start(reqId)
         +openDispute(reason) Bool
@@ -1406,6 +1481,7 @@ classDiagram
     class PaymentViewModel {
         +Double balance
         +Double heldBalance
+        +Double availableBalance
         +Int points
         +Int pendingPoints
         +Topup[] topups
@@ -1413,6 +1489,10 @@ classDiagram
         +String bankName
         +String bankAccountNumber
         +String bankAccountName
+        +Bool hasBankDetails
+        +Int[] presetAmounts
+        +Int minTopupAmount
+        +Int maxTopupAmount
         +Bool isLoading
         +String? errorMessage
         +String? successMessage
@@ -1461,6 +1541,10 @@ classDiagram
         +isValidAccountNumber(acct) Bool
         +named(name) IndonesianBank?$
     }
+    class CreateTopupRequest {
+        +String action
+        +Int amount
+    }
     class CreateTopupResponse {
         +String order_id
         +String redirect_url
@@ -1487,6 +1571,7 @@ classDiagram
     PaymentViewModel --> Topup
     PaymentViewModel --> Withdrawal
     PaymentViewModel --> PaymentTarget
+    PaymentService ..> CreateTopupRequest
     PaymentService ..> CreateTopupResponse
     TopupRepository ..> Topup
     WithdrawalRepository ..> Withdrawal
@@ -1596,8 +1681,8 @@ classDiagram
         +select(order)
         +markReported(orderId)
         -openTracking(order)
-        -isOrderedBefore(lhs, rhs) Bool
-        -priority(status) Int
+        -isOrderedBefore(lhs, rhs) Bool$
+        -priority(status) Int$
     }
     class BengkelHistoryViewModel {
         +NearbyOrder[] orders
@@ -1618,8 +1703,8 @@ classDiagram
         +deinit()
         -startRealtimeIfNeeded()
         -reload()
-        -isOrderedBefore(lhs, rhs) Bool
-        -priority(status) Int
+        -isOrderedBefore(lhs, rhs) Bool$
+        -priority(status) Int$
     }
     class MechanicHistoryViewModel {
         +NearbyOrder[] orders
@@ -1639,8 +1724,8 @@ classDiagram
         +select(order)
         +markReported(orderId)
         -reload()
-        -isOrderedBefore(lhs, rhs) Bool
-        -priority(status) Int
+        -isOrderedBefore(lhs, rhs) Bool$
+        -priority(status) Int$
     }
     class BidRepository {
         +fetchAcceptedBid(serviceRequestId) Bid?
@@ -1658,9 +1743,11 @@ classDiagram
     BengkelHistoryViewModel ..> BengkelRepository
     BengkelHistoryViewModel ..> BehaviorReportRepository
     BengkelHistoryViewModel ..> AuthService
+    BengkelHistoryViewModel --> NearbyOrder
     MechanicHistoryViewModel ..> OrderRepository
     MechanicHistoryViewModel ..> BehaviorReportRepository
     MechanicHistoryViewModel ..> AuthService
+    MechanicHistoryViewModel --> NearbyOrder
     OrderRepository ..> NearbyOrder
 
 ```
