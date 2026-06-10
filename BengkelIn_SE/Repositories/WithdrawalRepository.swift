@@ -18,7 +18,6 @@ class WithdrawalRepository {
             .value
     }
 
-    // Atomic balance check + hold + pending withdrawal insert (server-side RPC).
     func requestWithdrawal(amount: Double) async throws {
         try await supabase
             .rpc("request_withdrawal", params: RequestWithdrawalParams(p_amount: amount))

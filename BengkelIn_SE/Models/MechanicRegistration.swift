@@ -7,12 +7,6 @@
 
 import Foundation
 
-// A mechanic's bond to a bengkel lives in `mechanic_registrations`. The roster is
-// read through SECURITY DEFINER RPCs that pre-join the counterpart's name, so these
-// are the RPC return shapes (not the raw table row). Timestamps stay String to match
-// the RPC-return convention used by NearbyOrder (avoids date-decode edge cases).
-
-// Provider-side row — return of `bengkel_roster()`.
 struct RosterMember: Codable, Identifiable {
     var registrationId: String
     var mechanicId: String
@@ -35,7 +29,6 @@ struct RosterMember: Codable, Identifiable {
     }
 }
 
-// Mechanic-side row — return of `my_mechanic_invites()`.
 struct MechanicInvite: Codable, Identifiable {
     var registrationId: String
     var bengkelId: String
@@ -55,9 +48,6 @@ struct MechanicInvite: Codable, Identifiable {
     }
 }
 
-// Accepted roster mechanic offered for job assignment — return of
-// `available_mechanics(p_request_id)`. `busy` = already on another active order;
-// `isCurrent` = the one currently assigned to this order (for reassignment).
 struct AvailableMechanic: Codable, Identifiable {
     var mechanicId: String
     var mechanicName: String

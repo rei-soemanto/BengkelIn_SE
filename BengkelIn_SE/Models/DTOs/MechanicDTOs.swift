@@ -7,8 +7,6 @@
 
 import Foundation
 
-// Params for the mechanic-roster RPCs (UC8). snake_case to match the SQL arg names.
-
 struct InviteMechanicParams: Encodable {
     let p_email: String
 }

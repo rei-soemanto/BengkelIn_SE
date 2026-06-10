@@ -37,8 +37,6 @@ class OrderRepository {
             .gte("completed_at", value: iso)
             .execute()
             .value
-        // Provider keeps 90%; the platform takes a 10% transaction fee. Show the
-        // net payout so "Pendapatan Hari Ini" matches what lands in the balance.
         return rows.reduce(0.0) { $0 + Double($1.price ?? 0) } * 0.90
     }
 
@@ -51,9 +49,6 @@ class OrderRepository {
             .value
     }
 
-    // The mechanic's full order history: everything ever dispatched to them, any
-    // status (accepted in-progress, completed, cancelled). RLS "Mechanics can view
-    // their assigned requests" (mechanic_id = auth.uid()) permits this directly.
     func fetchMechanicOrders(mechanicId: String) async throws -> [NearbyOrder] {
         return try await supabase.from("service_requests")
             .select()
@@ -79,7 +74,6 @@ class OrderRepository {
             .execute()
     }
 
-    // Re-price an existing pending order when the customer re-searches at a new offer.
     func updateOrderPrice(id: String, price: Int) async throws {
         try await supabase.from("service_requests")
             .update(StartSearchPayload(price: price))
@@ -104,17 +98,6 @@ class OrderRepository {
         .single()
         .execute()
         .value
-    }
-
-    func fetchAcceptedBid(serviceRequestId: String) async throws -> Bid? {
-        let bids: [Bid] = try await supabase.from("bids")
-            .select("*, bengkel:bengkels(*)")
-            .eq("service_request_id", value: serviceRequestId)
-            .eq("status", value: "Accepted")
-            .limit(1)
-            .execute()
-            .value
-        return bids.first
     }
 
     func submitRating(requestId: String, rating: Int) async throws {
@@ -146,16 +129,6 @@ class OrderRepository {
             .execute()
             .value
         return orders.first
-    }
-
-    func fetchPendingBids(serviceRequestId: String) async throws -> [Bid] {
-        return try await supabase.from("bids")
-            .select("*, bengkel:bengkels(*)")
-            .eq("service_request_id", value: serviceRequestId)
-            .eq("status", value: "Pending")
-            .order("price", ascending: true)
-            .execute()
-            .value
     }
 
     @discardableResult

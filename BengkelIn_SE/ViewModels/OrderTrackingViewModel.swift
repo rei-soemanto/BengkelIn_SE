@@ -10,10 +10,6 @@ import Combine
 import CoreLocation
 import Supabase
 
-// Customer-side: for an in-progress order, subscribes via Supabase Realtime to
-//  1) the assigned bengkel's live location (order_locations), and
-//  2) the order row itself (service_requests) — so the moment it settles to
-//     "completed" we can prompt the customer for a review.
 @MainActor
 class OrderTrackingViewModel: ObservableObject, Sendable {
     @Published var providerCoordinate: CLLocationCoordinate2D?
@@ -44,9 +40,7 @@ class OrderTrackingViewModel: ObservableObject, Sendable {
 
     func start(serviceRequestId: String) async {
         self.serviceRequestId = serviceRequestId
-        // Notification authorization is requested when tracking begins.
 
-        // Seed with whatever is already known.
         if let location = try? await locationRepository.fetchLocation(serviceRequestId: serviceRequestId) {
             apply(location)
         }
@@ -121,7 +115,6 @@ class OrderTrackingViewModel: ObservableObject, Sendable {
             return true
         } catch {
             iInitiatedCancel = false
-            // Was returned silently before — the cancel sheet just sat there doing nothing.
             if !(error is CancellationError) {
                 errorMessage = error.localizedDescription
             }
@@ -138,8 +131,6 @@ class OrderTrackingViewModel: ObservableObject, Sendable {
         )
     }
 
-    // Fires once when the bengkel assigns a handler (itself or a mechanic), i.e.
-    // mechanic_id goes from unset to set — the customer learns help is en route.
     private func notifyOnAssignment(previous: NearbyOrder?, updated: NearbyOrder) {
         guard previous?.mechanicId == nil, updated.mechanicId != nil else { return }
         notificationService.notifyNewOrder(

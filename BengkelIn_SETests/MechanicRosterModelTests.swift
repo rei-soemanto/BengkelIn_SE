@@ -80,7 +80,7 @@ final class MechanicRosterModelTests: XCTestCase {
 
     func testAvailableMechanicDecodesAndIdentifiesByMechanicId() throws {
         let json = """
-        { "mechanic_id": "mech-42", "mechanic_name": "Citra" }
+        { "mechanic_id": "mech-42", "mechanic_name": "Citra", "busy": false, "is_current": false }
         """.data(using: .utf8)!
 
         let mechanic = try decoder.decode(AvailableMechanic.self, from: json)
@@ -88,12 +88,14 @@ final class MechanicRosterModelTests: XCTestCase {
         XCTAssertEqual(mechanic.mechanicId, "mech-42")
         XCTAssertEqual(mechanic.mechanicName, "Citra")
         XCTAssertEqual(mechanic.id, "mech-42")
+        XCTAssertFalse(mechanic.busy)
+        XCTAssertFalse(mechanic.isCurrent)
     }
 
     func testAvailableMechanicArrayDecodes() throws {
         let json = """
-        [ { "mechanic_id": "m1", "mechanic_name": "A" },
-          { "mechanic_id": "m2", "mechanic_name": "B" } ]
+        [ { "mechanic_id": "m1", "mechanic_name": "A", "busy": false, "is_current": false },
+          { "mechanic_id": "m2", "mechanic_name": "B", "busy": true, "is_current": true } ]
         """.data(using: .utf8)!
 
         let list = try decoder.decode([AvailableMechanic].self, from: json)

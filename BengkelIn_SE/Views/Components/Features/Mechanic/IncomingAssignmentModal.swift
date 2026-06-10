@@ -7,8 +7,6 @@
 
 import SwiftUI
 
-// In-app modal that pops for a mechanic when the provider dispatches a new job to them —
-// the mechanic-side counterpart of IncomingJobModal (the bengkel's arrived-order modal).
 struct IncomingAssignmentModal: View {
     let order: NearbyOrder
     let onView: () -> Void

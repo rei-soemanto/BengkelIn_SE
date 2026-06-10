@@ -11,11 +11,9 @@ import CoreLocation
 
 struct BidReceivedCard: View {
     let bid: Bid
-    // Customer's order location, used to show how far each bengkel is.
     var customerCoordinate: CLLocationCoordinate2D? = nil
     let onAccept: () -> Void
     let onReject: () -> Void
-    // Fired once when this offer's response window elapses (timeout, not a loss).
     var onExpire: (() -> Void)? = nil
 
     @State private var timeRemaining: TimeInterval = 120
@@ -30,7 +28,6 @@ struct BidReceivedCard: View {
         }
     }
 
-    // Straight-line distance from the customer to this bengkel, if known.
     private var distanceMeters: Double? {
         guard let customer = customerCoordinate,
               let lat = bid.bengkel?.latitude,
@@ -44,7 +41,6 @@ struct BidReceivedCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
-            // Workshop profile + price
             HStack(alignment: .top, spacing: 12) {
                 Image(systemName: "wrench.and.screwdriver.fill")
                     .font(.system(size: 20))
@@ -102,7 +98,6 @@ struct BidReceivedCard: View {
                 }
             }
 
-            // Countdown on its own full-width row so it never gets squeezed.
             if bid.status == "Pending" && timeRemaining > 0 {
                 HStack(spacing: 6) {
                     Image(systemName: "timer")
@@ -120,7 +115,6 @@ struct BidReceivedCard: View {
                 .cornerRadius(10)
             }
 
-            // Notes
             if let notes = bid.notes, !notes.isEmpty {
                 Text(notes)
                     .font(.subheadline)
@@ -132,7 +126,6 @@ struct BidReceivedCard: View {
                     .cornerRadius(8)
             }
 
-            // Actions
             if bid.status == "Pending" {
                 HStack(spacing: 12) {
                     Button(action: onReject) {
@@ -222,7 +215,6 @@ struct BidReceivedCard: View {
     }
 }
 
-// Custom amber color extension for star
 extension Color {
     static let amber = Color(red: 245/255, green: 158/255, blue: 11/255)
 }

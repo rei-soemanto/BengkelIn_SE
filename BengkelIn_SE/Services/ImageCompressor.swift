@@ -7,9 +7,6 @@
 
 import UIKit
 
-// Downscales + JPEG-compresses image data before upload so we never push
-// multi-megabyte camera originals to Storage. Falls back to the original bytes
-// if the data can't be decoded or re-encoded.
 enum ImageCompressor {
     static func compressed(_ data: Data, maxDimension: CGFloat = 1280, quality: CGFloat = 0.7) -> Data {
         guard let image = UIImage(data: data) else { return data }

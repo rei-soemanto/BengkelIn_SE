@@ -20,7 +20,6 @@ class BengkelViewModel: NSObject, ObservableObject, CLLocationManagerDelegate, L
     @Published var todaysEarnings: Double = 0
     @Published var hasAcceptedMechanic = true
 
-    // Location / Map state
     @Published var locationAddress: String = ""
     @Published var isEditingLocation: Bool = false
     @Published var isFetchingLocation: Bool = false
@@ -212,8 +211,6 @@ class BengkelViewModel: NSObject, ObservableObject, CLLocationManagerDelegate, L
         }
     }
 
-    // Loads the bengkel once, then keeps its status (e.g. Pending -> Verified)
-    // live via a realtime subscription. Avoids needing a relog.
     func startWatching(uid: String) async {
         await fetchMyBengkel(uid: uid)
         await loadTodaysEarnings()
@@ -261,10 +258,6 @@ class BengkelViewModel: NSObject, ObservableObject, CLLocationManagerDelegate, L
 
     }
 
-    // Recompute "Pendapatan Hari Ini" live: any change to this bengkel's
-    // service_requests (notably status -> 'completed') re-runs the day's sum.
-    // Without this, todaysEarnings only refreshed on first appear / app
-    // foreground, so completing a job never updated the figure.
     private func startEarningsSubscription(bengkelId: String) {
         let channel = supabase.channel("bengkel-earnings-\(bengkelId)")
         self.earningsChannel = channel
@@ -302,13 +295,11 @@ class BengkelViewModel: NSObject, ObservableObject, CLLocationManagerDelegate, L
         }
     }
 
-    // Background refresh that does NOT toggle isLoading (prevents spinner flicker).
     func refreshBengkelQuietly(uid: String) async {
         do {
             let fetched = try await bengkelRepository.fetchBengkel(providerUid: uid)
             self.myBengkel = fetched
         } catch {
-            // ignore transient errors during background refresh
         }
     }
 

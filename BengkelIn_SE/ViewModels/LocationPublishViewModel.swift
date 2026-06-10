@@ -10,10 +10,6 @@ import Combine
 import CoreLocation
 import Supabase
 
-// Provider-side: publishes the bengkel's live GPS location for an in-progress
-// order. Sampling cadence adapts to how close the bengkel is to the customer
-// (more frequent when near), so the customer sees smoother tracking near
-// arrival without wasting writes when far away.
 @MainActor
 class LocationPublishViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
     @Published var isPublishing = false
@@ -34,10 +30,6 @@ class LocationPublishViewModel: NSObject, ObservableObject, CLLocationManagerDel
         super.init()
         locationManager.delegate = self
         locationManager.desiredAccuracy = kCLLocationAccuracyNearestTenMeters
-        // Background location updates require the `location` UIBackgroundMode in
-        // the bundle's Info.plist; enabling them without it throws at runtime.
-        // Guard so the app never crashes if that capability isn't built in — the
-        // mechanic still streams live while the app is in the foreground.
         if let backgroundModes = Bundle.main.object(forInfoDictionaryKey: "UIBackgroundModes") as? [String],
            backgroundModes.contains("location") {
             locationManager.allowsBackgroundLocationUpdates = true
@@ -104,12 +96,11 @@ class LocationPublishViewModel: NSObject, ObservableObject, CLLocationManagerDel
         }
     }
 
-    // Adaptive interval based on distance to the customer (meters).
     private func interval(forDistance meters: CLLocationDistance) -> TimeInterval {
         switch meters {
-        case ..<1000: return 2      // close: refresh every 2s
-        case ..<3000: return 5      // mid-range
-        default: return 10          // far: every 10s
+        case ..<1000: return 2
+        case ..<3000: return 5
+        default: return 10
         }
     }
 
@@ -132,7 +123,6 @@ class LocationPublishViewModel: NSObject, ObservableObject, CLLocationManagerDel
             distance = .greatestFiniteMagnitude
         }
 
-        // Throttle writes to the adaptive interval.
         let minInterval = interval(forDistance: distance)
         if let last = lastPublishedAt, Date().timeIntervalSince(last) < minInterval {
             return
@@ -143,7 +133,6 @@ class LocationPublishViewModel: NSObject, ObservableObject, CLLocationManagerDel
     }
 
     func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
-        // Transient GPS errors are ignored; updates resume on the next fix.
     }
 
     private func publish(coordinate: CLLocationCoordinate2D, requestId: String) async {

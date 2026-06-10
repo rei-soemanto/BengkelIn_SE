@@ -7,8 +7,6 @@
 
 import Foundation
 
-// Per-order "last read" bookmark, persisted in UserDefaults. Used by
-// ChatWatchViewModel to decide which incoming messages are still unread.
 struct ChatReadCursor {
     let serviceRequestId: String
 
@@ -23,7 +21,6 @@ struct ChatReadCursor {
         UserDefaults.standard.set(date.timeIntervalSince1970, forKey: key)
     }
 
-    // Number of incoming messages that arrived after the read bookmark.
     func unreadCount(in incoming: [ChatMessage]) -> Int {
         let cursor = lastReadAt
         return incoming.filter { Self.date(of: $0) > cursor }.count

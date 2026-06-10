@@ -7,8 +7,6 @@
 
 import Foundation
 
-// Static reference data for common Indonesian banks and their account-number
-// length(s). Lengths reflect the most common formats per bank.
 struct IndonesianBank: Identifiable, Hashable {
     let id: String
     let name: String

@@ -7,7 +7,6 @@
 
 import Foundation
 
-// Order Repository DTOs
 struct ServiceRequestPayload: Encodable {
     let customer_id: String
     let service_type: ServiceType
@@ -38,7 +37,6 @@ struct TodaysEarningRow: Decodable {
     let price: Int?
 }
 
-// Customer Bidding DTOs
 struct BidStatusUpdate: Encodable {
     let status: String
 }
@@ -47,7 +45,6 @@ struct AcceptBidParams: Encodable {
     let p_bid_id: String
 }
 
-// Params for the cancel_order RPC (bidding-phase give-up; To Do → Cancelled).
 struct CancelOrderParams: Encodable {
     let p_request_id: String
 }
@@ -56,15 +53,11 @@ struct StartSearchPayload: Encodable {
     let price: Int
 }
 
-// Customer star rating of a completed order, via the rate_order RPC. The RPC's UPDATE
-// of the `rating` column fires the trigger that recomputes the bengkel's
-// average_rating / total_reviews. Enforces customer-owned + Done + not-yet-rated.
 struct RateOrderParams: Encodable {
     let p_request_id: String
     let p_rating: Int
 }
 
-// Mechanic Bidding DTOs
 struct OrdersRequest: Encodable {
     let action: String
     let latitude: Double
@@ -88,8 +81,6 @@ struct PlaceBidResponse: Decodable {
     let bid: Bid
 }
 
-// Upsert payload for the assigned bengkel's live location while an order is
-// in progress (order_locations table).
 struct OrderLocationPayload: Encodable {
     let service_request_id: String
     let provider_uid: String
@@ -104,8 +95,6 @@ struct CustomerLocationPayload: Encodable {
     let longitude: Double
 }
 
-// Behavior report payload — inserted by a party to the order into
-// behavior_reports (RLS enforces reporter_id = auth.uid()).
 struct BehaviorReportPayload: Encodable {
     let service_request_id: String
     let reporter_id: String

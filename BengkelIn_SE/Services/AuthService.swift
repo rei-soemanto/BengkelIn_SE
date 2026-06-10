@@ -23,19 +23,14 @@ class AuthService {
         return try await supabase.auth.session
     }
 
-    // Lowercased Supabase auth user id — the app's user PK convention.
     func currentUID() async throws -> String {
         try await supabase.auth.session.user.id.uuidString.lowercased()
     }
 
-    // Locally-stored session WITHOUT a network refresh — used so a transient
-    // network failure at launch doesn't bounce a logged-in user to Login.
     func cachedSession() -> Session? {
         supabase.auth.currentSession
     }
 
-    // Stream of auth events (sign-in, token refresh, sign-out) so the app can
-    // keep its session in sync with the SDK.
     func authStateChanges() -> AsyncStream<(event: AuthChangeEvent, session: Session?)> {
         AsyncStream { continuation in
             let task = Task {
@@ -61,9 +56,6 @@ class AuthService {
                 "phone_number": .string(request.phoneNumber)
             ]
         )
-        // Supabase does NOT error when the email is already registered (anti-enumeration);
-        // it returns an obfuscated user with an empty `identities` array. Detect that and
-        // surface a real error, otherwise registration always reports success.
         if response.user.identities?.isEmpty ?? false {
             throw AuthServiceError.emailAlreadyRegistered
         }
@@ -77,8 +69,6 @@ class AuthService {
         try await supabase.auth.resetPasswordForEmail(email)
     }
 
-    // Phone number lives in auth user_metadata (fetchUser reads it from there), not the
-    // `users` table — so a profile edit updates it through the Auth SDK.
     func updatePhoneNumber(_ phoneNumber: String) async throws {
         _ = try await supabase.auth.update(
             user: UserAttributes(data: ["phone_number": .string(phoneNumber)])

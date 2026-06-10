@@ -29,7 +29,6 @@ struct OrderReviewSheet: View {
             .navigationTitle(existingRating == nil ? "Beri Penilaian" : "Penilaian Anda")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                // Let the customer skip and review later from history (editable only).
                 if existingRating == nil {
                     ToolbarItem(placement: .topBarTrailing) {
                         Button("Nanti") { dismiss() }
@@ -48,8 +47,6 @@ struct OrderReviewSheet: View {
         .interactiveDismissDisabled(viewModel.isSubmitting)
     }
 
-    // Read-only state shown when the order has already been rated. The DB's
-    // rate_order RPC also rejects a second rating, so this is purely UX.
     private func alreadyRatedContent(_ existingRating: Int) -> some View {
         VStack(spacing: 24) {
             VStack(spacing: 10) {

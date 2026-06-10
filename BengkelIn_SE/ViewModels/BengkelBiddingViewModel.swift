@@ -19,22 +19,12 @@ class BengkelBiddingViewModel: ObservableObject {
     @Published var errorMessage: String?
     @Published var successMessage: String?
 
-    // Drives the in-app modal that pops when a brand-new order arrives.
     @Published var newOrderAlert: NearbyOrder?
-    // Set when a pending bid is lost because the customer picked another bengkel.
     @Published var lostBidAlert: String?
-    // Set when an order's response window simply elapsed (timeout, not a loss).
     @Published var expiredBidAlert: String?
-    // The order screen the bengkel is currently taken into — set after placing
-    // an offer (route map) and when the customer accepts (carries through to the
-    // active order). Drives the full-screen route view.
     @Published var activeBengkelOrder: NearbyOrder?
-    // Set when the customer declines our offer — we can re-bid a different amount.
     @Published var rejectedBidAlert: String?
-    // Set when the mechanic tries to bid on an order that's no longer available
-    // (cancelled / taken / deleted) — surfaced as an alert so it isn't silent.
     @Published var orderUnavailableAlert: String?
-    // Orders where our latest bid was declined (kept visible so we can re-bid).
     @Published var myRejectedBids: [Bid] = []
     @Published var hasMechanics = true
 
@@ -52,7 +42,6 @@ class BengkelBiddingViewModel: ObservableObject {
     private var hasStarted = false
     private var providerUid: String?
 
-
     deinit {
         realtimeReaderTasks.forEach { $0.cancel() }
         realtimeReaderTasks.removeAll()
@@ -67,10 +56,6 @@ class BengkelBiddingViewModel: ObservableObject {
     func start() async {
         let uid = try? await authService.currentUID()
         guard let uid else { reset(); return }
-        // No-op if already running for this provider. A different uid means the account
-        // was switched without killing the app (this app-level @StateObject survives),
-        // so tear down and re-init as the new user instead of keeping the old bengkel's
-        // subscription alive.
         if hasStarted, uid == providerUid { return }
         reset()
         hasStarted = true
@@ -94,8 +79,6 @@ class BengkelBiddingViewModel: ObservableObject {
         isLoading = false
     }
 
-    // Detach from the current identity: used on logout and when the signed-in user
-    // isn't a provider, so a stale subscription can't keep firing the old bengkel's alerts.
     func reset() {
         stopRealtimeSubscription()
         hasStarted = false
@@ -115,12 +98,7 @@ class BengkelBiddingViewModel: ObservableObject {
         activeBengkelOrder = nil
     }
 
-    // Called when the app returns to the foreground: realtime sockets can die
-    // while backgrounded, so reload missed orders and re-establish the channel.
     func refreshOnForeground() async {
-        // If the initial start() failed (e.g. the bengkel fetch errored), hasStarted is
-        // false and ContentView's identity-keyed .task won't re-fire — so the feed would
-        // stay wedged. Retry the full start here instead of silently no-oping.
         guard hasStarted else { await start(); return }
         print("[BengkelRT] foreground refresh + resubscribe")
         await loadOrders()
@@ -131,11 +109,9 @@ class BengkelBiddingViewModel: ObservableObject {
         stopRealtimeSubscription()
         guard let uid = providerUid else { return }
 
-        let channel = supabase.channel("mechanic-bids-\(uid)")
+        let channel = supabase.channel("bengkel-bids-\(uid)")
         self.realtimeChannel = channel
 
-        // Primary signal: this mechanic's own bids. When the customer accepts
-        // or rejects a bid, the row changes and we refresh in real time.
         let bidsStream = channel.postgresChange(
             AnyAction.self,
             schema: "public",
@@ -143,7 +119,6 @@ class BengkelBiddingViewModel: ObservableObject {
             filter: "provider_uid=eq.\(uid)"
         )
 
-        // Secondary signal: nearby service_requests change (new orders, price edits).
         let serviceRequestStream = channel.postgresChange(
             AnyAction.self,
             schema: "public",
@@ -152,12 +127,9 @@ class BengkelBiddingViewModel: ObservableObject {
 
         realtimeReaderTasks.append(Task { [weak self] in
             guard let self = self else { return }
-            print("[BengkelRT] subscribing channel mechanic-bids-\(uid)")
+            print("[BengkelRT] subscribing channel bengkel-bids-\(uid)")
             await channel.subscribe()
             print("[BengkelRT] channel subscribed")
-            // Cold-start reconcile: the first realtime events after launch can
-            // arrive during the subscribe handshake and be missed. Refetch once
-            // the channel is confirmed subscribed so the first order isn't lost.
             await self.loadOrders()
 
             Task { [weak self] in
@@ -210,11 +182,6 @@ class BengkelBiddingViewModel: ObservableObject {
 
             let allMyBids = try await bidRepository.fetchBidsForBengkel(bengkelId: bengkelId)
 
-            // Detect bids the customer rejected by choosing another bengkel.
-            // A pending bid changing state tells us why we no longer have the job:
-            //  - "autorejected": the customer accepted a different bengkel (taken)
-            //  - "expired": the response window elapsed with no decision (timeout)
-            // These are distinct events with distinct messages.
             if didInitialLoad {
                 for bid in allMyBids where bidStatusById[bid.id] == "pending" {
                     switch bid.status.lowercased() {
@@ -223,8 +190,6 @@ class BengkelBiddingViewModel: ObservableObject {
                             title: "Tawaran diterima!",
                             body: "Pelanggan menerima tawaran Anda. Order otomatis dibuka."
                         )
-                        // If the bengkel is already on this order's route screen,
-                        // it updates in place via its own realtime subscription.
                         if self.activeBengkelOrder == nil,
                            let order = try? await self.orderRepository.fetchOrder(id: bid.serviceRequestId) {
                             self.activeBengkelOrder = order
@@ -254,16 +219,12 @@ class BengkelBiddingViewModel: ObservableObject {
             }
             bidStatusById = Dictionary(allMyBids.map { ($0.id, $0.status.lowercased()) }, uniquingKeysWith: { _, new in new })
 
-            // "autorejected" (taken by another) and "expired" (timed out) are
-            // terminal — drop those orders. A plain "rejected" (the customer
-            // declined our price) keeps the order so we can re-bid.
             let terminalRequestIds = Set(allMyBids.filter { ["autorejected", "expired"].contains($0.status.lowercased()) }.map { $0.serviceRequestId })
             self.myPendingBids = allMyBids.filter { $0.status.lowercased() == "pending" }
             self.myRejectedBids = allMyBids.filter { $0.status.lowercased() == "rejected" }
 
             let filteredOrders = nearbyOrders.filter { !terminalRequestIds.contains($0.id) }
 
-            // Notify for orders that appeared after we started watching (not the first load).
             let currentIds = Set(filteredOrders.map { $0.id })
             if didInitialLoad {
                 for order in filteredOrders where !knownOrderIds.contains(order.id) {
@@ -279,8 +240,6 @@ class BengkelBiddingViewModel: ObservableObject {
             didInitialLoad = true
 
             self.orders = filteredOrders
-            // If the incoming-order modal is showing an order that's no longer in
-            // the open feed (cancelled/taken), dismiss it so it can't be bid on.
             if let alert = self.newOrderAlert, !currentIds.contains(alert.id) {
                 self.newOrderAlert = nil
             }
@@ -302,11 +261,6 @@ class BengkelBiddingViewModel: ObservableObject {
             self.errorMessage = "Tambahkan mekanik terlebih dahulu sebelum mengambil order."
             return
         }
-        // Re-verify the order is still open before bidding. It may have been
-        // cancelled or taken while sitting in the feed; bidding on a dead order
-        // pushes the mechanic into a stale active-order screen and crashes.
-        // A cancelled/taken/deleted order fails the open-orders RLS read, so a
-        // nil/failed fetch is also treated as "no longer available".
         guard let latest = try? await orderRepository.fetchOrder(id: order.id),
               latest.status == "pending", latest.bengkelId == nil else {
             self.errorMessage = "Order sudah tidak tersedia."
@@ -330,9 +284,6 @@ class BengkelBiddingViewModel: ObservableObject {
                 notes: notes.isEmpty ? nil : notes
             )
             self.successMessage = "Tawaran terkirim. Menunggu pelanggan menerima."
-            // Do NOT navigate to the route screen yet — the bid is only placed, not won.
-            // The provider stays on the feed with a pending bid; loadOrders() promotes
-            // this order to the route screen only when the customer accepts (bid -> accepted).
             await loadOrders()
         } catch {
             if !(error is CancellationError) {
@@ -342,8 +293,6 @@ class BengkelBiddingViewModel: ObservableObject {
         isLoading = false
     }
 
-    // When an order's 2-minute window elapses, drop it locally and reject any
-    // bid we placed on it. The customer also deletes/expires the row server-side.
     func handleExpiredOrder(_ order: NearbyOrder) async {
         orders.removeAll { $0.id == order.id }
         knownOrderIds.remove(order.id)
@@ -352,8 +301,6 @@ class BengkelBiddingViewModel: ObservableObject {
         }
     }
 
-    // The order's response window elapsed: mark our bid "Expired" (timeout),
-    // not "Rejected"/"AutoRejected".
     func expireBid(_ bid: Bid) async {
         do {
             try await bidRepository.updateStatus(bidId: bid.id, status: "Expired")

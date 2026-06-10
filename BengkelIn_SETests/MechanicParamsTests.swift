@@ -16,13 +16,6 @@ final class MechanicParamsTests: XCTestCase {
         let data = try encoder.encode(value)
         return try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
     }
-    
-    func testAssignParamsSelfOmitsMechanicId() throws {
-        let obj = try jsonObject(AssignMechanicParams(p_request_id: "req-1", p_mechanic_id: nil))
-
-        XCTAssertEqual(obj["p_request_id"] as? String, "req-1")
-        XCTAssertNil(obj["p_mechanic_id"], "Self assignment must not send a concrete mechanic id")
-    }
 
     func testAssignParamsCarriesMechanicId() throws {
         let obj = try jsonObject(AssignMechanicParams(p_request_id: "req-1", p_mechanic_id: "mech-7"))

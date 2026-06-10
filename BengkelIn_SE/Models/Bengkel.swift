@@ -16,10 +16,8 @@ struct Bengkel: Codable, Identifiable {
     var latitude: Double
     var longitude: Double
     
-    // Status for manual Admin Verification
-    var status: String // Defaults to "Pending", manually change to "Verified"
+    var status: String
     
-    // The embedded services array (Stored as JSONB in Supabase)
     var offeredServices: [BengkelService]
     
     var averageRating: Double

@@ -16,6 +16,7 @@ struct DashboardView: View {
     @ObservedObject var bengkelBiddingViewModel: BengkelBiddingViewModel
     @ObservedObject var mechanicDashboardViewModel: MechanicDashboardViewModel
     var onOpenSaldo: () -> Void = {}
+    @Binding var routeOrder: NearbyOrder?
     @StateObject private var customerOrdersVM = HistoryViewModel()
     @State private var path = NavigationPath()
     @Environment(\.scenePhase) private var scenePhase
@@ -43,8 +44,6 @@ struct DashboardView: View {
             )) {
                 if let order = routeOrder { BengkelRouteView(order: order) }
             }
-            // Resume routing for the customer's recent-orders list (same targets as the
-            // History tab): pending -> bidding, accepted -> tracking, else -> detail.
             .navigationDestination(isPresented: Binding(
                 get: { customerOrdersVM.detailOrder != nil },
                 set: { if !$0 { customerOrdersVM.detailOrder = nil; Task { await customerOrdersVM.loadOrders() } } }

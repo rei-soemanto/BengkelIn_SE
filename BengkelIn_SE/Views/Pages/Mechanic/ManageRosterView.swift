@@ -7,7 +7,7 @@
 
 import SwiftUI
 struct ManageRosterView: View {
-    @StateObject private var viewModel = MechanicRosterViewModel()
+    @StateObject private var viewModel = BengkelRosterViewModel()
 
     var body: some View {
         ScrollView {

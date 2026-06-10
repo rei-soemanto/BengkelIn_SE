@@ -24,6 +24,7 @@ class HistoryViewModel: ObservableObject {
 
     private let authService = AuthService()
     private let orderRepository = OrderRepository()
+    private let bidRepository = BidRepository()
     private let behaviorReportRepository = BehaviorReportRepository()
 
     func loadOrders() async {
@@ -64,7 +65,7 @@ class HistoryViewModel: ObservableObject {
 
     private func openTracking(_ order: NearbyOrder) async {
         do {
-            if let bid = try await orderRepository.fetchAcceptedBid(serviceRequestId: order.id) {
+            if let bid = try await bidRepository.fetchAcceptedBid(serviceRequestId: order.id) {
                 self.trackingCoordinate = CLLocationCoordinate2D(
                     latitude: order.latitude,
                     longitude: order.longitude

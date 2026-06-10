@@ -1,5 +1,5 @@
 //
-//  MechanicRosterViewModel.swift
+//  BengkelRosterViewModel.swift
 //  BengkelIn_SE
 //
 //  Created by Bryan Fernando Dinata on 02/06/26.
@@ -9,9 +9,8 @@ import SwiftUI
 import Combine
 import Supabase
 
-// Provider-side roster management (UC8): list current roster, invite by email, remove.
 @MainActor
-class MechanicRosterViewModel: ObservableObject {
+class BengkelRosterViewModel: ObservableObject {
     @Published var roster: [RosterMember] = []
     @Published var inviteEmail: String = ""
     @Published var isLoading = false

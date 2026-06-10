@@ -8,8 +8,6 @@
 import Foundation
 import UserNotifications
 
-// Local (on-device) notifications. Requires no APNs / Apple Developer setup and
-// works on the simulator. Fires while the app is running and watching for orders.
 class NotificationService {
     func requestAuthorization() {
         UNUserNotificationCenter.current().requestAuthorization(
@@ -26,7 +24,7 @@ class NotificationService {
         let request = UNNotificationRequest(
             identifier: UUID().uuidString,
             content: content,
-            trigger: nil // deliver immediately
+            trigger: nil
         )
         UNUserNotificationCenter.current().add(request)
     }

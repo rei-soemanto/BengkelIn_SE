@@ -7,7 +7,6 @@
 
 import SwiftUI
 
-// Tappable star picker for submitting a rating (1...maxRating).
 struct InteractiveStarRating: View {
     @Binding var rating: Int
     var maxRating: Int = 5

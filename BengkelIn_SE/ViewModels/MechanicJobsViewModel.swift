@@ -9,8 +9,6 @@ import SwiftUI
 import Combine
 import Supabase
 
-// Mechanic-side active-job feed (UC2/E4). Lists jobs the provider dispatched to this
-// mechanic; tapping one opens the shared route/work screen (BengkelRouteView).
 @MainActor
 class MechanicJobsViewModel: ObservableObject {
     @Published var jobs: [NearbyOrder] = []

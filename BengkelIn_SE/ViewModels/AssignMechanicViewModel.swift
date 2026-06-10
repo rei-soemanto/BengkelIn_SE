@@ -9,8 +9,6 @@ import SwiftUI
 import Combine
 import Supabase
 
-// Provider-side dispatch (UC2). Lists the bengkel's accepted mechanics (the roster
-// seam read owned by Bryan) and assigns a job to one — or to "Self".
 @MainActor
 class AssignMechanicViewModel: ObservableObject {
     @Published var availableMechanics: [AvailableMechanic] = []
@@ -18,7 +16,7 @@ class AssignMechanicViewModel: ObservableObject {
     @Published var isAssigning = false
     @Published var errorMessage: String?
 
-    private let mechanicRepository = MechanicRepository()              // Bryan's roster read
+    private let mechanicRepository = MechanicRepository()
     private let assignmentRepository = MechanicAssignmentRepository()
 
     func fetchAvailableMechanics(requestId: String) async {
@@ -34,7 +32,6 @@ class AssignMechanicViewModel: ObservableObject {
         isLoading = false
     }
 
-    // Dispatch (or reassign) the order to a roster mechanic. Returns true on success.
     @discardableResult
     func assign(requestId: String, mechanicId: String) async -> Bool {
         isAssigning = true

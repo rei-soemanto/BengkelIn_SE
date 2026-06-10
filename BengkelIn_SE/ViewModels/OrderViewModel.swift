@@ -36,17 +36,10 @@ class OrderViewModel: NSObject, ObservableObject, CLLocationManagerDelegate, Loc
     @Published var availablePoints: Int = 0
     @Published var showPointsPrompt: Bool = false
 
-    // Max rupiah the customer could redeem on this order (1 poin = Rp1), capped
-    // at the estimate. Shown in the use-points prompt; final redemption is
-    // recomputed server-side against the accepted bid price.
     var maxRedeemablePreview: Int {
         min(availablePoints, estimatedPrice)
     }
 
-    // True only once a *real* location has been resolved for this order — via
-    // GPS, a map drag, or a search selection. Guards against silently creating
-    // an order at the hard-coded default coordinate (or a coordinate left over
-    // from a previous order), which is the root cause of far-away matches.
     @Published var hasResolvedLocation: Bool = false
 
     var requiresTireCount: Bool {
@@ -180,7 +173,6 @@ class OrderViewModel: NSObject, ObservableObject, CLLocationManagerDelegate, Loc
     
     func updateLocationFromMap(coordinate: CLLocationCoordinate2D) {
         if !isEditingLocation {
-            // A user-driven map pan is a genuine location choice.
             hasResolvedLocation = true
             fetchAddress(from: coordinate)
         }
@@ -203,8 +195,6 @@ class OrderViewModel: NSObject, ObservableObject, CLLocationManagerDelegate, Loc
         }
     }
 
-    // Reset all per-order state so each new order starts from a clean slate and
-    // must re-resolve its location. Call when the order form appears.
     func prepareForNewOrder() {
         selectedService = nil
         estimatedPrice = 0
@@ -271,8 +261,6 @@ class OrderViewModel: NSObject, ObservableObject, CLLocationManagerDelegate, Loc
 
     func createOrder() {
         guard validateOrder() else { return }
-        // Ask, on every order, whether to redeem points — but only when the
-        // customer actually has points to spend.
         if availablePoints > 0 {
             showPointsPrompt = true
         } else {
@@ -305,8 +293,6 @@ class OrderViewModel: NSObject, ObservableObject, CLLocationManagerDelegate, Loc
         return true
     }
 
-    // Re-run the upload + navigate step after a failure, keeping the earlier
-    // points decision.
     func retryOrder() {
         beginOrder(usePoints: usePoints)
     }

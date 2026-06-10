@@ -26,7 +26,6 @@ class PaymentViewModel: ObservableObject {
     @Published var errorMessage: String?
     @Published var successMessage: String?
 
-    // Bank details (mirrored from the user profile).
     @Published var bankName: String = ""
     @Published var bankAccountNumber: String = ""
     @Published var bankAccountName: String = ""
@@ -36,8 +35,6 @@ class PaymentViewModel: ObservableObject {
 
     let presetAmounts: [Int] = [25000, 50000, 100000, 200000, 500000]
 
-    // Keep these in sync with the `payment` edge function
-    // (supabase/functions/payment/index.ts) amount validation.
     let minTopupAmount = 10_000
     let maxTopupAmount = 10_000_000
 
@@ -45,7 +42,6 @@ class PaymentViewModel: ObservableObject {
         !bankAccountNumber.isEmpty && !bankName.isEmpty && !bankAccountName.isEmpty
     }
 
-    // Withdrawable funds excluding escrow.
     var availableBalance: Double { max(0, balance - heldBalance) }
 
     private let authService = AuthService()
@@ -57,9 +53,6 @@ class PaymentViewModel: ObservableObject {
     private var realtimeChannel: RealtimeChannelV2?
     private var realtimeReaderTasks: [Task<Void, Never>] = []
 
-    // Track which top-ups have already settled as "success" so we can alert
-    // exactly once when a new one lands (via the realtime subscription) without
-    // re-alerting for history already on screen at first load.
     private var knownSuccessTopupIds: Set<String> = []
     private var didLoadTopupsOnce = false
 
@@ -147,8 +140,6 @@ class PaymentViewModel: ObservableObject {
             self.topups = fetchedTopups
             self.withdrawals = try await withdrawalHistory
         } catch {
-            // A cancelled in-flight fetch (view torn down / re-entered, e.g. when
-            // returning to this tab after an order) is not a user-facing error.
             if error is CancellationError { return }
             if (error as? URLError)?.code == .cancelled { return }
             if !(error is CancellationError) {
@@ -157,7 +148,6 @@ class PaymentViewModel: ObservableObject {
         }
     }
 
-    // Surface a "Top up berhasil!" alert the moment a top-up settles to success.
     private func detectSuccessfulTopups(_ fetched: [Topup]) {
         let successIds = Set(
             fetched
@@ -227,15 +217,11 @@ class PaymentViewModel: ObservableObject {
     }
 
     func requestWithdrawal(amount: Int) async -> Bool {
-        // Block re-entry: a tap-happy or double-tapped submit must not fire two requests.
         guard !isLoading else { return false }
         guard amount >= 10000 else {
             self.errorMessage = "Minimal penarikan Rp10.000"
             return false
         }
-        // Guard against AVAILABLE balance (excludes escrowed held_balance), not the total —
-        // otherwise escrowed funds could be withdrawn. This is the real server-of-record
-        // check; the View's disable is only cosmetic.
         guard Double(amount) <= availableBalance else {
             self.errorMessage = "Saldo tidak mencukupi."
             return false
@@ -261,8 +247,6 @@ class PaymentViewModel: ObservableObject {
         }
     }
 
-    // Reopen the Snap session for an unfinished (pending) top-up, using the
-    // redirect_url stored when it was created. Valid until the link expires.
     func resumeTopup(_ topup: Topup) {
         guard topup.status.lowercased() == "pending",
               let urlString = topup.redirectUrl,
@@ -271,8 +255,6 @@ class PaymentViewModel: ObservableObject {
         self.paymentTarget = PaymentTarget(url: url)
     }
 
-    // Called when the Midtrans WebView sheet is dismissed. The webhook credits
-    // the balance asynchronously; the realtime topups subscription reflects it live.
     func paymentFlowFinished() async {
         currentOrderId = nil
         await refresh()

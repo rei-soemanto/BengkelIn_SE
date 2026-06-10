@@ -7,9 +7,6 @@
 
 import Foundation
 
-// Tracks which order's chat screen is currently open. Background chat watchers
-// (ChatWatchViewModel) read this to suppress notifications and unread counts for
-// the conversation the user is already reading.
 @MainActor
 final class ChatPresence {
     static let shared = ChatPresence()

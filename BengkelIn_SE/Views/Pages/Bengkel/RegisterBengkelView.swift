@@ -18,7 +18,6 @@ struct RegisterBengkelView: View {
     var body: some View {
         ZStack(alignment: .topLeading) {
             VStack(spacing: 0) {
-                // Map
                 ZStack {
                     OrderMapView(
                         region: $viewModel.region,
@@ -44,7 +43,6 @@ struct RegisterBengkelView: View {
                 }
                 .ignoresSafeArea(edges: .top)
 
-                // Controls
                 VStack(spacing: 0) {
                     LocationInputCard(
                         address: $viewModel.locationAddress,
@@ -119,7 +117,6 @@ struct RegisterBengkelView: View {
                 .background(Color(.systemBackground))
             }
 
-            // Back button (sibling, within safe area)
             Button(action: {
                 dismiss()
             }) {
@@ -134,7 +131,6 @@ struct RegisterBengkelView: View {
             .padding(.top, 8)
             .padding(.leading, 20)
 
-            // Search overlay
             if viewModel.isEditingLocation {
                 LocationSearchView(viewModel: viewModel)
                     .transition(.move(edge: .bottom))

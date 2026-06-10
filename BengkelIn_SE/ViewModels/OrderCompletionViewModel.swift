@@ -64,8 +64,6 @@ class OrderCompletionViewModel: ObservableObject {
         }
     }
 
-    // Each device only reacts to the OPPOSITE party's completion flag flipping,
-    // so the actor never notifies itself.
     private func notifyOnCounterpartCompletion(previous: NearbyOrder?, updated: NearbyOrder) {
         defer { hasLoadedOnce = true }
         guard hasLoadedOnce, let previous else { return }

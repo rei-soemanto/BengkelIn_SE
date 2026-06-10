@@ -204,8 +204,6 @@ struct OrderTrackingView: View {
             .distance(from: CLLocation(latitude: p.latitude, longitude: p.longitude))
     }
     private var isBengkelNear: Bool {
-        // Both parties are placed by live GPS, so arrival uses a tight 80 m —
-        // matching the bengkel side. Settlement still requires dual completion.
         if let d = handlerDistanceMeters { return d <= 80 }
         return false
     }

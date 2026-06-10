@@ -9,13 +9,9 @@ import SwiftUI
 import Combine
 import Supabase
 
-// Drives the mechanic's "Pekerjaan Aktif" feed. Mirrors the bengkel's arrived-order
-// experience: watches the mechanic's assigned jobs in realtime, and when a brand-new
-// assignment lands it fires a local notification and pops an in-app modal.
 @MainActor
 class MechanicDashboardViewModel: ObservableObject {
     @Published var jobs: [NearbyOrder] = []
-    // Drives the in-app modal that pops when the provider dispatches a new job.
     @Published var newAssignmentAlert: NearbyOrder?
     @Published var isLoading = false
     @Published var errorMessage: String?
@@ -25,15 +21,8 @@ class MechanicDashboardViewModel: ObservableObject {
     private let notificationService = NotificationService()
 
     private var channel: RealtimeChannelV2?
-    // Separate channel for the per-mechanic broadcast topic. postgres_changes can't
-    // tell a reassigned-away mechanic they were replaced (they lose RLS SELECT on the
-    // row the instant it's reassigned), so assign_mechanic broadcasts to this topic.
     private var broadcastChannel: RealtimeChannelV2?
     private var realtimeReaderTasks: [Task<Void, Never>] = []
-    // id -> assignment token (assigned_at). Keyed on the assignment timestamp, not
-    // just the id, so a re-assignment (which bumps assigned_at) re-notifies even
-    // though the request id is unchanged — a reassigned-away mechanic never sees
-    // the job leave (RLS), so an id-only set would stay stale and miss the return.
     private var knownAssignments: [String: String] = [:]
     private var didInitialLoad = false
     private var hasStarted = false
@@ -50,11 +39,6 @@ class MechanicDashboardViewModel: ObservableObject {
     func start() async {
         let uid = try? await authService.currentUID()
         guard let uid else { reset(); return }
-        // Already running for this exact user — no-op. A DIFFERENT uid means the
-        // account was switched (logout → login as another mechanic) without killing
-        // the app, which keeps this app-level @StateObject — and its old subscription
-        // filtered on the previous mechanic's id — alive. Tear down and re-subscribe
-        // as the new user, else assignments to the new mechanic are never delivered.
         if hasStarted, uid == myUid { return }
         reset()
         hasStarted = true
@@ -66,8 +50,6 @@ class MechanicDashboardViewModel: ObservableObject {
         isLoading = false
     }
 
-    // Detach from the current identity: used on logout and when the signed-in user
-    // isn't a mechanic, so a stale subscription can't keep firing the old user's alerts.
     func reset() {
         stop()
         hasStarted = false
@@ -78,7 +60,6 @@ class MechanicDashboardViewModel: ObservableObject {
         jobs = []
     }
 
-    // Realtime sockets can die while backgrounded; reload + resubscribe on foreground.
     func refreshOnForeground() async {
         guard hasStarted else { await start(); return }
         await loadJobs()
@@ -102,8 +83,6 @@ class MechanicDashboardViewModel: ObservableObject {
         guard let uid = myUid else { return }
         do {
             let fetched = try await assignmentRepository.fetchAssignedJobs(mechanicId: uid)
-            // Alert + notify for any job not seen before — but seed quietly on first load
-            // so pre-existing assignments don't trigger a burst of notifications.
             if didInitialLoad {
                 for job in fetched where knownAssignments[job.id] != (job.assignedAt ?? job.id) {
                     newAssignmentAlert = job
@@ -121,8 +100,6 @@ class MechanicDashboardViewModel: ObservableObject {
             knownAssignments = updated
             didInitialLoad = true
             self.jobs = fetched
-            // Fan out to other screens (history) only when the assignment set actually
-            // changed, so the reconcile poll doesn't spam reloads every tick.
             if changed {
                 NotificationCenter.default.post(name: .mechanicOrdersChanged, object: nil)
             }
@@ -148,8 +125,6 @@ class MechanicDashboardViewModel: ObservableObject {
 
         realtimeReaderTasks.append(Task { [weak self] in
             await channel.subscribe()
-            // Cold-start reconcile: the first events can arrive during the subscribe
-            // handshake and be missed, so refetch once subscribed.
             await self?.loadJobs()
             for await _ in stream { await self?.loadJobs() }
         })
@@ -158,25 +133,16 @@ class MechanicDashboardViewModel: ObservableObject {
         startReconcilePoll()
     }
 
-    // Realtime delivery here is best-effort, not guaranteed: postgres_changes + RLS races
-    // across subscribers, and this project's Realtime tenant shuts down on idle so ephemeral
-    // broadcasts sent during a reconnect are lost ("sometimes the notification shows"). A
-    // periodic re-read makes the active-job feed and the assignment alert eventually correct
-    // regardless — loadJobs dedups on assigned_at, so it still notifies at most once.
     private func startReconcilePoll() {
         realtimeReaderTasks.append(Task { [weak self] in
             while !Task.isCancelled {
-                try? await Task.sleep(nanoseconds: 10_000_000_000) // 10s
+                try? await Task.sleep(nanoseconds: 10_000_000_000)
                 if Task.isCancelled { return }
                 await self?.loadJobs()
             }
         })
     }
 
-    // Broadcast is the RELIABLE per-mechanic delivery path. postgres_changes with RLS
-    // does not dependably reach concurrent per-user subscribers (only one device gets
-    // the event, and which one flips on resubscribe), so assignment alerts raced across
-    // mechanics. assign_mechanic broadcasts straight to this mechanic's topic instead.
     private func subscribeMechanicBroadcast(uid: String) {
         let channel = supabase.channel("mechanic:\(uid)")
         self.broadcastChannel = channel
@@ -191,15 +157,10 @@ class MechanicDashboardViewModel: ObservableObject {
         })
     }
 
-    // A new order was dispatched to this mechanic (instant path when realtime is up).
-    // Funnel through loadJobs so the assigned_at dedup fires the notification + modal
-    // exactly once and fans out the change, even if the poll or postgres_changes also land.
     private func handleAssigned(_ message: [String: AnyJSON]) async {
         await loadJobs()
     }
 
-    // The provider replaced this mechanic on an order. Tell them, drop the stale job
-    // from the active feed, and let other screens (history, route) react.
     private func handleReassignedAway(_ message: [String: AnyJSON]) async {
         let payload = message["payload"]?.objectValue ?? message
         guard let requestId = payload["request_id"]?.stringValue else { return }
@@ -218,13 +179,7 @@ class MechanicDashboardViewModel: ObservableObject {
 }
 
 extension Notification.Name {
-    // Posted (main thread) when the signed-in mechanic is replaced on an order.
-    // object is the affected request id (String). Screens with their own order
-    // lists/state observe this to self-heal, since RLS blocks the realtime row update.
     static let mechanicReassignedAway = Notification.Name("mechanicReassignedAway")
 
-    // Posted whenever a live service_requests change lands for the signed-in mechanic
-    // (assigned, completed, cancelled). Screens with their own order lists observe this
-    // to refresh, instead of opening a second postgres_changes subscription.
     static let mechanicOrdersChanged = Notification.Name("mechanicOrdersChanged")
 }

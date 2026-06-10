@@ -9,10 +9,6 @@ import SwiftUI
 import Combine
 import Supabase
 
-// Watches a single order's chat in the background — while the user is on the
-// tracking/route screen rather than inside ChatView — to surface an unread
-// badge and fire a local notification for each incoming message from the other
-// party. Uses a true Realtime subscription (no polling).
 @MainActor
 final class ChatWatchViewModel: ObservableObject {
     @Published var unreadCount: Int = 0
@@ -64,8 +60,6 @@ final class ChatWatchViewModel: ObservableObject {
         }
     }
 
-    // Called when the user opens this conversation — clears the badge and moves
-    // the read cursor to now.
     func markAllRead() {
         cursor.markRead()
         unreadCount = 0
@@ -93,11 +87,8 @@ final class ChatWatchViewModel: ObservableObject {
         guard let messages = try? await chatRepository.fetchMessages(serviceRequestId: serviceRequestId) else { return }
         let incoming = messages.filter { $0.senderId != currentUserId }
 
-        // Don't notify or count the conversation the user is actively reading.
         let isViewing = ChatPresence.shared.activeServiceRequestId == serviceRequestId
 
-        // First load only seeds the seen-set so pre-existing messages don't
-        // trigger a burst of notifications.
         if didLoadOnce && !isViewing {
             for message in incoming where !notifiedIds.contains(message.id) {
                 notificationService.notifyNewOrder(

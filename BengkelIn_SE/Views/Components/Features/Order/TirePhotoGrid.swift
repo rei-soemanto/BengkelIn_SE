@@ -8,7 +8,6 @@
 import SwiftUI
 import PhotosUI
 
-// One photo slot per problematic tire; the customer must fill every slot.
 struct TirePhotoGrid: View {
     let count: Int
     @Binding var photos: [Data?]

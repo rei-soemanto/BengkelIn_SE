@@ -7,8 +7,6 @@
 
 import Foundation
 
-// Live location of the assigned bengkel for an in-progress order
-// (order_locations table).
 struct OrderLocation: Codable, Identifiable {
     var serviceRequestId: String
     var providerUid: String?

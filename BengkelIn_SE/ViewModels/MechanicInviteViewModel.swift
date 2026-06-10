@@ -9,8 +9,6 @@ import SwiftUI
 import Combine
 import Supabase
 
-// Mechanic-side invite inbox (UC8). Accepting promotes a plain USER to MECHANIC in the
-// DB; the caller should refresh the auth user afterwards so the Mekanik mode appears.
 @MainActor
 class MechanicInviteViewModel: ObservableObject {
     @Published var invites: [MechanicInvite] = []
@@ -35,7 +33,6 @@ class MechanicInviteViewModel: ObservableObject {
         isLoading = false
     }
 
-    // Returns true on a successful accept so the view can refresh the auth user/role.
     @discardableResult
     func respond(_ invite: MechanicInvite, accept: Bool) async -> Bool {
         errorMessage = nil

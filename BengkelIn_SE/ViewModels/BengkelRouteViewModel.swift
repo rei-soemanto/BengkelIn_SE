@@ -12,9 +12,9 @@ import Supabase
 
 @MainActor
 final class RouteLocationStore: ObservableObject {
-    @Published var me: CLLocationCoordinate2D?        // the viewer's own device GPS
-    @Published var customer: CLLocationCoordinate2D?  // customer's published live location
-    @Published var handler: CLLocationCoordinate2D?   // the handler marker (self/mechanic)
+    @Published var me: CLLocationCoordinate2D?
+    @Published var customer: CLLocationCoordinate2D?
+    @Published var handler: CLLocationCoordinate2D?
 }
 
 @MainActor
@@ -26,13 +26,13 @@ class BengkelRouteViewModel: NSObject, ObservableObject, CLLocationManagerDelega
 
     let locationStore = RouteLocationStore()
     var isPaused = false
-    var bengkelCoordinate: CLLocationCoordinate2D? {              // the viewer's own device GPS
+    var bengkelCoordinate: CLLocationCoordinate2D? {
         get { locationStore.me } set { guard !isPaused else { return }; locationStore.me = newValue }
     }
     var customerLiveCoordinate: CLLocationCoordinate2D? {
         get { locationStore.customer } set { guard !isPaused else { return }; locationStore.customer = newValue }
     }
-    var assigneeCoordinate: CLLocationCoordinate2D? {             // location shown for the handler
+    var assigneeCoordinate: CLLocationCoordinate2D? {
         get { locationStore.handler } set { guard !isPaused else { return }; locationStore.handler = newValue }
     }
 
@@ -58,16 +58,15 @@ class BengkelRouteViewModel: NSObject, ObservableObject, CLLocationManagerDelega
 
     private var mechanicId: String? { order?.mechanicId }
     private var amProvider: Bool { myUid != nil && myUid == providerUid }
-    var selfAssigned: Bool { mechanicId != nil && mechanicId == providerUid }   // bengkel handles it itself
-    var amAssignee: Bool { mechanicId != nil && mechanicId == myUid }           // I'm the one handling it
-    var viewerIsProvider: Bool { amProvider }                                   // I own this bengkel (can assign/reassign)
+    var selfAssigned: Bool { mechanicId != nil && mechanicId == providerUid }
+    var amAssignee: Bool { mechanicId != nil && mechanicId == myUid }
+    var viewerIsProvider: Bool { amProvider }
     private var monitoringMechanic: Bool { amProvider && mechanicId != nil && mechanicId != providerUid }
-    // Label for the handler pin.
     var viewerIsAssignee: Bool { amAssignee }
     var handlerLabel: String {
-        if amAssignee { return "Anda" }       // I'm doing the job (self-provider or mechanic)
-        if monitoringMechanic { return "Mekanik" }  // provider watching the dispatched mechanic
-        return "Bengkel"                       // unassigned provider previewing their shop
+        if amAssignee { return "Anda" }
+        if monitoringMechanic { return "Mekanik" }
+        return "Bengkel"
     }
 
     override init() {
@@ -79,9 +78,6 @@ class BengkelRouteViewModel: NSObject, ObservableObject, CLLocationManagerDelega
            backgroundModes.contains("location") {
             locationManager.allowsBackgroundLocationUpdates = true
         }
-        // Flip to the "Pesanan Dialihkan" screen the instant the broadcast lands,
-        // rather than waiting for the ~4s reconcile poll. Only if I was the assignee
-        // (the provider who reassigned must never be bumped off the screen).
         reassignObserver = NotificationCenter.default.addObserver(
             forName: .mechanicReassignedAway, object: nil, queue: .main
         ) { [weak self] note in
@@ -109,9 +105,6 @@ class BengkelRouteViewModel: NSObject, ObservableObject, CLLocationManagerDelega
         self.customerCoordinate = CLLocationCoordinate2D(latitude: order.latitude, longitude: order.longitude)
         self.myUid = try? await authService.currentUID()
 
-        // Resolve the bengkel (provider uid + shop coords) so we know if we're the provider
-        // monitoring a mechanic. Entering via the won-bid path the order has no bengkel_id yet,
-        // so this also runs whenever the order updates (see the order stream below).
         await resolveBengkelIfNeeded()
 
         let auth = locationManager.authorizationStatus
@@ -162,17 +155,11 @@ class BengkelRouteViewModel: NSObject, ObservableObject, CLLocationManagerDelega
             }
             Task { [weak self] in
                 for await _ in assigneeLocationStream {
-                    // Only the monitoring provider needs to mirror the published handler location.
                     await self?.refreshAssigneeFromOrderLocations()
                 }
             }
         })
 
-        // Reassignment watch (separate, cancellable task). Realtime CANNOT notify a reassigned-
-        // away mechanic: every mechanic RLS policy on service_requests is `mechanic_id =
-        // auth.uid()`, so the moment the order is reassigned the old mechanic loses SELECT on the
-        // row and never receives the change. So the assignee re-checks: if the order is no longer
-        // fetchable (RLS denied) or no longer theirs, surface the "reassigned" screen.
         realtimeReaderTasks.append(Task { [weak self] in
             var misses = 0
             while !Task.isCancelled {
@@ -183,14 +170,12 @@ class BengkelRouteViewModel: NSObject, ObservableObject, CLLocationManagerDelega
                     if fresh.mechanicId != self.myUid { self.reassignedAway = true } else { misses = 0 }
                 } else {
                     misses += 1
-                    if misses >= 2 { self.reassignedAway = true }   // two strikes ⇒ not a transient blip
+                    if misses >= 2 { self.reassignedAway = true }
                 }
             }
         })
     }
 
-    // Resolve provider uid + shop coords from the order's bengkel once it's known. Idempotent:
-    // does nothing once resolved, or while the order still has no bengkel_id (pre-acceptance).
     private func resolveBengkelIfNeeded() async {
         guard providerUid == nil,
               let bengkelId = order?.bengkelId,
@@ -199,11 +184,7 @@ class BengkelRouteViewModel: NSObject, ObservableObject, CLLocationManagerDelega
         self.shopCoordinate = CLLocationCoordinate2D(latitude: bengkel.latitude, longitude: bengkel.longitude)
     }
 
-    // Apply the display + publishing behavior for the current role/assignment.
     private func reconfigureForRole() async {
-        // Reassignment guard: a mechanic who was the handler but is no longer it (the bengkel
-        // reassigned the order) must be kicked off the screen. The provider is never the
-        // assignee, so this never affects the monitoring provider.
         if amAssignee {
             wasAssignee = true
         } else if wasAssignee, mechanicId != nil {
@@ -211,17 +192,11 @@ class BengkelRouteViewModel: NSObject, ObservableObject, CLLocationManagerDelega
         }
 
         if amAssignee {
-            // I'm handling the job — mechanic OR bengkel "Self". Publish my live device GPS
-            // so the customer (and a monitoring provider) sees me travel to them. Distinct
-            // simulator locations (see scripts/sim-route.sh) keep me off the customer's spot.
             if let me = bengkelCoordinate { assigneeCoordinate = me }
             publishCurrentGPSIfPossible()
         } else if monitoringMechanic {
-            // Provider watching a mechanic: mirror the mechanic's published location.
             await refreshAssigneeFromOrderLocations()
         } else if amProvider {
-            // Unassigned provider at the gate: preview the bengkel at its shop so the map
-            // always has a handler marker (don't leave it blank before assigning).
             if let shop = shopCoordinate { assigneeCoordinate = shop }
         }
     }
@@ -245,8 +220,6 @@ class BengkelRouteViewModel: NSObject, ObservableObject, CLLocationManagerDelega
         }
     }
 
-    // Called right after the provider assigns (Self or a mechanic) so the screen reflects the
-    // new role immediately without waiting on realtime.
     func refreshAfterAssignment() async {
         await refreshOrder()
         await resolveBengkelIfNeeded()
@@ -305,8 +278,6 @@ class BengkelRouteViewModel: NSObject, ObservableObject, CLLocationManagerDelega
         guard let location = locations.last else { return }
         self.bengkelCoordinate = location.coordinate
 
-        // The assignee (mechanic OR bengkel "Self") streams live GPS as the handler position.
-        // A monitoring provider doesn't publish (it reads order_locations instead).
         guard amAssignee, status == "accepted", let requestId = serviceRequestId else { return }
         self.assigneeCoordinate = location.coordinate
         let distance = customerCoordinate.map {

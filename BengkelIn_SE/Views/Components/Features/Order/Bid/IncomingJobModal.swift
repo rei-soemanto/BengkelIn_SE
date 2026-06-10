@@ -7,7 +7,6 @@
 
 import SwiftUI
 
-// In-app modal that pops for a bengkel when a brand-new nearby order arrives.
 struct IncomingJobModal: View {
     let order: NearbyOrder
     let onBid: () -> Void

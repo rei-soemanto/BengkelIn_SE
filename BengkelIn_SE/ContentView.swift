@@ -13,10 +13,6 @@ struct ContentView: View {
     @StateObject private var authViewModel = AuthViewModel()
     @StateObject private var network = NetworkMonitor()
     @StateObject private var bengkelBiddingViewModel = BengkelBiddingViewModel()
-    // App-level so the mechanic is watched for new assignments anywhere in the app —
-    // mirroring how bengkelBiddingViewModel watches incoming orders app-wide. Lives at
-    // ContentView level (not inside MechanicDashboardView) so switching tabs never tears
-    // down the realtime subscription.
     @StateObject private var mechanicDashboardViewModel = MechanicDashboardViewModel()
     @ObservedObject private var orderRoute = OrderRouteState.shared
     @State private var bidOrder: NearbyOrder?
@@ -32,8 +28,6 @@ struct ContentView: View {
         Group {
             if !network.isConnected {
                 OfflineView {
-                    // Re-check connectivity. If we're back online, isConnected flips true
-                    // and the .onChange below reloads the session.
                     network.recheck()
                 }
             } else if authViewModel.isInitializing {
@@ -120,10 +114,6 @@ struct ContentView: View {
                     )
                 }
         }
-        // Key on the user id, not the role: two mechanics share role "MECHANIC", so a
-        // role-keyed task never re-fires on a mechanic→mechanic account switch and the
-        // app-level VM stays subscribed as the previous user. Re-run per identity, and
-        // reset the VM that doesn't match the current role so it can't fire stale alerts.
         .task(id: authViewModel.currentUser?.id) {
             let role = authViewModel.currentUser?.role
             if role == "MECHANIC" {
@@ -137,8 +127,6 @@ struct ContentView: View {
                 bengkelBiddingViewModel.reset()
             }
         }
-        // Arrived-order style modal when the provider dispatches a new job to this mechanic —
-        // the mechanic-side counterpart of the bengkel's IncomingJobModal, presented app-wide.
         .sheet(item: $mechanicDashboardViewModel.newAssignmentAlert) { order in
             IncomingAssignmentModal(
                 order: order,
@@ -167,8 +155,6 @@ struct ContentView: View {
                 Task { await bengkelBiddingViewModel.placeBid(order: order, price: price, notes: notes) }
             }
         }
-        // Won-bid: route the provider to the route screen via a PUSH in the Dashboard tab
-        // (not a fullScreenCover — the route screen's sheets break inside a cover).
         .onChange(of: bengkelBiddingViewModel.activeBengkelOrder?.id) { _ in
             if let order = bengkelBiddingViewModel.activeBengkelOrder {
                 routeOrder = order

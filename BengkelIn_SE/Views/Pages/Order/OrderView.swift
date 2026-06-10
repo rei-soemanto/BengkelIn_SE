@@ -11,7 +11,6 @@ import CoreLocation
 import PhotosUI
 
 struct OrderView: View {
-    // Pops the whole order flow back to Beranda (e.g. after a cancellation).
     var popToRoot: () -> Void = {}
 
     @StateObject private var viewModel = OrderViewModel()

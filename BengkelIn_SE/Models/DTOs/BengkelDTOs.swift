@@ -7,7 +7,6 @@
 
 import Foundation
 
-// Used by BengkelRepository for name/address/coordinate updates
 struct BengkelUpdatePayload: Encodable {
     let name: String
     let address: String
@@ -15,7 +14,6 @@ struct BengkelUpdatePayload: Encodable {
     let longitude: Double
 }
 
-// Used by BengkelRepository for offered_services array updates
 struct BengkelServicesUpdatePayload: Encodable {
     let offered_services: [BengkelService]
 }

@@ -64,7 +64,6 @@ class ChatViewModel: ObservableObject {
             let order = try await orderRepository.fetchOrder(id: serviceRequestId)
             self.isLocked = !["pending", "accepted"].contains(order.status)
         } catch {
-            // If we can't read it, fail safe by not locking the UI.
         }
     }
 

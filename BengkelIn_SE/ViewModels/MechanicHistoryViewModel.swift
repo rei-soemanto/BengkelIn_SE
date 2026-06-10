@@ -9,9 +9,6 @@ import SwiftUI
 import Combine
 import Supabase
 
-// The mechanic's "Riwayat Pesanan": every order ever dispatched to them — active
-// (accepted), completed, or cancelled. Mirrors BengkelHistoryViewModel but scoped
-// to mechanic_id instead of bengkel_id.
 @MainActor
 class MechanicHistoryViewModel: ObservableObject {
     @Published var orders: [NearbyOrder] = []
@@ -28,17 +25,11 @@ class MechanicHistoryViewModel: ObservableObject {
     private var reassignObserver: NSObjectProtocol?
 
     init() {
-        // Live sync rides the app-level dashboard subscription (the single source of
-        // truth for this mechanic's service_requests changes) instead of opening a
-        // second postgres_changes subscription on the same filter, which Realtime
-        // delivers to unreliably. A live change → refetch the full history.
         ordersChangedObserver = NotificationCenter.default.addObserver(
             forName: .mechanicOrdersChanged, object: nil, queue: .main
         ) { [weak self] _ in
             Task { @MainActor in await self?.reload() }
         }
-        // Reassigned-away events can't come through that path (RLS hides the row),
-        // so the broadcast watcher posts this; drop the order the moment we hear it.
         reassignObserver = NotificationCenter.default.addObserver(
             forName: .mechanicReassignedAway, object: nil, queue: .main
         ) { [weak self] note in

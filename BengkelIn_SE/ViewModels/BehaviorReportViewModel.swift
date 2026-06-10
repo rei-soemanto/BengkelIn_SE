@@ -30,7 +30,6 @@ class BehaviorReportViewModel: ObservableObject {
             try await repository.submit(serviceRequestId: serviceRequestId, reporterId: uid, reason: reason)
             return true
         } catch {
-            // 23505 = unique-violation: this user already reported this order.
             if (error as? PostgrestError)?.code == "23505" {
                 errorMessage = "Anda sudah melaporkan pesanan ini."
             } else {

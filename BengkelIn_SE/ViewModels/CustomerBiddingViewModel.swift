@@ -45,11 +45,9 @@ final class CustomerBiddingViewModel: ObservableObject {
 
     private let searchTimeoutSeconds: UInt64 = 120
     private let decisionTimeoutSeconds: UInt64 = 10
-    // How long a received offer stays valid before it is auto-rejected.
     private let bidDecisionWindowSeconds: TimeInterval = 120
     private var searchCountdownTask: Task<Void, Never>?
     private var decisionCountdownTask: Task<Void, Never>?
-    // Fires at the nearest pending-offer deadline to auto-reject overdue offers.
     private var bidExpiryTask: Task<Void, Never>?
 
     private var realtimeChannel: RealtimeChannelV2?
@@ -133,7 +131,6 @@ final class CustomerBiddingViewModel: ObservableObject {
             let uid = try await authService.currentUID()
             let user = try await userRepository.fetchUser(uid: uid)
             self.balance = user.balance
-            // If re-searching an existing order, its current hold is added back before checking.
             let existingHold = serviceRequestId != nil ? Double(customerBidPrice) : 0
             let available = user.availableBalance + existingHold
             guard Double(price) <= available else {
@@ -299,8 +296,6 @@ final class CustomerBiddingViewModel: ObservableObject {
         realtimeReaderTasks.append(Task { [weak self] in
             guard let self = self else { return }
             await channel.subscribe()
-            // Cold-start reconcile after the channel is confirmed subscribed, in
-            // case a bid landed during the subscribe handshake.
             await self.loadReceivedBids()
 
             for await _ in stream {
@@ -327,7 +322,6 @@ final class CustomerBiddingViewModel: ObservableObject {
             let fetched = try await bidRepository.fetchBids(serviceRequestId: serviceRequestId)
             let pending = fetched.filter { $0.status.lowercased() == "pending" }
 
-            // Push a notification for each offer that arrived since the last load.
             if didLoadBidsOnce {
                 for bid in pending where !knownBidIds.contains(bid.id) {
                     notificationService.notifyNewOrder(
@@ -341,16 +335,12 @@ final class CustomerBiddingViewModel: ObservableObject {
 
             self.bids = pending
             if pending.isEmpty {
-                // Offers drained (all rejected/expired): stop the deadline watcher
-                // and, if still searching, resume the search countdown so the flow
-                // keeps moving instead of freezing on a stuck timer.
                 bidExpiryTask?.cancel()
                 bidExpiryTask = nil
                 if isSearching, acceptedBid == nil, !showRetryPrompt, searchCountdownTask == nil {
                     startSearchCountdown()
                 }
             } else {
-                // Offers present: pause the search countdown, arm the auto-reject watcher.
                 searchCountdownTask?.cancel()
                 searchCountdownTask = nil
                 decisionCountdownTask?.cancel()
@@ -409,9 +399,6 @@ final class CustomerBiddingViewModel: ObservableObject {
         isLoading = false
     }
 
-    // The offer's response window elapsed without the customer deciding. This is
-    // a timeout (status "Expired") — distinct from "AutoRejected", which means
-    // the customer accepted a different bengkel.
     func expireBid(_ bid: Bid) async {
         do {
             try await bidRepository.updateStatus(bidId: bid.id, status: "Expired")
@@ -423,7 +410,6 @@ final class CustomerBiddingViewModel: ObservableObject {
         }
     }
 
-    // Arms one timer that fires at the soonest pending-offer deadline.
     private func scheduleBidExpiry() {
         bidExpiryTask?.cancel()
         let deadlines = bids.compactMap { bid -> Date? in
@@ -440,7 +426,6 @@ final class CustomerBiddingViewModel: ObservableObject {
         }
     }
 
-    // Auto-rejects every pending offer whose decision window has elapsed.
     private func expireOverdueBids() async {
         let now = Date()
         let overdue = bids.filter { bid in
@@ -448,14 +433,13 @@ final class CustomerBiddingViewModel: ObservableObject {
                   let s = bid.createdAt, let created = Self.parseISODate(s) else { return false }
             return now.timeIntervalSince(created) >= bidDecisionWindowSeconds
         }
-        guard !overdue.isEmpty else { scheduleBidExpiry(); return } // woke early -> re-arm
+        guard !overdue.isEmpty else { scheduleBidExpiry(); return }
         for bid in overdue {
             try? await bidRepository.updateStatus(bidId: bid.id, status: "Expired")
         }
-        await loadReceivedBids() // re-arms watcher, or resumes search if none remain
+        await loadReceivedBids()
     }
 
-    // Supabase timestamps carry up to 6 fractional digits; add a strip-fallback.
     static func parseISODate(_ s: String) -> Date? {
         let f = ISO8601DateFormatter()
         f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]

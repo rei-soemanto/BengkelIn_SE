@@ -7,7 +7,6 @@
 
 import Foundation
 
-// Live location of the customer for an in-progress order (customer_locations table).
 struct CustomerLocation: Codable, Identifiable {
     var serviceRequestId: String
     var customerId: String?

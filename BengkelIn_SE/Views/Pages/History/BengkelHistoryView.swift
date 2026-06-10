@@ -49,7 +49,6 @@ struct BengkelHistoryView: View {
             LazyVStack(spacing: 12) {
                 ForEach(viewModel.orders) { order in
                     OrderHistoryRow(order: order, onTap: {
-                        // Active → route/work screen, finished → detail; both pushed.
                         viewModel.select(order)
                     }, onReport: {
                         reportOrder = order

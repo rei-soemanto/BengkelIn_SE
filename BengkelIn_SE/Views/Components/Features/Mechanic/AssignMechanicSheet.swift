@@ -7,9 +7,6 @@
 
 import SwiftUI
 
-// Provider dispatches an accepted job to a roster mechanic — or reassigns it. Bengkel "Self"
-// was removed, so a mechanic is required. Busy mechanics (already on another active order)
-// are shown disabled; the mechanic currently on this order is marked.
 struct AssignMechanicSheet: View {
     let requestId: String
     var onAssigned: () -> Void = {}
