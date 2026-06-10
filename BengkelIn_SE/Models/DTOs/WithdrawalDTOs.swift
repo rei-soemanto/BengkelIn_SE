@@ -1,3 +1,10 @@
+//
+//  WithdrawalDTOs.swift
+//  BengkelIn
+//
+//  Created by Amadeus Eugene Dirgantara on 02/06/26.
+//
+
 import Foundation
 
 // Used by UserRepository to update bank details on the users table.

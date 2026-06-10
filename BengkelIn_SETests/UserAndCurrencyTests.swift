@@ -2,6 +2,8 @@
 //  UserAndCurrencyTests.swift
 //  BengkelIn_SETests
 //
+//  Created by Amadeus Eugene Dirgantara on 02/06/26.
+//
 //  User decoding + availableBalance (balance minus held), and the Rupiah formatter
 //  invariants (locale output spacing varies, so assert structure not an exact string).
 //

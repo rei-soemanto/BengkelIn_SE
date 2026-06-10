@@ -10,13 +10,13 @@ import Foundation
 import Supabase
 
 let supabase = SupabaseClient(
-  supabaseURL: URL(string: "https://ipxwpxozreksmuiztwcy.supabase.co")!,
-  supabaseKey: "sb_publishable_KGesQO8JPeZ4H_c7QASQew_1kzIyqvr",
-  options: SupabaseClientOptions(
-    auth: SupabaseClientOptions.AuthOptions(
-      emitLocalSessionAsInitialSession: true
+    supabaseURL: URL(string: "https://ipxwpxozreksmuiztwcy.supabase.co")!,
+    supabaseKey: "sb_publishable_KGesQO8JPeZ4H_c7QASQew_1kzIyqvr",
+    options: SupabaseClientOptions(
+        auth: SupabaseClientOptions.AuthOptions(
+            emitLocalSessionAsInitialSession: true
+        )
     )
-  )
 )
 
 import UserNotifications

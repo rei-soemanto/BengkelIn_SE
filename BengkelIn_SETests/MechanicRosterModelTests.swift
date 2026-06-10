@@ -2,6 +2,8 @@
 //  MechanicRosterModelTests.swift
 //  BengkelIn_SETests
 //
+//  Created by Amadeus Eugene Dirgantara on 02/06/26.
+//
 //  Decodes the JSON shapes returned by the roster RPCs (bengkel_roster,
 //  my_mechanic_invites, available_mechanics) and checks the status helpers.
 //

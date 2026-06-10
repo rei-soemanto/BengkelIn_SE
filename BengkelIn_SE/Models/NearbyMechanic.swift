@@ -1,3 +1,10 @@
+//
+//  NearbyMechanic.swift
+//  BengkelIn
+//
+//  Created by Rei Soemanto on 02/05/26.
+//
+
 import Foundation
 
 struct NearbyMechanic: Codable, Identifiable {
