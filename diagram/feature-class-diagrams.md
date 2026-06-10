@@ -89,6 +89,13 @@ classDiagram
         +deleteOrderPhotos(urls)
         +uploadChatImage(reqId, data) String
     }
+    class ImageCompressor {
+        +compressed(data, maxDimension, quality) Data$
+    }
+    class AuthServiceError {
+        <<enumeration>>
+        emailAlreadyRegistered
+    }
     class UserRepository {
         +fetchUser(uid) User
         +updateProfile(uid, payload)
@@ -168,7 +175,9 @@ classDiagram
     ProfileViewModel ..> AuthService
     ProfileViewModel ..> UserRepository
     ProfileViewModel ..> StorageService
+    ProfileViewModel ..> ImageCompressor
     AuthService ..> SignUpRequest
+    AuthService ..> AuthServiceError
     UserRepository ..> User
     UserRepository ..> ProfileUpdatePayload
     UserRepository ..> ProfileImageUpdatePayload
@@ -996,22 +1005,31 @@ classDiagram
     class RemoveMechanicParams {
         +String p_registration_id
     }
+    class AvailableMechanicsParams {
+        +String p_request_id
+    }
 
     BengkelRosterViewModel ..> MechanicRepository
+    BengkelRosterViewModel --> RosterMember
     MechanicInviteViewModel ..> MechanicRepository
+    MechanicInviteViewModel --> MechanicInvite
     AssignMechanicViewModel ..> MechanicRepository
     AssignMechanicViewModel ..> MechanicAssignmentRepository
+    AssignMechanicViewModel --> AvailableMechanic
     MechanicDashboardViewModel ..> MechanicAssignmentRepository
     MechanicDashboardViewModel ..> AuthService
     MechanicDashboardViewModel ..> NotificationService
+    MechanicDashboardViewModel --> NearbyOrder
     MechanicJobsViewModel ..> MechanicAssignmentRepository
     MechanicJobsViewModel ..> AuthService
+    MechanicJobsViewModel --> NearbyOrder
     MechanicRepository ..> RosterMember
     MechanicRepository ..> MechanicInvite
     MechanicRepository ..> AvailableMechanic
     MechanicRepository ..> RespondInviteParams
     MechanicRepository ..> InviteMechanicParams
     MechanicRepository ..> RemoveMechanicParams
+    MechanicRepository ..> AvailableMechanicsParams
     MechanicAssignmentRepository ..> AssignMechanicParams
     MechanicAssignmentRepository ..> NearbyOrder
 
@@ -1097,13 +1115,18 @@ classDiagram
         +stop()
         +markAllRead()
     }
+    class ImageCompressor {
+        +compressed(data, maxDimension, quality) Data$
+    }
     class ChatReadCursor {
         +String serviceRequestId
         +Date lastReadAt
         +markRead(at)
         +unreadCount(incoming) Int
+        +date(of message) Date$
     }
     class ChatPresence {
+        +ChatPresence shared$
         +String? activeServiceRequestId
     }
     class ChatMessage {
@@ -1124,6 +1147,7 @@ classDiagram
     ChatViewModel ..> ChatRepository
     ChatViewModel ..> OrderRepository
     ChatViewModel ..> StorageService
+    ChatViewModel ..> ImageCompressor
     ChatViewModel ..> AuthService
     ChatViewModel --> ChatMessage
     ChatWatchViewModel ..> ChatRepository
@@ -1140,7 +1164,7 @@ classDiagram
 
 ## 7. Live Location Tracking
 
-The mover (provider/mechanic) publishes GPS to `order_locations`; the customer publishes to `customer_locations`; the other side subscribes. `BengkelRouteViewModel` drives the provider/mechanic route map; `OrderTrackingViewModel` the customer tracking map. These VMs own a `CLLocationManager`.
+The mover (provider/mechanic) publishes GPS to `order_locations`; the customer publishes to `customer_locations`; the other side subscribes. `BengkelRouteViewModel` drives the provider/mechanic route map; `OrderTrackingViewModel` the customer tracking map. These VMs own a `CLLocationManager`. `RouteLocationStore` is a small observable holder for the three live coordinates the route map renders (me / customer / handler), owned by `BengkelRouteViewModel`.
 
 ```mermaid
 ---
@@ -1240,6 +1264,17 @@ classDiagram
         +NearbyOrder? order
         +String? myUid
         +Bool reassignedAway
+        +RouteLocationStore locationStore
+        +Bool isPaused
+        +String status
+        +Bool selfAssigned
+        +Bool amAssignee
+        +Bool viewerIsProvider
+        +Bool viewerIsAssignee
+        +String handlerLabel
+        +CLLocationCoordinate2D? bengkelCoordinate
+        +CLLocationCoordinate2D? customerLiveCoordinate
+        +CLLocationCoordinate2D? assigneeCoordinate
         +start(order)
         +refreshOrder()
         +refreshAfterAssignment()
@@ -1248,6 +1283,11 @@ classDiagram
         +locationManagerDidChangeAuthorization(manager)
         +locationManager(manager, didUpdateLocations)
         +locationManager(manager, didFailWithError)
+    }
+    class RouteLocationStore {
+        +CLLocationCoordinate2D? me
+        +CLLocationCoordinate2D? customer
+        +CLLocationCoordinate2D? handler
     }
     class OrderLocation {
         +String id
@@ -1292,6 +1332,7 @@ classDiagram
     BengkelRouteViewModel ..> StorageService
     BengkelRouteViewModel ..> AuthService
     BengkelRouteViewModel ..> NotificationService
+    BengkelRouteViewModel "1" *-- "1" RouteLocationStore : locationStore
     OrderLocationRepository ..> OrderLocation
     OrderLocationRepository ..> CustomerLocation
     OrderLocationRepository ..> OrderLocationPayload
@@ -1831,4 +1872,6 @@ classDiagram
 
 ### Shared types referenced across features
 
-`NearbyOrder` (the `service_requests` row) and `AuthService` appear in almost every feature — `NearbyOrder` is the central "order" entity that bidding, mechanics, tracking, completion, and history all revolve around. `Bengkel`/`BengkelService`/`ServiceType` are detailed in **§3**; `Bid` in **§4**.
+`NearbyOrder` (the `service_requests` row) and `AuthService` appear in almost every feature — `NearbyOrder` is the central "order" entity that bidding, mechanics, tracking, completion, and history all revolve around. `Bengkel`/`BengkelService`/`ServiceType` are detailed in **§3**; `Bid` in **§4**. `ImageCompressor` (static JPEG downscaler) appears in **§1** and **§6**, the two features that compress before upload.
+
+**Deliberately omitted** (View-layer only, no ViewModel/Repository touches them): `NetworkMonitor` (a `Services/` ObservableObject publishing `isConnected`, consumed directly by `ContentView` for the offline banner) and `NearbyMechanic` (a model decoded only by the `MechanicCard` view component).
