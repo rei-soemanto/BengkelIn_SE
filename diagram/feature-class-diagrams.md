@@ -227,6 +227,8 @@ classDiagram
         +Bool isLoading
         +String? errorMessage
         +String? successMessage
+        -AuthService authService
+        -VehicleRepository vehicleRepository
         +fetchVehicles()
         +addVehicle(manufacturer, model, year, licensePlate, color) Bool
         +updateVehicle(vehicleId, manufacturer, model, year, licensePlate, color) Bool
@@ -250,8 +252,8 @@ classDiagram
         +String color
     }
 
-    VehicleViewModel --> AuthService : authService
-    VehicleViewModel --> VehicleRepository : vehicleRepository
+    VehicleViewModel ..> AuthService
+    VehicleViewModel ..> VehicleRepository
     VehicleViewModel --> Vehicle
     VehicleRepository ..> Vehicle
     VehicleRepository ..> VehicleUpdatePayload
@@ -703,7 +705,7 @@ classDiagram
         -Task[] realtimeReaderTasks
         -Set~String~ knownBidIds
         -Bool didLoadBidsOnce
-        +init(serviceType, latitude, longitude, tireCount, photoUrls, vehicleId, vehicleInfo, usePoints)
+        +init(serviceType, lat, lon, …)
         +init(resuming)
         +deinit()
         +resume()
