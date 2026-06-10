@@ -81,13 +81,13 @@ classDiagram
         +signUp(request)
         +signOut()
         +resetPassword(email)
-        +updatePhoneNumber(phone)
+        +updatePhoneNumber(phoneNumber)
     }
     class StorageService {
         +uploadAvatar(uid, data) String
         +uploadOrderPhoto(uid, data) String
         +deleteOrderPhotos(urls)
-        +uploadChatImage(reqId, data) String
+        +uploadChatImage(serviceRequestId, data) String
     }
     class ImageCompressor {
         +compressed(data, maxDimension, quality) Data$
@@ -113,7 +113,7 @@ classDiagram
         +String? successMessage
         +loadInitialSession()
         +login(email, password)
-        +signUp(email, password, name, phone)
+        +signUp(email, password, name, phoneNumber)
         +fetchUser()
         +sendPasswordResetEmail()
         +deleteAccount(password)
@@ -123,7 +123,7 @@ classDiagram
         +Bool isLoading
         +String? errorMessage
         +String? successMessage
-        +updateProfile(name, phone) Bool
+        +updateProfile(name, phoneNumber) Bool
         +uploadProfileImage(data) Bool
     }
     class User {
@@ -577,6 +577,17 @@ classDiagram
         loading(message)
         failed(title, message)
     }
+    class LocationSearchable {
+        <<interface>>
+        +String locationAddress
+        +Bool isEditingLocation
+        +Bool isFetchingLocation
+        +PhotonSearchFeature[] searchResults
+        +MKCoordinateRegion region
+        +useCurrentLocation()
+        +selectSearchResult(result)
+        +updateLocationFromMap(coordinate)
+    }
     class OrderViewModel {
         +String locationAddress
         +String? selectedService
@@ -804,6 +815,7 @@ classDiagram
         +Bid bid
     }
 
+    OrderViewModel ..|> LocationSearchable
     OrderViewModel ..> OrderRepository
     OrderViewModel ..> LocationService
     OrderViewModel ..> StorageService
