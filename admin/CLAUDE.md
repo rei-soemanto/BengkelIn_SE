@@ -69,7 +69,7 @@ admin/src/
 │   ├── ui/                           # shadcn/ui primitives — DO NOT edit by hand
 │   ├── <shared composites>           # app-wide composites (e.g. AppSidebar, PageHeader)
 │   └── features/                     # FEATURE MODULES (feature-based)
-│       └── <feature>/                # e.g. bengkels, users, service-requests, vouchers
+│       └── <feature>/                # actual: auth, bengkels, dashboard, disputes, revenue, withdrawals
 │           ├── components/           # this feature's components (composed from shadcn/ui)
 │           ├── hooks/                # this feature's hooks (one per file)
 │           ├── services/             # Supabase data access for this feature
@@ -85,10 +85,11 @@ admin/src/
     ├── utils.ts                      # cn() etc.
     └── supabase/                     # Supabase client factories (see below)
         ├── client.ts                 # browser client
-        └── server.ts                 # server client (RSC / route handlers)
+        ├── server.ts                 # server client (RSC / route handlers)
+        └── proxy.ts                  # session-refresh client for the proxy/middleware
 ```
 
-A **feature** is a slice of the admin (e.g. `bengkels`, `users`, `service-requests`, `vouchers`). Everything that feature needs — its components, hooks, services, and types — lives together under `src/components/features/<feature>/`. Claude is expected to **create that feature's components by composing shadcn/ui primitives** (from `src/components/ui/`) to fit what the feature requires; pull in any missing primitive through the `shadcn` skill first, then assemble the feature component from it.
+A **feature** is a slice of the admin (current features: `auth`, `bengkels`, `dashboard`, `disputes`, `revenue`, `withdrawals`). Everything that feature needs — its components, hooks, services, and types — lives together under `src/components/features/<feature>/`. Claude is expected to **create that feature's components by composing shadcn/ui primitives** (from `src/components/ui/`) to fit what the feature requires; pull in any missing primitive through the `shadcn` skill first, then assemble the feature component from it.
 
 ### Where does a file go?
 
@@ -109,7 +110,7 @@ A **feature** is a slice of the admin (e.g. `bengkels`, `users`, `service-reques
 
 ## Supabase Conventions
 
-Connects to the **same Supabase project** as the iOS app. The DB schema (tables `users`, `vehicles`, `bengkels`, `service_requests`, `mechanic_invitations`, `mechanic_resignations`, `vouchers`, `user_vouchers`) is documented in [`../CLAUDE.md`](../CLAUDE.md) — **treat that as the source of truth** and mirror it into `src/types/database.ts`.
+Connects to the **same Supabase project** as the iOS app. The DB schema (tables `users`, `vehicles`, `bengkels`, `service_requests`, `bids`, `chat_messages`, `order_locations`, `customer_locations`, `topups`, `withdrawals`, `behavior_reports`, `mechanic_registrations`, `order_disputes`, `platform_revenue`) is documented in [`../CLAUDE.md`](../CLAUDE.md) and as introspected SQL in [`../supabase/schema/`](../supabase/schema/) — **treat those as the source of truth** and mirror them into `src/types/database.ts`. (`vouchers`/`user_vouchers`/`mechanic_invitations`/`mechanic_resignations` were **dropped** — ignore older mentions.)
 
 > **Use the `supabase-postgres-best-practices` skill** whenever you write, review, or optimize any Supabase/Postgres query, schema change, index, or RLS policy. It carries Supabase's performance and security guidance — consult it before shipping data-access code, not after.
 

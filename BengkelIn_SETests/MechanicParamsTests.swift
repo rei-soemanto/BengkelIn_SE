@@ -2,6 +2,8 @@
 //  MechanicParamsTests.swift
 //  BengkelIn_SETests
 //
+//  Created by Amadeus Eugene Dirgantara on 02/06/26.
+//
 //  Encoding checks for the mechanic RPC params. The load-bearing case is
 //  AssignMechanicParams: a nil mechanic id must NOT send a concrete value, so the
 //  assign_mechanic RPC falls through to its DEFAULT null = "Self" (provider works it).

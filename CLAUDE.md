@@ -49,7 +49,7 @@ pnpm start    # serve prod        pnpm lint   # eslint
 ```
 
 ### Supabase backend (`supabase/`)
-Schema changes are SQL migrations in `supabase/migrations/` (timestamp-prefixed, applied in order). Edge functions are in `supabase/functions/{bidding,payment,midtrans-webhook}/index.ts`. Apply migrations / deploy functions via the **Supabase MCP tools** (or the `supabase` CLI against project `ipxwpxozreksmuiztwcy`). `config.toml` carries only `project_id`.
+Schema changes are SQL migrations in `supabase/migrations/` (timestamp-prefixed, applied in order). **To read/understand the backend, prefer `supabase/schema/`** — clean, feature-grouped source-of-truth SQL introspected from the live DB (`schema.sql` tables/RLS, plus `account/bidding/orders/mechanics/payment/admin.sql`); it replaces the migration trail for comprehension but is **not** tracked by the migration CLI. Edge functions are in `supabase/functions/{bidding,payment,midtrans-webhook}/index.ts`. Apply migrations / deploy functions via the **Supabase MCP tools** (or the `supabase` CLI against project `ipxwpxozreksmuiztwcy`). `config.toml` carries only `project_id`.
 
 ---
 
@@ -67,7 +67,7 @@ View (SwiftUI) → ViewModel → { Repository (DB) | Service (SDK/API) } → Sup
 | **DTO** | `Models/DTOs/` | Insert/update/RPC/edge-fn payloads + decode responses. **Field names are snake_case to match columns/params directly** (no CodingKeys). RPC param DTOs use the `p_` prefix the SQL expects |
 | **Protocol** | `Protocols/` | `LocationSearchable` — the map+search contract |
 | **Repository** | `Repositories/` | Stateless single-table Supabase CRUD (`supabase.from("table")`) + that table's RPCs. One per table |
-| **Service** | `Services/` | Stateless non-table work: Auth SDK, Storage, Photon geocoding, the `bidding`/`payment` **edge functions**, notifications, network monitor |
+| **Service** | `Services/` | Stateless non-table work: Auth SDK, Storage, Photon geocoding, the `bidding`/`payment` **edge functions**, local notifications (`UNUserNotificationCenter` — **no APNs/remote push**), network monitor |
 | **ViewModel** | `ViewModels/` | `@MainActor ObservableObject`, `@Published` state, orchestrates repos+services |
 | **View** | `Views/Pages`, `Views/Components` | SwiftUI screens (Pages) and reusable pieces (Components) |
 
@@ -113,7 +113,7 @@ Supporting RPCs: `accept_bid` (frees this order's own hold before the affordabil
 
 ## Backend surface (shared Supabase project)
 
-**Tables**: `users`, `vehicles`, `bengkels` (JSONB `offered_services`), `service_requests` (the "order"), `bids`, `chat_messages`, `order_locations`, `customer_locations`, `topups`, `withdrawals`, `behavior_reports`. RPC-backed (no direct iOS `.from`): `mechanic_registrations` (the bengkel↔mechanic roster) and `order_disputes`. **Vouchers were removed** (migration `..._drop_voucher_tables.sql`) — ignore any older mention of `vouchers`/`user_vouchers`/`mechanic_invitations`/`mechanic_resignations`.
+**Tables**: `users`, `vehicles`, `bengkels` (JSONB `offered_services`), `service_requests` (the "order"), `bids`, `chat_messages`, `order_locations`, `customer_locations`, `topups`, `withdrawals`, `behavior_reports`. RPC-backed (no direct iOS `.from`): `mechanic_registrations` (the bengkel↔mechanic roster) and `order_disputes`. Server-side only: `platform_revenue` (fee ledger written by the escrow engine on completion; read by the admin revenue RPCs — never touched by iOS). **Vouchers were removed** (migration `..._drop_voucher_tables.sql`) — ignore any older mention of `vouchers`/`user_vouchers`/`mechanic_invitations`/`mechanic_resignations`.
 
 **Storage buckets**: `avatars` (`{uid}/profile.jpg`), `order-photos`, `chat-images`.
 
@@ -130,7 +130,7 @@ Supporting RPCs: `accept_bid` (frees this order's own hold before the affordabil
 - **Model**: all properties `var` (mutated after fetch); `id`/`createdAt` optional for inserts; `CodingKeys` map camelCase↔snake_case.
 - **DTO**: `let` fields, **snake_case** (or `p_`-prefixed for RPC params); lean insert DTOs when the model has many server-managed fields.
 - **Repository**: `async throws`; `.single().execute().value` for one row, `.execute().value` for arrays; RPCs via `supabase.rpc("name", params: dto)`.
-- **Service**: same statelessness, but for non-table work (Auth/Storage/Photon/edge functions/notifications).
+- **Service**: same statelessness, but for non-table work (Auth/Storage/Photon/edge functions/local notifications).
 - **ViewModel**: `@StateObject` when the View creates it, `@ObservedObject` when injected (`AuthViewModel` is created once in `ContentView`).
 - **UI**: `Color(.systemGray6)` cards / `Color(.systemBackground)` backgrounds; 12pt card radius, 16pt buttons; `.primary` text/dark buttons. UI copy mixes English + Bahasa Indonesia — match the surrounding screen.
 - **File header**: `//  FileName.swift / //  BengkelIn_SE / //  Created by <Author> on DD/MM/YY.`
