@@ -1,0 +1,136 @@
+---
+config:
+  layout: elk
+  elk:
+    nodePlacementStrategy: LINEAR_SEGMENTS
+    mergeEdges: false
+---
+classDiagram
+    direction LR
+
+    class AuthService {
+        +getCurrentSession() Session
+        +currentUID() String
+        +signIn(email, password) Session
+        +signUp(request)
+        +signOut()
+        +resetPassword(email)
+        +updatePhoneNumber(phone)
+    }
+    class NotificationService {
+        +requestAuthorization()
+        +notifyNewOrder(title, body)
+    }
+    class MechanicRepository {
+        +fetchRoster() RosterMember[]
+        +inviteMechanic(email)
+        +removeMechanic(registrationId)
+        +fetchAvailableMechanics(requestId) AvailableMechanic[]
+        +fetchMyInvites() MechanicInvite[]
+        +respondToInvite(registrationId, accept)
+    }
+    class MechanicAssignmentRepository {
+        +assignMechanic(requestId, mechanicId) NearbyOrder
+        +fetchAssignedJobs(mechanicId) NearbyOrder[]
+    }
+    class NearbyOrder {
+        +String id
+        +String customerId
+        +String? serviceType
+        +String? description
+        +Double latitude
+        +Double longitude
+        +Int? price
+        +String status
+        +Int? tireCount
+        +String[]? photoUrls
+        +String? vehicleId
+        +String? bengkelId
+        +String? mechanicId
+        +Int? rating
+        +Bool? customerCompleted
+        +Bool? providerCompleted
+        +String? completionPhotoUrl
+        +Double? distanceM
+    }
+    class BengkelRosterViewModel {
+        +RosterMember[] roster
+        +String inviteEmail
+        +Bool isInviting
+        +fetchRoster()
+        +invite() Bool
+        +remove(member)
+    }
+    class MechanicInviteViewModel {
+        +MechanicInvite[] invites
+        +Bool hasPendingInvites
+        +fetchInvites()
+        +respond(invite, accept) Bool
+    }
+    class AssignMechanicViewModel {
+        +AvailableMechanic[] availableMechanics
+        +Bool isAssigning
+        +fetchAvailableMechanics(reqId)
+        +assign(reqId, mechanicId) Bool
+    }
+    class MechanicDashboardViewModel {
+        +NearbyOrder[] jobs
+        +NearbyOrder? newAssignmentAlert
+        +start()
+        +refreshOnForeground()
+        +stop()
+    }
+    class MechanicJobsViewModel {
+        +NearbyOrder[] jobs
+        +Bool isLoading
+        +fetchJobs()
+    }
+    class RosterMember {
+        +String registrationId
+        +String mechanicId
+        +String mechanicName
+        +String? mechanicEmail
+        +String status
+        +String? createdAt
+        +Bool isPending
+        +Bool isAccepted
+    }
+    class MechanicInvite {
+        +String registrationId
+        +String bengkelId
+        +String bengkelName
+        +String status
+        +String? createdAt
+        +Bool isPending
+    }
+    class AvailableMechanic {
+        +String mechanicId
+        +String mechanicName
+        +Bool busy
+        +Bool isCurrent
+    }
+    class AssignMechanicParams {
+        +String p_request_id
+        +String p_mechanic_id
+    }
+    class RespondInviteParams {
+        +String p_registration_id
+        +Bool p_accept
+    }
+
+    BengkelRosterViewModel ..> MechanicRepository
+    MechanicInviteViewModel ..> MechanicRepository
+    AssignMechanicViewModel ..> MechanicRepository
+    AssignMechanicViewModel ..> MechanicAssignmentRepository
+    MechanicDashboardViewModel ..> MechanicAssignmentRepository
+    MechanicDashboardViewModel ..> AuthService
+    MechanicDashboardViewModel ..> NotificationService
+    MechanicJobsViewModel ..> MechanicAssignmentRepository
+    MechanicJobsViewModel ..> AuthService
+    MechanicRepository ..> RosterMember
+    MechanicRepository ..> MechanicInvite
+    MechanicRepository ..> AvailableMechanic
+    MechanicRepository ..> RespondInviteParams
+    MechanicAssignmentRepository ..> AssignMechanicParams
+    MechanicAssignmentRepository ..> NearbyOrder
+

@@ -1,0 +1,144 @@
+---
+config:
+  layout: elk
+  elk:
+    nodePlacementStrategy: LINEAR_SEGMENTS
+    mergeEdges: false
+---
+classDiagram
+    direction LR
+
+    class AuthService {
+        +getCurrentSession() Session
+        +currentUID() String
+        +signIn(email, password) Session
+        +signUp(request)
+        +signOut()
+        +resetPassword(email)
+        +updatePhoneNumber(phone)
+    }
+    class LocationService {
+        +searchOSM(query, coordinate) PhotonSearchFeature[]
+        +fetchAddress(from) String?
+    }
+    class BengkelRepository {
+        +fetchBengkel(providerUid) Bengkel
+        +fetchById(id) Bengkel
+        +insertBengkel(bengkel)
+        +updateBengkel(bengkelId, payload)
+        +updateServices(bengkelId, payload)
+        +deleteBengkel(bengkelId)
+    }
+    class OrderRepository {
+        +createOrder(payload) CreatedServiceRequest
+        +fetchOrders(customerId) NearbyOrder[]
+        +fetchBengkelOrders(bengkelId) NearbyOrder[]
+        +fetchMechanicOrders(mechanicId) NearbyOrder[]
+        +fetchOrder(id) NearbyOrder
+        +fetchActiveOrder(customerId) NearbyOrder?
+        +fetchTodaysEarnings(bengkelId) Double
+        +updateOrderPrice(id, price)
+        +cancelOrder(id)
+        +deleteOrder(id)
+        +acceptBid(bidId) NearbyOrder
+        +markOrderCompleted(reqId, url) NearbyOrder
+        +submitRating(reqId, rating)
+        +openDispute(reqId, reason, url) NearbyOrder
+    }
+    class MechanicRepository {
+        +fetchRoster() RosterMember[]
+        +inviteMechanic(email)
+        +removeMechanic(registrationId)
+        +fetchAvailableMechanics(requestId) AvailableMechanic[]
+        +fetchMyInvites() MechanicInvite[]
+        +respondToInvite(registrationId, accept)
+    }
+    class Bengkel {
+        +String? id
+        +String providerUid
+        +String name
+        +String address
+        +Double latitude
+        +Double longitude
+        +String status
+        +BengkelService[] offeredServices
+        +Double averageRating
+        +Int totalReviews
+    }
+    class BengkelViewModel {
+        +Bengkel? myBengkel
+        +Double todaysEarnings
+        +Bool hasAcceptedMechanic
+        +String locationAddress
+        +Bool isEditingLocation
+        +Bool isFetchingLocation
+        +PhotonSearchFeature[] searchResults
+        +MKCoordinateRegion region
+        +registerBengkel(name, address) Bool
+        +updateBengkel(id, name, address) Bool
+        +deleteBengkel(id, password, email) Bool
+        +addService(id, type, active) Bool
+        +updateService(id, serviceId, type, active) Bool
+        +deleteService(id, serviceId) Bool
+        +loadTodaysEarnings()
+        +useCurrentLocation()
+        +selectSearchResult(result)
+        +updateLocationFromMap(coordinate)
+    }
+    class LocationSearchable {
+        <<interface>>
+        +String locationAddress
+        +Bool isEditingLocation
+        +Bool isFetchingLocation
+        +PhotonSearchFeature[] searchResults
+        +MKCoordinateRegion region
+        +useCurrentLocation()
+        +selectSearchResult(result)
+        +updateLocationFromMap(coordinate)
+    }
+    class BengkelService {
+        +String id
+        +ServiceType serviceType
+        +Bool isActive
+    }
+    class ServiceType {
+        <<enumeration>>
+        banGembos
+        banPecah
+        akiKering
+        mogokMesinMati
+        gantiBanSerep
+        rantaiMotorLepas
+        mesinOverheat
+        +Int minPrice
+        +Bool requiresTireCount
+    }
+    class PhotonSearchFeature {
+        +UUID id
+        +PhotonSearchProperties properties
+        +PhotonSearchGeometry geometry
+    }
+    class BengkelUpdatePayload {
+        +String name
+        +String address
+        +Double latitude
+        +Double longitude
+    }
+    class BengkelServicesUpdatePayload {
+        +BengkelService[] offered_services
+    }
+
+    BengkelViewModel ..|> LocationSearchable
+    BengkelViewModel ..> BengkelRepository
+    BengkelViewModel ..> LocationService
+    BengkelViewModel ..> OrderRepository
+    BengkelViewModel ..> MechanicRepository
+    BengkelViewModel ..> AuthService
+    BengkelViewModel --> Bengkel
+    BengkelRepository ..> Bengkel
+    BengkelRepository ..> BengkelUpdatePayload
+    BengkelRepository ..> BengkelServicesUpdatePayload
+    LocationService ..> PhotonSearchFeature
+    Bengkel "1" *-- "*" BengkelService : offers
+    BengkelService --> ServiceType
+

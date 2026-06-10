@@ -1,0 +1,101 @@
+---
+config:
+  layout: elk
+  elk:
+    nodePlacementStrategy: LINEAR_SEGMENTS
+    mergeEdges: false
+---
+classDiagram
+    direction LR
+
+    class AuthService {
+        +getCurrentSession() Session
+        +currentUID() String
+        +signIn(email, password) Session
+        +signUp(request)
+        +signOut()
+        +resetPassword(email)
+        +updatePhoneNumber(phone)
+    }
+    class PaymentService {
+        +createTopup(amount) CreateTopupResponse
+    }
+    class UserRepository {
+        +fetchUser(uid) User
+        +updateProfile(uid, payload)
+        +updateProfileImageUrl(uid, payload)
+        +updateBankDetails(uid, payload)
+        +deleteUser(uid)
+    }
+    class TopupRepository {
+        +fetchTopups(userId) Topup[]
+    }
+    class WithdrawalRepository {
+        +fetchWithdrawals(userId) Withdrawal[]
+        +requestWithdrawal(amount)
+    }
+    class PaymentViewModel {
+        +Double balance
+        +Double heldBalance
+        +Int points
+        +Int pendingPoints
+        +Topup[] topups
+        +Withdrawal[] withdrawals
+        +String bankName
+        +String bankAccountNumber
+        +String bankAccountName
+        +start()
+        +startTopup(amount)
+        +saveBankDetails(name, number, accName) Bool
+        +requestWithdrawal(amount) Bool
+    }
+    class Topup {
+        +String? id
+        +String userId
+        +String orderId
+        +Double grossAmount
+        +String status
+        +String? snapToken
+        +String? redirectUrl
+    }
+    class Withdrawal {
+        +String? id
+        +String userId
+        +Double amount
+        +String status
+        +String? bankName
+        +String? bankAccountNumber
+    }
+    class IndonesianBank {
+        +String id
+        +String name
+        +Int[] accountLengths
+        +isValidAccountNumber(acct) Bool
+    }
+    class CreateTopupResponse {
+        +String order_id
+        +String redirect_url
+        +String token
+    }
+    class BankDetailsUpdatePayload {
+        +String bank_name
+        +String bank_account_number
+        +String bank_account_name
+    }
+    class RequestWithdrawalParams {
+        +Double p_amount
+    }
+
+    PaymentViewModel ..> PaymentService
+    PaymentViewModel ..> TopupRepository
+    PaymentViewModel ..> WithdrawalRepository
+    PaymentViewModel ..> UserRepository
+    PaymentViewModel ..> AuthService
+    PaymentViewModel --> Topup
+    PaymentViewModel --> Withdrawal
+    PaymentService ..> CreateTopupResponse
+    TopupRepository ..> Topup
+    WithdrawalRepository ..> Withdrawal
+    WithdrawalRepository ..> RequestWithdrawalParams
+    UserRepository ..> BankDetailsUpdatePayload
+

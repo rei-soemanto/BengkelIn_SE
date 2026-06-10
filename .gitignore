@@ -17,5 +17,4 @@ xcuserdata/
 # Supabase (if you use local env files)
 .env
 .mcp.json
-diagram
 presentation

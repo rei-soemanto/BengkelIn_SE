@@ -1,0 +1,450 @@
+---
+config:
+  layout: elk
+  elk:
+    nodePlacementStrategy: LINEAR_SEGMENTS
+    mergeEdges: false
+---
+classDiagram
+    direction LR
+
+    class AuthService {
+        +getCurrentSession() Session
+        +currentUID() String
+        +cachedSession() Session?
+        +authStateChanges() AsyncStream
+        +signIn(email, password) Session
+        +signUp(request)
+        +signOut()
+        +resetPassword(email)
+        +updatePhoneNumber(phone)
+    }
+    class StorageService {
+        +uploadAvatar(uid, data) String
+        +uploadOrderPhoto(uid, data) String
+        +deleteOrderPhotos(urls)
+        +uploadChatImage(reqId, data) String
+    }
+    class LocationService {
+        +searchOSM(query, coordinate) PhotonSearchFeature[]
+        +fetchAddress(from) String?
+    }
+    class NotificationService {
+        +requestAuthorization()
+        +notifyNewOrder(title, body)
+    }
+    class BiddingService {
+        +fetchOrdersForMechanic(lat, lon, radius) NearbyOrder[]
+        +placeBid(reqId, bengkelId, price, notes) Bid
+    }
+    class UserRepository {
+        +fetchUser(uid) User
+        +updateProfile(uid, payload)
+        +updateProfileImageUrl(uid, payload)
+        +updateBankDetails(uid, payload)
+        +deleteUser(uid)
+    }
+    class VehicleRepository {
+        +fetchVehicles(customerId) Vehicle[]
+        +insertVehicle(vehicle)
+        +updateVehicle(vehicleId, payload)
+        +deleteVehicle(vehicleId)
+    }
+    class BengkelRepository {
+        +fetchBengkel(providerUid) Bengkel
+        +fetchById(id) Bengkel
+        +insertBengkel(bengkel)
+        +updateBengkel(bengkelId, payload)
+        +updateServices(bengkelId, payload)
+        +deleteBengkel(bengkelId)
+    }
+    class OrderRepository {
+        +createOrder(payload) CreatedServiceRequest
+        +fetchOrders(customerId) NearbyOrder[]
+        +fetchBengkelOrders(bengkelId) NearbyOrder[]
+        +fetchMechanicOrders(mechanicId) NearbyOrder[]
+        +fetchOrder(id) NearbyOrder
+        +fetchActiveOrder(customerId) NearbyOrder?
+        +fetchTodaysEarnings(bengkelId) Double
+        +updateOrderPrice(id, price)
+        +cancelOrder(id)
+        +deleteOrder(id)
+        +acceptBid(bidId) NearbyOrder
+        +markOrderCompleted(reqId, url) NearbyOrder
+        +submitRating(reqId, rating)
+        +openDispute(reqId, reason, url) NearbyOrder
+    }
+    class BidRepository {
+        +fetchAcceptedBid(serviceRequestId) Bid?
+        +fetchBids(serviceRequestId) Bid[]
+        +fetchBidsForBengkel(bengkelId) Bid[]
+        +updateStatus(bidId, status)
+    }
+    class MechanicRepository {
+        +fetchRoster() RosterMember[]
+        +inviteMechanic(email)
+        +removeMechanic(registrationId)
+        +fetchAvailableMechanics(requestId) AvailableMechanic[]
+        +fetchMyInvites() MechanicInvite[]
+        +respondToInvite(registrationId, accept)
+    }
+    class NearbyOrder {
+        +String id
+        +String customerId
+        +String? customerName
+        +String? serviceType
+        +String? description
+        +Bool? isEmergency
+        +Double latitude
+        +Double longitude
+        +Int? price
+        +String status
+        +Int? tireCount
+        +String[]? photoUrls
+        +String? vehicleId
+        +String? vehicleInfo
+        +String? bengkelId
+        +String? mechanicId
+        +Int? rating
+        +Bool? customerCompleted
+        +Bool? providerCompleted
+        +String? completionPhotoUrl
+        +Bool? usePoints
+        +Int? pointsUsed
+        +Int? pointsEarned
+        +String? createdAt
+        +String? assignedAt
+        +Double? distanceM
+    }
+    class Bengkel {
+        +String? id
+        +String providerUid
+        +String name
+        +String address
+        +Double latitude
+        +Double longitude
+        +String status
+        +BengkelService[] offeredServices
+        +Double averageRating
+        +Int totalReviews
+        +Date? createdAt
+    }
+    class OrderViewModel {
+        +String locationAddress
+        +String? selectedService
+        +Int estimatedPrice
+        +Bool isFetchingLocation
+        +Bool isEditingLocation
+        +PhotonSearchFeature[] searchResults
+        +String? errorMessage
+        +Int tireCount
+        +Data?[] photosData
+        +ServiceType? pendingServiceType
+        +Int pendingTireCount
+        +String[] pendingPhotoUrls
+        +Bool navigateToBidding
+        +LoadingPhase loadingPhase
+        +Vehicle[] vehicles
+        +String? selectedVehicleId
+        +String? pendingVehicleId
+        +String? pendingVehicleInfo
+        +Bool usePoints
+        +Int availablePoints
+        +Bool showPointsPrompt
+        +Bool hasResolvedLocation
+        +MKCoordinateRegion region
+        +Int maxRedeemablePreview
+        +Bool requiresTireCount
+        +String[] services
+        +CLLocationCoordinate2D defaultCenter
+        -CLLocationManager locationManager
+        -Set~AnyCancellable~ cancellables
+        +init()
+        +selectSearchResult(result)
+        +useCurrentLocation()
+        +locationManagerDidChangeAuthorization(manager)
+        +locationManager(manager, didUpdateLocations)
+        +locationManager(manager, didFailWithError)
+        +updateLocationFromMap(coordinate)
+        +loadVehicles()
+        +loadUserPoints()
+        +prepareForNewOrder()
+        +selectService(service)
+        +setTireCount(count)
+        +createOrder()
+        +retryOrder()
+        +beginOrder(usePoints)
+        +cancelLoading()
+        -searchOSM(query)
+        -fallBackToDefaultLocation()
+        -fetchAddress(coordinate)
+        -calculateEstimate()
+        -validateOrder() Bool
+    }
+    class CustomerBiddingViewModel {
+        +Bid[] bids
+        +Bid? acceptedBid
+        +Bool isLoading
+        +Bool isStartingSearch
+        +String? errorMessage
+        +LoadingPhase loadingPhase
+        +Int minPrice
+        +Int customerBidPrice
+        +Bool isSearching
+        +String? serviceRequestId
+        +Double balance
+        +Bool showRetryPrompt
+        +Bool shouldDismiss
+        +Int searchSecondsRemaining
+        +Int searchTotalSeconds
+        +Double searchProgress
+        +ServiceType serviceType
+        +Double latitude
+        +Double longitude
+        +Int tireCount
+        +String[] photoUrls
+        +String? vehicleId
+        +String? vehicleInfo
+        +Bool usePoints
+        -UInt64 searchTimeoutSeconds
+        -UInt64 decisionTimeoutSeconds
+        -TimeInterval bidDecisionWindowSeconds
+        -Task? searchCountdownTask
+        -Task? decisionCountdownTask
+        -Task? bidExpiryTask
+        -RealtimeChannelV2? realtimeChannel
+        -Task[] realtimeReaderTasks
+        -Set~String~ knownBidIds
+        -Bool didLoadBidsOnce
+        +init(serviceType, latitude, longitude, tireCount, photoUrls, vehicleId, vehicleInfo, usePoints)
+        +init(resuming)
+        +deinit()
+        +resume()
+        +startSearch(price)
+        +retrySamePrice()
+        +raisePrice()
+        +cancel()
+        +cancelAndDelete()
+        +startRealtimeSubscription()
+        +stopRealtimeSubscription()
+        +loadReceivedBids()
+        +refresh()
+        +acceptBid(bid)
+        +rejectBid(bid)
+        +expireBid(bid)
+        +parseISODate(s) Date?
+        -startSearchCountdown()
+        -expireSearch()
+        -stopSearchingState()
+        -scheduleBidExpiry()
+        -expireOverdueBids()
+    }
+    class BengkelBiddingViewModel {
+        +NearbyOrder[] orders
+        +Bengkel? myBengkel
+        +Bid[] myPendingBids
+        +Bool isLoading
+        +String? errorMessage
+        +String? successMessage
+        +NearbyOrder? newOrderAlert
+        +String? lostBidAlert
+        +String? expiredBidAlert
+        +NearbyOrder? activeBengkelOrder
+        +String? rejectedBidAlert
+        +String? orderUnavailableAlert
+        +Bid[] myRejectedBids
+        +Bool hasMechanics
+        -RealtimeChannelV2? realtimeChannel
+        -Task[] realtimeReaderTasks
+        -Set~String~ knownOrderIds
+        -Dictionary~String,String~ bidStatusById
+        -Bool didInitialLoad
+        -Bool hasStarted
+        -String? providerUid
+        +deinit()
+        +start()
+        +reset()
+        +refreshOnForeground()
+        +startRealtimeSubscription()
+        +stopRealtimeSubscription()
+        +loadOrders()
+        +placeBid(order, price, notes)
+        +handleExpiredOrder(order)
+        +expireBid(bid)
+        +rejectBid(bid)
+    }
+    class Bid {
+        +String id
+        +String serviceRequestId
+        +String providerUid
+        +String bengkelId
+        +Int price
+        +String? notes
+        +String status
+        +String? createdAt
+        +Bengkel? bengkel
+    }
+    class ServiceRequestPayload {
+        +String customer_id
+        +ServiceType service_type
+        +String description
+        +Double latitude
+        +Double longitude
+        +Int price
+        +Bool is_emergency
+        +String status
+        +Int tire_count
+        +String[]? photo_urls
+        +String? vehicle_id
+        +String? vehicle_info
+        +Bool use_points
+    }
+    class PlaceBidRequest {
+        +String action
+        +String serviceRequestId
+        +String bengkelId
+        +Int price
+        +String? notes
+    }
+    class AcceptBidParams {
+        +String p_bid_id
+    }
+    class OrderCompletionViewModel {
+        +String requestId
+        +Bool isCustomer
+        +NearbyOrder? order
+        +Bool isLoading
+        +String? errorMessage
+        +String status
+        +Bool isFinished
+        +Bool mySideCompleted
+        -RealtimeChannelV2? realtimeChannel
+        -Task[] realtimeReaderTasks
+        -Bool hasLoadedOnce
+        +init(requestId, isCustomer)
+        +deinit()
+        +start()
+        +refresh()
+        +startRealtimeSubscription()
+        +stopRealtimeSubscription()
+        +markCompleted(photoData)
+        -notifyOnCounterpartCompletion(previous, updated)
+    }
+    class OrderRatingViewModel {
+        +Bool isSubmitting
+        +String? errorMessage
+        +submit(reqId, rating) Bool
+    }
+    class MarkCompletedParams {
+        +String p_request_id
+        +String? p_completion_photo_url
+    }
+    class RateOrderParams {
+        +String p_request_id
+        +Int p_rating
+    }
+    class BehaviorReportRepository {
+        +submit(reqId, reporterId, reason)
+        +fetchReportedRequestIds(reporterId) String[]
+    }
+    class HistoryViewModel {
+        +NearbyOrder[] orders
+        +Bool isLoading
+        +String? errorMessage
+        +NearbyOrder? detailOrder
+        +NearbyOrder? biddingOrder
+        +Bid? trackingBid
+        +CLLocationCoordinate2D? trackingCoordinate
+        +Set~String~ reportedOrderIds
+        +loadOrders()
+        +select(order)
+        +markReported(orderId)
+        -openTracking(order)
+        -isOrderedBefore(lhs, rhs) Bool
+        -priority(status) Int
+    }
+    class BengkelHistoryViewModel {
+        +NearbyOrder[] orders
+        +Bool isLoading
+        +String? errorMessage
+        +NearbyOrder? detailOrder
+        +Set~String~ reportedOrderIds
+        -RealtimeChannelV2? channel
+        -String? bengkelId
+        -Task[] realtimeReaderTasks
+        +loadOrders()
+        +select(order)
+        +markReported(orderId)
+        +deinit()
+        -startRealtimeIfNeeded()
+        -reload()
+        -isOrderedBefore(lhs, rhs) Bool
+        -priority(status) Int
+    }
+    class MechanicHistoryViewModel {
+        +NearbyOrder[] orders
+        +Bool isLoading
+        +String? errorMessage
+        +NearbyOrder? detailOrder
+        +Set~String~ reportedOrderIds
+        -String? mechanicId
+        -NSObjectProtocol? ordersChangedObserver
+        -NSObjectProtocol? reassignObserver
+        +init()
+        +deinit()
+        +loadOrders()
+        +select(order)
+        +markReported(orderId)
+        -reload()
+        -isOrderedBefore(lhs, rhs) Bool
+        -priority(status) Int
+    }
+
+    OrderViewModel ..> OrderRepository
+    OrderViewModel ..> LocationService
+    OrderViewModel ..> StorageService
+    OrderViewModel ..> UserRepository
+    OrderViewModel ..> VehicleRepository
+    OrderViewModel ..> AuthService
+    CustomerBiddingViewModel ..> OrderRepository
+    CustomerBiddingViewModel ..> BidRepository
+    CustomerBiddingViewModel ..> UserRepository
+    CustomerBiddingViewModel ..> StorageService
+    CustomerBiddingViewModel ..> NotificationService
+    CustomerBiddingViewModel ..> AuthService
+    CustomerBiddingViewModel --> Bid
+    BengkelBiddingViewModel ..> OrderRepository
+    BengkelBiddingViewModel ..> BidRepository
+    BengkelBiddingViewModel ..> BiddingService
+    BengkelBiddingViewModel ..> BengkelRepository
+    BengkelBiddingViewModel ..> MechanicRepository
+    BengkelBiddingViewModel ..> NotificationService
+    BengkelBiddingViewModel ..> AuthService
+    BengkelBiddingViewModel --> NearbyOrder
+    OrderRepository ..> ServiceRequestPayload
+    OrderRepository ..> NearbyOrder
+    OrderRepository ..> AcceptBidParams
+    BidRepository ..> Bid
+    BiddingService ..> PlaceBidRequest
+    BiddingService ..> NearbyOrder
+    Bid --> "0..1" Bengkel : bengkel
+    OrderCompletionViewModel ..> OrderRepository
+    OrderCompletionViewModel ..> StorageService
+    OrderCompletionViewModel ..> AuthService
+    OrderCompletionViewModel ..> NotificationService
+    OrderCompletionViewModel --> NearbyOrder
+    OrderRatingViewModel ..> OrderRepository
+    OrderRepository ..> MarkCompletedParams
+    OrderRepository ..> RateOrderParams
+    HistoryViewModel ..> OrderRepository
+    HistoryViewModel ..> BidRepository
+    HistoryViewModel ..> BehaviorReportRepository
+    HistoryViewModel ..> AuthService
+    HistoryViewModel --> NearbyOrder
+    BengkelHistoryViewModel ..> OrderRepository
+    BengkelHistoryViewModel ..> BengkelRepository
+    BengkelHistoryViewModel ..> BehaviorReportRepository
+    BengkelHistoryViewModel ..> AuthService
+    MechanicHistoryViewModel ..> OrderRepository
+    MechanicHistoryViewModel ..> BehaviorReportRepository
+    MechanicHistoryViewModel ..> AuthService
