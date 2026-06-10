@@ -11,6 +11,8 @@ classDiagram
     class AuthService {
         +getCurrentSession() Session
         +currentUID() String
+        +cachedSession() Session?
+        +authStateChanges() AsyncStream
         +signIn(email, password) Session
         +signUp(request)
         +signOut()
@@ -62,8 +64,10 @@ classDiagram
         +NearbyOrder? order
         +Bool isLive
         +String? lastUpdated
+        +String? errorMessage
         +start(reqId)
         +openDispute(reason) Bool
+        +notifyBengkelNear()
         +stop()
     }
     class LocationPublishViewModel {
@@ -71,12 +75,19 @@ classDiagram
         +String? errorMessage
         +start(reqId, coordinate)
         +stop()
+        +locationManagerDidChangeAuthorization(manager)
+        +locationManager(manager, didUpdateLocations)
+        +locationManager(manager, didFailWithError)
     }
     class CustomerLocationPublishViewModel {
         +Bool isPublishing
         +CLLocationCoordinate2D? currentCoordinate
+        +String? errorMessage
         +start(reqId)
         +stop()
+        +locationManagerDidChangeAuthorization(manager)
+        +locationManager(manager, didUpdateLocations)
+        +locationManager(manager, didFailWithError)
     }
     class BengkelRouteViewModel {
         +NearbyOrder? order
@@ -84,10 +95,15 @@ classDiagram
         +Bool reassignedAway
         +start(order)
         +refreshOrder()
+        +refreshAfterAssignment()
         +reportIssue(reason, photo) Bool
         +stop()
+        +locationManagerDidChangeAuthorization(manager)
+        +locationManager(manager, didUpdateLocations)
+        +locationManager(manager, didFailWithError)
     }
     class OrderLocation {
+        +String id
         +String serviceRequestId
         +String? providerUid
         +Double latitude
@@ -95,6 +111,7 @@ classDiagram
         +String? updatedAt
     }
     class CustomerLocation {
+        +String id
         +String serviceRequestId
         +String? customerId
         +Double latitude

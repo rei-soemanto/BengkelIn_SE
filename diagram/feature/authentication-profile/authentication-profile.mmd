@@ -61,11 +61,17 @@ classDiagram
         +String role
         +Double balance
         +Double? heldBalance
+        +Double? pendingBalance
         +Int? points
+        +Int? pendingPoints
         +String? email
         +String? phoneNumber
         +String? profileImageUrl
+        +String? bankName
+        +String? bankAccountNumber
+        +String? bankAccountName
         +Double availableBalance
+        +Int availablePoints
     }
     class AppMode {
         <<enumeration>>

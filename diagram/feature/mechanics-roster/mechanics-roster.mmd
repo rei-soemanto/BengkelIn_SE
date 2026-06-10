@@ -11,6 +11,8 @@ classDiagram
     class AuthService {
         +getCurrentSession() Session
         +currentUID() String
+        +cachedSession() Session?
+        +authStateChanges() AsyncStream
         +signIn(email, password) Session
         +signUp(request)
         +signOut()
@@ -36,8 +38,10 @@ classDiagram
     class NearbyOrder {
         +String id
         +String customerId
+        +String? customerName
         +String? serviceType
         +String? description
+        +Bool? isEmergency
         +Double latitude
         +Double longitude
         +Int? price
@@ -45,24 +49,35 @@ classDiagram
         +Int? tireCount
         +String[]? photoUrls
         +String? vehicleId
+        +String? vehicleInfo
         +String? bengkelId
         +String? mechanicId
         +Int? rating
         +Bool? customerCompleted
         +Bool? providerCompleted
         +String? completionPhotoUrl
+        +Bool? usePoints
+        +Int? pointsUsed
+        +Int? pointsEarned
+        +String? createdAt
+        +String? assignedAt
         +Double? distanceM
     }
     class BengkelRosterViewModel {
         +RosterMember[] roster
         +String inviteEmail
         +Bool isInviting
+        +Bool isLoading
+        +String? errorMessage
+        +String? successMessage
         +fetchRoster()
         +invite() Bool
         +remove(member)
     }
     class MechanicInviteViewModel {
         +MechanicInvite[] invites
+        +Bool isLoading
+        +String? errorMessage
         +Bool hasPendingInvites
         +fetchInvites()
         +respond(invite, accept) Bool
@@ -70,22 +85,29 @@ classDiagram
     class AssignMechanicViewModel {
         +AvailableMechanic[] availableMechanics
         +Bool isAssigning
+        +Bool isLoading
+        +String? errorMessage
         +fetchAvailableMechanics(reqId)
         +assign(reqId, mechanicId) Bool
     }
     class MechanicDashboardViewModel {
         +NearbyOrder[] jobs
         +NearbyOrder? newAssignmentAlert
+        +Bool isLoading
+        +String? errorMessage
         +start()
+        +reset()
         +refreshOnForeground()
         +stop()
     }
     class MechanicJobsViewModel {
         +NearbyOrder[] jobs
         +Bool isLoading
+        +String? errorMessage
         +fetchJobs()
     }
     class RosterMember {
+        +String id
         +String registrationId
         +String mechanicId
         +String mechanicName
@@ -96,6 +118,7 @@ classDiagram
         +Bool isAccepted
     }
     class MechanicInvite {
+        +String id
         +String registrationId
         +String bengkelId
         +String bengkelName
@@ -104,6 +127,7 @@ classDiagram
         +Bool isPending
     }
     class AvailableMechanic {
+        +String id
         +String mechanicId
         +String mechanicName
         +Bool busy

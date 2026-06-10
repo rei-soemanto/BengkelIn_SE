@@ -157,6 +157,12 @@ classDiagram
         +Bool requiresTireCount
         +String[] services
         +CLLocationCoordinate2D defaultCenter
+        -AuthService authService
+        -LocationService locationService
+        -OrderRepository orderRepository
+        -StorageService storageService
+        -UserRepository userRepository
+        -VehicleRepository vehicleRepository
         -CLLocationManager locationManager
         -Set~AnyCancellable~ cancellables
         +init()
@@ -206,6 +212,12 @@ classDiagram
         +String? vehicleId
         +String? vehicleInfo
         +Bool usePoints
+        -AuthService authService
+        -UserRepository userRepository
+        -OrderRepository orderRepository
+        -BidRepository bidRepository
+        -StorageService storageService
+        -NotificationService notificationService
         -UInt64 searchTimeoutSeconds
         -UInt64 decisionTimeoutSeconds
         -TimeInterval bidDecisionWindowSeconds
@@ -254,6 +266,13 @@ classDiagram
         +String? orderUnavailableAlert
         +Bid[] myRejectedBids
         +Bool hasMechanics
+        -AuthService authService
+        -OrderRepository orderRepository
+        -BengkelRepository bengkelRepository
+        -BidRepository bidRepository
+        -BiddingService biddingService
+        -MechanicRepository mechanicRepository
+        -NotificationService notificationService
         -RealtimeChannelV2? realtimeChannel
         -Task[] realtimeReaderTasks
         -Set~String~ knownOrderIds
@@ -318,6 +337,10 @@ classDiagram
         +String status
         +Bool isFinished
         +Bool mySideCompleted
+        -AuthService authService
+        -OrderRepository orderRepository
+        -StorageService storageService
+        -NotificationService notificationService
         -RealtimeChannelV2? realtimeChannel
         -Task[] realtimeReaderTasks
         -Bool hasLoadedOnce
@@ -333,6 +356,7 @@ classDiagram
     class OrderRatingViewModel {
         +Bool isSubmitting
         +String? errorMessage
+        -OrderRepository orderRepository
         +submit(reqId, rating) Bool
     }
     class MarkCompletedParams {
@@ -356,6 +380,10 @@ classDiagram
         +Bid? trackingBid
         +CLLocationCoordinate2D? trackingCoordinate
         +Set~String~ reportedOrderIds
+        -AuthService authService
+        -OrderRepository orderRepository
+        -BidRepository bidRepository
+        -BehaviorReportRepository behaviorReportRepository
         +loadOrders()
         +select(order)
         +markReported(orderId)
@@ -369,6 +397,10 @@ classDiagram
         +String? errorMessage
         +NearbyOrder? detailOrder
         +Set~String~ reportedOrderIds
+        -BengkelRepository bengkelRepository
+        -OrderRepository orderRepository
+        -BehaviorReportRepository behaviorReportRepository
+        -AuthService authService
         -RealtimeChannelV2? channel
         -String? bengkelId
         -Task[] realtimeReaderTasks
@@ -387,6 +419,9 @@ classDiagram
         +String? errorMessage
         +NearbyOrder? detailOrder
         +Set~String~ reportedOrderIds
+        -OrderRepository orderRepository
+        -BehaviorReportRepository behaviorReportRepository
+        -AuthService authService
         -String? mechanicId
         -NSObjectProtocol? ordersChangedObserver
         -NSObjectProtocol? reassignObserver

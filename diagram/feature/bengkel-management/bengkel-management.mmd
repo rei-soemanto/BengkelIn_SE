@@ -11,6 +11,8 @@ classDiagram
     class AuthService {
         +getCurrentSession() Session
         +currentUID() String
+        +cachedSession() Session?
+        +authStateChanges() AsyncStream
         +signIn(email, password) Session
         +signUp(request)
         +signOut()
@@ -64,11 +66,15 @@ classDiagram
         +BengkelService[] offeredServices
         +Double averageRating
         +Int totalReviews
+        +Date? createdAt
     }
     class BengkelViewModel {
         +Bengkel? myBengkel
         +Double todaysEarnings
         +Bool hasAcceptedMechanic
+        +Bool isLoading
+        +String? errorMessage
+        +String? successMessage
         +String locationAddress
         +Bool isEditingLocation
         +Bool isFetchingLocation
@@ -80,10 +86,18 @@ classDiagram
         +addService(id, type, active) Bool
         +updateService(id, serviceId, type, active) Bool
         +deleteService(id, serviceId) Bool
+        +fetchMyBengkel(uid)
+        +refreshBengkelQuietly(uid)
         +loadTodaysEarnings()
+        +loadMechanicStatus()
+        +startWatching(uid)
+        +stopWatching()
         +useCurrentLocation()
         +selectSearchResult(result)
         +updateLocationFromMap(coordinate)
+        +locationManagerDidChangeAuthorization(manager)
+        +locationManager(manager, didUpdateLocations)
+        +locationManager(manager, didFailWithError)
     }
     class LocationSearchable {
         <<interface>>
@@ -112,6 +126,7 @@ classDiagram
         mesinOverheat
         +Int minPrice
         +Bool requiresTireCount
+        +String iconName
     }
     class PhotonSearchFeature {
         +UUID id

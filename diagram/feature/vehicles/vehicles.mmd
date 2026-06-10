@@ -11,6 +11,8 @@ classDiagram
     class AuthService {
         +getCurrentSession() Session
         +currentUID() String
+        +cachedSession() Session?
+        +authStateChanges() AsyncStream
         +signIn(email, password) Session
         +signUp(request)
         +signOut()

@@ -11,6 +11,8 @@ classDiagram
     class AuthService {
         +getCurrentSession() Session
         +currentUID() String
+        +cachedSession() Session?
+        +authStateChanges() AsyncStream
         +signIn(email, password) Session
         +signUp(request)
         +signOut()
@@ -44,8 +46,18 @@ classDiagram
         +String bankName
         +String bankAccountNumber
         +String bankAccountName
+        +Bool isLoading
+        +String? errorMessage
+        +String? successMessage
+        +PaymentTarget? paymentTarget
+        +String? currentOrderId
         +start()
+        +startRealtimeSubscription()
+        +stop()
+        +refresh()
         +startTopup(amount)
+        +resumeTopup(topup)
+        +paymentFlowFinished()
         +saveBankDetails(name, number, accName) Bool
         +requestWithdrawal(amount) Bool
     }
@@ -55,22 +67,32 @@ classDiagram
         +String orderId
         +Double grossAmount
         +String status
-        +String? snapToken
+        +String? paymentType
         +String? redirectUrl
+        +String? snapToken
+        +Date? createdAt
+        +Date? updatedAt
     }
     class Withdrawal {
         +String? id
         +String userId
         +Double amount
-        +String status
         +String? bankName
         +String? bankAccountNumber
+        +String? bankAccountName
+        +String status
+        +String? notes
+        +Date? createdAt
+        +Date? updatedAt
     }
     class IndonesianBank {
         +String id
         +String name
         +Int[] accountLengths
+        +String lengthDescription
+        +IndonesianBank[] all$
         +isValidAccountNumber(acct) Bool
+        +named(name) IndonesianBank?$
     }
     class CreateTopupResponse {
         +String order_id
@@ -85,6 +107,10 @@ classDiagram
     class RequestWithdrawalParams {
         +Double p_amount
     }
+    class PaymentTarget {
+        +UUID id
+        +URL url
+    }
 
     PaymentViewModel ..> PaymentService
     PaymentViewModel ..> TopupRepository
@@ -93,6 +119,7 @@ classDiagram
     PaymentViewModel ..> AuthService
     PaymentViewModel --> Topup
     PaymentViewModel --> Withdrawal
+    PaymentViewModel --> PaymentTarget
     PaymentService ..> CreateTopupResponse
     TopupRepository ..> Topup
     WithdrawalRepository ..> Withdrawal

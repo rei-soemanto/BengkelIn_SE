@@ -125,11 +125,17 @@ classDiagram
         +String role
         +Double balance
         +Double? heldBalance
+        +Double? pendingBalance
         +Int? points
+        +Int? pendingPoints
         +String? email
         +String? phoneNumber
         +String? profileImageUrl
+        +String? bankName
+        +String? bankAccountNumber
+        +String? bankAccountName
         +Double availableBalance
+        +Int availablePoints
     }
     class AppMode {
         <<enumeration>>
@@ -184,6 +190,8 @@ classDiagram
     class AuthService {
         +getCurrentSession() Session
         +currentUID() String
+        +cachedSession() Session?
+        +authStateChanges() AsyncStream
         +signIn(email, password) Session
         +signUp(request)
         +signOut()
@@ -252,6 +260,8 @@ classDiagram
     class AuthService {
         +getCurrentSession() Session
         +currentUID() String
+        +cachedSession() Session?
+        +authStateChanges() AsyncStream
         +signIn(email, password) Session
         +signUp(request)
         +signOut()
@@ -305,11 +315,15 @@ classDiagram
         +BengkelService[] offeredServices
         +Double averageRating
         +Int totalReviews
+        +Date? createdAt
     }
     class BengkelViewModel {
         +Bengkel? myBengkel
         +Double todaysEarnings
         +Bool hasAcceptedMechanic
+        +Bool isLoading
+        +String? errorMessage
+        +String? successMessage
         +String locationAddress
         +Bool isEditingLocation
         +Bool isFetchingLocation
@@ -321,10 +335,18 @@ classDiagram
         +addService(id, type, active) Bool
         +updateService(id, serviceId, type, active) Bool
         +deleteService(id, serviceId) Bool
+        +fetchMyBengkel(uid)
+        +refreshBengkelQuietly(uid)
         +loadTodaysEarnings()
+        +loadMechanicStatus()
+        +startWatching(uid)
+        +stopWatching()
         +useCurrentLocation()
         +selectSearchResult(result)
         +updateLocationFromMap(coordinate)
+        +locationManagerDidChangeAuthorization(manager)
+        +locationManager(manager, didUpdateLocations)
+        +locationManager(manager, didFailWithError)
     }
     class LocationSearchable {
         <<interface>>
@@ -353,6 +375,7 @@ classDiagram
         mesinOverheat
         +Int minPrice
         +Bool requiresTireCount
+        +String iconName
     }
     class PhotonSearchFeature {
         +UUID id
@@ -551,6 +574,12 @@ classDiagram
         +Bool requiresTireCount
         +String[] services
         +CLLocationCoordinate2D defaultCenter
+        -AuthService authService
+        -LocationService locationService
+        -OrderRepository orderRepository
+        -StorageService storageService
+        -UserRepository userRepository
+        -VehicleRepository vehicleRepository
         -CLLocationManager locationManager
         -Set~AnyCancellable~ cancellables
         +init()
@@ -600,6 +629,12 @@ classDiagram
         +String? vehicleId
         +String? vehicleInfo
         +Bool usePoints
+        -AuthService authService
+        -UserRepository userRepository
+        -OrderRepository orderRepository
+        -BidRepository bidRepository
+        -StorageService storageService
+        -NotificationService notificationService
         -UInt64 searchTimeoutSeconds
         -UInt64 decisionTimeoutSeconds
         -TimeInterval bidDecisionWindowSeconds
@@ -648,6 +683,13 @@ classDiagram
         +String? orderUnavailableAlert
         +Bid[] myRejectedBids
         +Bool hasMechanics
+        -AuthService authService
+        -OrderRepository orderRepository
+        -BengkelRepository bengkelRepository
+        -BidRepository bidRepository
+        -BiddingService biddingService
+        -MechanicRepository mechanicRepository
+        -NotificationService notificationService
         -RealtimeChannelV2? realtimeChannel
         -Task[] realtimeReaderTasks
         -Set~String~ knownOrderIds
@@ -755,6 +797,8 @@ classDiagram
     class AuthService {
         +getCurrentSession() Session
         +currentUID() String
+        +cachedSession() Session?
+        +authStateChanges() AsyncStream
         +signIn(email, password) Session
         +signUp(request)
         +signOut()
@@ -780,8 +824,10 @@ classDiagram
     class NearbyOrder {
         +String id
         +String customerId
+        +String? customerName
         +String? serviceType
         +String? description
+        +Bool? isEmergency
         +Double latitude
         +Double longitude
         +Int? price
@@ -789,24 +835,35 @@ classDiagram
         +Int? tireCount
         +String[]? photoUrls
         +String? vehicleId
+        +String? vehicleInfo
         +String? bengkelId
         +String? mechanicId
         +Int? rating
         +Bool? customerCompleted
         +Bool? providerCompleted
         +String? completionPhotoUrl
+        +Bool? usePoints
+        +Int? pointsUsed
+        +Int? pointsEarned
+        +String? createdAt
+        +String? assignedAt
         +Double? distanceM
     }
     class BengkelRosterViewModel {
         +RosterMember[] roster
         +String inviteEmail
         +Bool isInviting
+        +Bool isLoading
+        +String? errorMessage
+        +String? successMessage
         +fetchRoster()
         +invite() Bool
         +remove(member)
     }
     class MechanicInviteViewModel {
         +MechanicInvite[] invites
+        +Bool isLoading
+        +String? errorMessage
         +Bool hasPendingInvites
         +fetchInvites()
         +respond(invite, accept) Bool
@@ -814,22 +871,29 @@ classDiagram
     class AssignMechanicViewModel {
         +AvailableMechanic[] availableMechanics
         +Bool isAssigning
+        +Bool isLoading
+        +String? errorMessage
         +fetchAvailableMechanics(reqId)
         +assign(reqId, mechanicId) Bool
     }
     class MechanicDashboardViewModel {
         +NearbyOrder[] jobs
         +NearbyOrder? newAssignmentAlert
+        +Bool isLoading
+        +String? errorMessage
         +start()
+        +reset()
         +refreshOnForeground()
         +stop()
     }
     class MechanicJobsViewModel {
         +NearbyOrder[] jobs
         +Bool isLoading
+        +String? errorMessage
         +fetchJobs()
     }
     class RosterMember {
+        +String id
         +String registrationId
         +String mechanicId
         +String mechanicName
@@ -840,6 +904,7 @@ classDiagram
         +Bool isAccepted
     }
     class MechanicInvite {
+        +String id
         +String registrationId
         +String bengkelId
         +String bengkelName
@@ -848,6 +913,7 @@ classDiagram
         +Bool isPending
     }
     class AvailableMechanic {
+        +String id
         +String mechanicId
         +String mechanicName
         +Bool busy
@@ -900,6 +966,8 @@ classDiagram
     class AuthService {
         +getCurrentSession() Session
         +currentUID() String
+        +cachedSession() Session?
+        +authStateChanges() AsyncStream
         +signIn(email, password) Session
         +signUp(request)
         +signOut()
@@ -944,6 +1012,9 @@ classDiagram
         +String? errorMessage
         +start()
         +loadMessages()
+        +loadLockState()
+        +startRealtimeSubscription()
+        +stopRealtimeSubscription()
         +sendText()
         +sendImage(data)
     }
@@ -1012,6 +1083,8 @@ classDiagram
     class AuthService {
         +getCurrentSession() Session
         +currentUID() String
+        +cachedSession() Session?
+        +authStateChanges() AsyncStream
         +signIn(email, password) Session
         +signUp(request)
         +signOut()
@@ -1063,8 +1136,10 @@ classDiagram
         +NearbyOrder? order
         +Bool isLive
         +String? lastUpdated
+        +String? errorMessage
         +start(reqId)
         +openDispute(reason) Bool
+        +notifyBengkelNear()
         +stop()
     }
     class LocationPublishViewModel {
@@ -1072,12 +1147,19 @@ classDiagram
         +String? errorMessage
         +start(reqId, coordinate)
         +stop()
+        +locationManagerDidChangeAuthorization(manager)
+        +locationManager(manager, didUpdateLocations)
+        +locationManager(manager, didFailWithError)
     }
     class CustomerLocationPublishViewModel {
         +Bool isPublishing
         +CLLocationCoordinate2D? currentCoordinate
+        +String? errorMessage
         +start(reqId)
         +stop()
+        +locationManagerDidChangeAuthorization(manager)
+        +locationManager(manager, didUpdateLocations)
+        +locationManager(manager, didFailWithError)
     }
     class BengkelRouteViewModel {
         +NearbyOrder? order
@@ -1085,10 +1167,15 @@ classDiagram
         +Bool reassignedAway
         +start(order)
         +refreshOrder()
+        +refreshAfterAssignment()
         +reportIssue(reason, photo) Bool
         +stop()
+        +locationManagerDidChangeAuthorization(manager)
+        +locationManager(manager, didUpdateLocations)
+        +locationManager(manager, didFailWithError)
     }
     class OrderLocation {
+        +String id
         +String serviceRequestId
         +String? providerUid
         +Double latitude
@@ -1096,6 +1183,7 @@ classDiagram
         +String? updatedAt
     }
     class CustomerLocation {
+        +String id
         +String serviceRequestId
         +String? customerId
         +Double latitude
@@ -1227,6 +1315,10 @@ classDiagram
         +String status
         +Bool isFinished
         +Bool mySideCompleted
+        -AuthService authService
+        -OrderRepository orderRepository
+        -StorageService storageService
+        -NotificationService notificationService
         -RealtimeChannelV2? realtimeChannel
         -Task[] realtimeReaderTasks
         -Bool hasLoadedOnce
@@ -1242,6 +1334,7 @@ classDiagram
     class OrderRatingViewModel {
         +Bool isSubmitting
         +String? errorMessage
+        -OrderRepository orderRepository
         +submit(reqId, rating) Bool
     }
     class MarkCompletedParams {
@@ -1285,6 +1378,8 @@ classDiagram
     class AuthService {
         +getCurrentSession() Session
         +currentUID() String
+        +cachedSession() Session?
+        +authStateChanges() AsyncStream
         +signIn(email, password) Session
         +signUp(request)
         +signOut()
@@ -1318,8 +1413,18 @@ classDiagram
         +String bankName
         +String bankAccountNumber
         +String bankAccountName
+        +Bool isLoading
+        +String? errorMessage
+        +String? successMessage
+        +PaymentTarget? paymentTarget
+        +String? currentOrderId
         +start()
+        +startRealtimeSubscription()
+        +stop()
+        +refresh()
         +startTopup(amount)
+        +resumeTopup(topup)
+        +paymentFlowFinished()
         +saveBankDetails(name, number, accName) Bool
         +requestWithdrawal(amount) Bool
     }
@@ -1329,22 +1434,32 @@ classDiagram
         +String orderId
         +Double grossAmount
         +String status
-        +String? snapToken
+        +String? paymentType
         +String? redirectUrl
+        +String? snapToken
+        +Date? createdAt
+        +Date? updatedAt
     }
     class Withdrawal {
         +String? id
         +String userId
         +Double amount
-        +String status
         +String? bankName
         +String? bankAccountNumber
+        +String? bankAccountName
+        +String status
+        +String? notes
+        +Date? createdAt
+        +Date? updatedAt
     }
     class IndonesianBank {
         +String id
         +String name
         +Int[] accountLengths
+        +String lengthDescription
+        +IndonesianBank[] all$
         +isValidAccountNumber(acct) Bool
+        +named(name) IndonesianBank?$
     }
     class CreateTopupResponse {
         +String order_id
@@ -1359,6 +1474,10 @@ classDiagram
     class RequestWithdrawalParams {
         +Double p_amount
     }
+    class PaymentTarget {
+        +UUID id
+        +URL url
+    }
 
     PaymentViewModel ..> PaymentService
     PaymentViewModel ..> TopupRepository
@@ -1367,6 +1486,7 @@ classDiagram
     PaymentViewModel ..> AuthService
     PaymentViewModel --> Topup
     PaymentViewModel --> Withdrawal
+    PaymentViewModel --> PaymentTarget
     PaymentService ..> CreateTopupResponse
     TopupRepository ..> Topup
     WithdrawalRepository ..> Withdrawal
@@ -1468,6 +1588,10 @@ classDiagram
         +Bid? trackingBid
         +CLLocationCoordinate2D? trackingCoordinate
         +Set~String~ reportedOrderIds
+        -AuthService authService
+        -OrderRepository orderRepository
+        -BidRepository bidRepository
+        -BehaviorReportRepository behaviorReportRepository
         +loadOrders()
         +select(order)
         +markReported(orderId)
@@ -1481,6 +1605,10 @@ classDiagram
         +String? errorMessage
         +NearbyOrder? detailOrder
         +Set~String~ reportedOrderIds
+        -BengkelRepository bengkelRepository
+        -OrderRepository orderRepository
+        -BehaviorReportRepository behaviorReportRepository
+        -AuthService authService
         -RealtimeChannelV2? channel
         -String? bengkelId
         -Task[] realtimeReaderTasks
@@ -1499,6 +1627,9 @@ classDiagram
         +String? errorMessage
         +NearbyOrder? detailOrder
         +Set~String~ reportedOrderIds
+        -OrderRepository orderRepository
+        -BehaviorReportRepository behaviorReportRepository
+        -AuthService authService
         -String? mechanicId
         -NSObjectProtocol? ordersChangedObserver
         -NSObjectProtocol? reassignObserver
@@ -1554,6 +1685,8 @@ classDiagram
     class AuthService {
         +getCurrentSession() Session
         +currentUID() String
+        +cachedSession() Session?
+        +authStateChanges() AsyncStream
         +signIn(email, password) Session
         +signUp(request)
         +signOut()
