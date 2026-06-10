@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LLM Council Report — BengkelIn</title>
+<style>
+  :root {
+    --ink: #1a1d21; --muted: #5c6470; --line: #e4e7eb; --bg: #ffffff; --soft: #f7f8fa;
+    --contrarian: #c0392b; --firstp: #2c5f8a; --expansion: #1e8449; --outsider: #8e44ad; --executor: #b9770e;
+    --accent: #2c5f8a;
+  }
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+         color: var(--ink); background: var(--bg); margin: 0; line-height: 1.6; }
+  .wrap { max-width: 860px; margin: 0 auto; padding: 40px 24px 80px; }
+  h1 { font-size: 1.7rem; margin: 0 0 4px; }
+  h2 { font-size: 1.25rem; margin-top: 2.2em; border-bottom: 1px solid var(--line); padding-bottom: 8px; }
+  h3 { font-size: 1.05rem; margin-bottom: 4px; }
+  .sub { color: var(--muted); font-size: 0.95rem; margin-bottom: 28px; }
+  .question { background: var(--soft); border: 1px solid var(--line); border-left: 4px solid var(--accent);
+              border-radius: 8px; padding: 18px 22px; font-size: 0.98rem; }
+  .verdict { border: 1px solid var(--line); border-radius: 10px; padding: 4px 26px 22px; margin-top: 16px; }
+  .verdict h2 { margin-top: 1.4em; }
+  .pill { display: inline-block; font-size: 0.75rem; font-weight: 600; padding: 2px 10px; border-radius: 999px;
+          color: #fff; margin-right: 6px; vertical-align: middle; }
+  table.matrix { width: 100%; border-collapse: collapse; font-size: 0.9rem; margin-top: 12px; }
+  table.matrix th, table.matrix td { border: 1px solid var(--line); padding: 8px 10px; text-align: center; }
+  table.matrix th { background: var(--soft); font-weight: 600; }
+  table.matrix td.lbl { text-align: left; font-weight: 500; }
+  .yes { color: #1e8449; font-weight: 700; }
+  .no  { color: #c0392b; font-weight: 700; }
+  .mix { color: #b9770e; font-weight: 700; }
+  details { border: 1px solid var(--line); border-radius: 8px; margin: 10px 0; background: #fff; }
+  details > summary { cursor: pointer; padding: 12px 16px; font-weight: 600; list-style: none; }
+  details > summary::-webkit-details-marker { display: none; }
+  details > summary::before { content: "▸ "; color: var(--muted); }
+  details[open] > summary::before { content: "▾ "; }
+  details .body { padding: 0 18px 16px; font-size: 0.95rem; border-top: 1px solid var(--line); padding-top: 12px; }
+  .b-contrarian { border-left: 4px solid var(--contrarian); }
+  .b-firstp     { border-left: 4px solid var(--firstp); }
+  .b-expansion  { border-left: 4px solid var(--expansion); }
+  .b-outsider   { border-left: 4px solid var(--outsider); }
+  .b-executor   { border-left: 4px solid var(--executor); }
+  .factcheck { background: #fff8f0; border: 1px solid #f0d9b5; border-radius: 8px; padding: 14px 18px; font-size: 0.93rem; margin: 16px 0; }
+  .factcheck strong { color: #b9770e; }
+  code { background: var(--soft); border: 1px solid var(--line); border-radius: 4px; padding: 1px 5px; font-size: 0.88em; }
+  footer { margin-top: 48px; padding-top: 16px; border-top: 1px solid var(--line); color: var(--muted); font-size: 0.85rem; }
+  .onething { background: #eef4f9; border: 1px solid #cfe0ee; border-radius: 10px; padding: 18px 22px; margin-top: 12px; }
+  ul { padding-left: 1.3em; }
+  li { margin: 6px 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>LLM Council Report — BengkelIn</h1>
+<div class="sub">5 independent advisors · anonymized peer review · chairman synthesis · 2 findings fact-checked against the repo</div>
+
+<div class="question">
+<strong>The question:</strong> BengkelIn is a university capstone iOS roadside-assistance marketplace for Indonesia (broadcast request → bengkel bids → accept → dispatch → chat + live tracking → proof photo + dual confirmation → wallet escrow settles). (1) What SDG is it addressing? (2) Is the problem real? (3) Do the features solve it?
+</div>
+
+<h2>Chairman's Verdict</h2>
+<div class="verdict">
+
+<h2 style="margin-top:1.2em">Where the Council Agrees</h2>
+<ul>
+<li><strong>The engineering is better than the product thesis.</strong> Every advisor — including the harshest — credited the server-side escrow state machine. The consensus image: <em>"a beautiful engine in a car with no wheels."</em></li>
+<li><strong>The bidding mechanism contradicts the emergency premise.</strong> A stranded person optimizes for time-to-help, not price discovery. Gojek won Indonesia by <em>removing</em> choice in the moment of need.</li>
+<li><strong>Customer-set pricing is backwards.</strong> The party with the least diagnostic information sets the price for a repair whose cost is unknowable pre-inspection — inviting off-app cash renegotiation that hollows out the escrow.</li>
+<li><strong>The prepaid wallet is friction at the worst possible moment</strong> — top up via Midtrans while stranded, in a cash-dominant economy.</li>
+<li><strong>iOS-only is a supply-side contradiction.</strong> Android holds ~85–90% of Indonesia; bengkel owners and mechanics skew heavily Android.</li>
+<li><strong>SDG 8 (target 8.3) is the right primary tag</strong> — formalization of informal micro-enterprises. Four of five advisors landed there independently.</li>
+</ul>
+
+<h2>Where the Council Clashes</h2>
+<ul>
+<li><strong>Is the bull case real? (Expansionist vs. everyone.)</strong> The Expansionist sees reusable trust infrastructure for Indonesia's ~60%-informal economy with credit-scoring data as the hidden asset. All five peer reviews named him the biggest blind spot: the data thesis requires transactions to flow through the app, and the off-app cash-renegotiation argument predicts they won't. The real split: he grades the idea's ceiling, the others grade the artifact's floor. His framing survives as <em>narrative</em>; his projections don't survive as <em>analysis</em>.</li>
+<li><strong>Was the SDG retrofitted or real?</strong> The skeptics: chosen after the build ("if you have to ask which SDG, it was bolted on"). The other side: SDG 8.3 happens to be genuinely accurate to what was built. These coexist — post-hoc <em>and</em> correct, and correctness is what matters at the defense.</li>
+</ul>
+
+<h2>Blind Spots the Council Caught</h2>
+<div class="factcheck"><strong>Fact-check 1 (verified against repo):</strong> The Executor's "dual-confirm has no timeout" claim is <strong>false</strong> — <code>auto_settle_stale_completions()</code> in <code>supabase/schema/orders.sql</code> auto-finalizes one-sided confirmations after 24h, dispute-aware.</div>
+<div class="factcheck"><strong>Fact-check 2 (verified against repo):</strong> The dispute hole is <strong>real</strong>. <code>open_dispute</code> inserts a <code>pending</code> dispute and immediately sets the order to <code>cancelled</code> (orders.sql lines 138–141), firing the escrow's full refund <em>before</em> any adjudication. A customer can receive the repair, decline to confirm, dispute, and instantly claw back the hold while the provider's pending payout evaporates.</div>
+<ul>
+<li><strong>Bank Indonesia e-money regulation.</strong> All five reviewers flagged it; zero advisors did. Holding customer wallet float is regulated payment activity (PJP licensing). The most-engineered component is the most legally fraught — a limitations-section item, not a blocker.</li>
+<li><strong>SDG 3.6 / 11.2 (road safety)</strong> as the most <em>literal</em> alternative framing for roadside emergencies.</li>
+<li><strong>The predation vector:</strong> broadcasting a stranded user's live location and budget to all registered providers is a physical-safety exposure that post-transaction ratings cannot mitigate pre-arrival.</li>
+</ul>
+
+<h2>The Recommendation</h2>
+<p><strong>(1) SDG: 8 (target 8.3)</strong> — formalization of micro-enterprises — primary; SDG 9 secondary; SDG 3.6/11.2 (road safety) as an honest tertiary. Frame the thesis as <strong>trust infrastructure bringing the informal bengkel economy onto a verifiable digital ledger</strong>, not "helping stranded drivers get help faster" — the emergency framing is what every fatal critique attacks.</p>
+<p><strong>(2) The problem is real — but it is two problems, and you must say so.</strong> (a) <strong>Trust/price-gouging</strong> when stranded with zero bargaining power — real, and the app genuinely addresses it. (b) <strong>Access</strong> on rural roads at night with no nearby bengkel — real, and the app does not (and arguably cannot) address it. Claim (a); scope out (b). Conflating them looks naive; separating them looks rigorous.</p>
+<p><strong>(3) The features solve the trust half well; three features actively work against the urgency half.</strong> For it: the escrow trigger, dual confirmation + mandatory proof photo, 24h auto-settle, ratings, behavior reports — a coherent server-enforced trust machine. Against it: bidding adds latency where speed is the need; pre-diagnosis customer pricing invites off-app cash; the prepaid wallet gates the front door; local-notifications-only means the supply side is functionally deaf; iOS-only excludes it entirely. At the defense: lead with the trust machine; present push + Android + an instant-dispatch mode (fixed call-out fee, quote-after-inspection) as roadmap; name the e-money licensing and dispute-refund gate yourself before the examiner does.</p>
+
+<h2>The One Thing to Do First</h2>
+<div class="onething">
+<strong>Rewrite the problem statement — first paragraph of the report, first slide of the defense — to lead with trust and formalization (SDG 8.3), not emergency response speed.</strong> "Indonesia's roadside repair economy is informal, unrecorded, and exploits stranded customers' zero bargaining power; BengkelIn replaces that with escrowed payment, verified completion, and accountable reputations." The trust framing is the one the codebase actually proves — the reframe converts the council's entire attack surface into your limitations section.
+</div>
+
+</div>
+
+<h2>Advisor Alignment</h2>
+<table class="matrix">
+<tr><th></th><th style="color:var(--contrarian)">Contrarian</th><th style="color:var(--firstp)">First Principles</th><th style="color:var(--expansion)">Expansionist</th><th style="color:var(--outsider)">Outsider</th><th style="color:var(--executor)">Executor</th></tr>
+<tr><td class="lbl">SDG 8 is the right tag</td><td class="mix">post-hoc</td><td class="yes">yes</td><td class="yes">yes (8.3)</td><td class="mix">post-hoc</td><td class="yes">yes</td></tr>
+<tr><td class="lbl">Problem is real</td><td class="mix">half of it</td><td class="yes">yes (trust)</td><td class="yes">yes</td><td class="mix">unproven</td><td class="yes">yes</td></tr>
+<tr><td class="lbl">Bidding fits an emergency</td><td class="no">no</td><td class="no">no</td><td class="yes">yes</td><td class="no">no</td><td class="mix">moot w/o push</td></tr>
+<tr><td class="lbl">Wallet/escrow flow works in the field</td><td class="no">no</td><td class="no">no</td><td class="yes">yes</td><td class="no">no</td><td class="no">no</td></tr>
+<tr><td class="lbl">Engineering quality is high</td><td class="yes">yes</td><td class="yes">yes</td><td class="yes">yes</td><td class="mix">misplaced</td><td class="yes">yes</td></tr>
+</table>
+
+<h2>Full Advisor Responses</h2>
+
+<details class="b-contrarian"><summary><span class="pill" style="background:var(--contrarian)">Contrarian</span> "It fails its own scenario"</summary><div class="body">
+<p>Start with the inconvenient question: who is stranded on an Indonesian roadside with an iPhone? Android holds ~85–90% of Indonesia's market, and motorbike owners — your core user, given 125M+ bikes — skew heavily Android. You built iOS-only for the segment least likely to own one. That alone guts the premise.</p>
+<p>The SDG framing smells retrofitted. You'll claim SDG 8 (formalizing informal bengkel work) or SDG 11/9, but nothing in the feature set advances any goal — a wallet and bid system doesn't formalize anyone; it just adds a fee layer. The SDG was chosen after the app, not before.</p>
+<p>Is the problem real? Partially — but you're solving the easy half. In dense urban Indonesia, bengkels are everywhere; you push the bike 200 meters. The genuine pain is rural roads and highways at night — exactly where your marketplace has zero supply and possibly zero signal. You serve the area that doesn't need you.</p>
+<p>The bidding mechanic is the fatal design flaw. A stranded person wants the fastest competent help, not a reverse auction with latency. Gojek won by deleting choice friction; you reinstated it at the worst possible moment. Worse: the customer sets an "estimated price" before anyone has diagnosed the vehicle. Roadside repair cost is unknowable pre-inspection, so the real price gets renegotiated on-site — in cash, off-app — and your escrow becomes theater. Why would a cash-economy bengkel accept held payouts and dual-confirmation friction when the customer is standing right there with rupiah?</p>
+<p>Add the cold-start death spiral — emergencies are rare per user, so neither side stays liquid — and the requirement to top up a wallet via Midtrans while stranded.</p>
+<p>As engineering coursework, the escrow trigger design is genuinely solid. As a business thesis, it fails its own scenario.</p>
+</div></details>
+
+<details class="b-firstp"><summary><span class="pill" style="background:var(--firstp)">First Principles</span> "The trust half is built well; the urgency half is backwards"</summary><div class="body">
+<p>You're asking three questions when there's really one: what is the actual market failure here? Get that right and the SDG and feature questions answer themselves.</p>
+<p>Strip the app away. A breakdown in Indonesia is not a discovery problem — in any city, a bengkel is within 500 meters; the density you cite cuts <em>against</em> the app, not for it. The real failures are (a) <strong>trust/price-gouging</strong> when you're stranded and have zero bargaining power, and (b) <strong>access</strong> on highways and peri-urban stretches where no bengkel is nearby. Those are different problems with different solutions, and this app conflates them.</p>
+<p>Now test the features against each. Escrow, proof photos, dual confirmation, ratings, disputes — that's a coherent trust machine. Genuinely good fit for failure (a). But the <strong>bidding model contradicts the emergency premise from first principles</strong>: a stranded person optimizes for time-to-help, not price discovery. Reverse auctions add latency exactly when latency is the cost. Gojek won by removing choice (instant dispatch), not adding it. Worse, the <strong>prepaid wallet is a structural blocker</strong>: the user must top up via Midtrans <em>while stranded</em>, in a cash-dominant informal economy. Your money model is the most engineered part of the system and it's load-bearing on the weakest assumption.</p>
+<p>SDG: the defensible answer is <strong>SDG 8</strong> (decent work — formalizing informal micro-enterprises, verifiable income, fair payment guarantees for bengkel workers), with SDG 9/11 as garnish. Pitching it as "helping stranded drivers" is the weaker, retrofitted story; pitching it as "bringing the informal bengkel economy into the digital ledger" is both truer to what you built and a stronger capstone narrative.</p>
+<p>The problem is real. You built the trust half well and the urgency half backwards.</p>
+</div></details>
+
+<details class="b-expansion"><summary><span class="pill" style="background:var(--expansion)">Expansionist</span> "Grade the capstone on the wedge; judge the idea on the rails"</summary><div class="body">
+<p>Everyone will dutifully tag this SDG 8 or 9 and move on. They're undervaluing what's actually been built here: <strong>trust infrastructure for the informal economy</strong> — SDG 8.3 (formalization of MSMEs) is the real target, and it's the most economically consequential SDG in Indonesia, where the informal sector is ~60% of employment.</p>
+<p>Look at the components, not the use case. Server-side escrow with Postgres-enforced state transitions. Reverse-auction bidding. Dual-confirmation completion with proof photos. Dispute resolution. Behavior reporting. A mechanic roster system that turns invisible informal labor into a credentialed, rated workforce. That stack is reusable for <em>any</em> trust-broken local-service vertical — plumbers, electricians, AC repair — where Indonesia has nothing comparable. Roadside assistance is just the wedge with the highest emotional urgency and lowest price sensitivity.</p>
+<p>The Gojek comparison is upside, not threat. Gojek proved Indonesians will transact through apps for hyperlocal services — and then <em>didn't build this</em>. Vehicle repair is the canonical lemon market: customers can't price-check a roadside quote, mechanics can't access digital demand. Competitive bidding directly attacks the information asymmetry Gojek's fixed-price dispatch model never could. The customer sets a ceiling; bengkels compete underneath it.</p>
+<p>And the hidden asset: every completed job generates structured data — breakdown type, location, price, rating, payout. That's a credit-scoring dataset for unbanked micro-workshops (wallet history as loan collateral, the Grab-driver-lending playbook), a parts-demand signal for distributors, and an actuarial goldmine for motor insurers who'd pay to embed this as their assistance layer.</p>
+<p>If this works better than expected, it isn't a breakdown app. It's the rails that move 125M motorcycles' maintenance economy from cash-and-handshake to recorded, rated, bankable transactions. Grade the capstone on the wedge; judge the idea on the rails.</p>
+</div></details>
+
+<details class="b-outsider"><summary><span class="pill" style="background:var(--outsider)">Outsider</span> "The engineering effort went where the problem isn't"</summary><div class="body">
+<p>Three things don't add up to me, reading this cold.</p>
+<p><strong>The customer sets the price for a problem they can't diagnose.</strong> I break down. I don't know if it's a dead battery or a snapped timing belt. Yet I'm asked to broadcast an "estimated price" that immediately locks up my wallet funds. The person with the least information in this transaction is setting the opening number. Real emergency services work the other way: the expert quotes after looking.</p>
+<p><strong>A reverse auction is the wrong mechanism for an emergency.</strong> Bidding optimizes for price discovery, which takes time. A stranded driver optimizes for one variable: how fast can someone get here. The app makes me wait for bids to trickle in, compare them, accept one, then wait for dispatch. And what happens if nobody bids? An empty marketplace here isn't a bad UX, it's a person stuck on a roadside at night.</p>
+<p><strong>The wallet is a wall.</strong> I must have pre-loaded money via Midtrans <em>before</em> I can even broadcast. The moment of breakdown is the worst possible moment to onboard someone into a top-up flow. Pay-on-completion exists.</p>
+<p>What strikes me is that the engineering effort went where the problem isn't: escrow triggers, dual confirmation, proof photos, disputes — an elaborate trust apparatus for a marketplace whose core emergency loop (speed, guaranteed response, zero-friction payment) is unsolved. That's solving the fun problem, not the real one. Also: iOS-only.</p>
+<p>The SDG question itself is a tell — if you have to ask the council which SDG it addresses, the SDG was bolted on after the build, not derived before it.</p>
+</div></details>
+
+<details class="b-executor"><summary><span class="pill" style="background:var(--executor)">Executor</span> "A beautiful engine in a car with no wheels" <em style="font-weight:400">(one claim corrected by fact-check)</em></summary><div class="body">
+<p>SDG check, fast: this is SDG 8 (decent work — pulling informal bengkels into a digital economy with traceable income) with a side of SDG 9. Fine for the capstone report. Move on.</p>
+<p>Is the problem real? Yes. 125M motorbikes, breakdowns constantly, and Gojek/Grab don't do roadside repair dispatch. The gap exists. But "real problem" isn't the question — "can THIS execute" is. Monday morning test, and it fails in three specific places:</p>
+<p>1. <strong>No remote push kills the marketplace.</strong> Local notifications only means a bengkel sees a bid request only if the app is foregrounded. A workshop owner is under a car, phone in pocket. The broadcast goes out, nobody's app is open, zero bids arrive, the stranded customer stares at a spinner. The core loop is dead on arrival without APNs/FCM. That's a one-week fix that wasn't done.</p>
+<p>2. <strong>iOS-only in Indonesia is supply-side suicide.</strong> Bengkel owners run cheap Androids; iOS is ~10% of the market and skews wealthy urban. You built a marketplace where one side can't install the app.</p>
+<p>3. <strong>Wallet-first friction at the worst moment.</strong> Compare: call the nearest bengkel, pay cash. Your flow loses.</p>
+<p><s>One field bug I verified in the schema: dual-confirm completion has no timeout.</s> <strong>[CORRECTED by fact-check: <code>auto_settle_stale_completions()</code> exists and auto-releases after 24h, dispute-aware. This claim was wrong.]</strong></p>
+<p>Credit where due: the server-side escrow trigger is genuinely well-engineered — better than most capstones. But it's a beautiful engine in a car with no wheels. Fix push, plan Android. In that order.</p>
+</div></details>
+
+<h2>Peer Review Highlights</h2>
+<details><summary>What the 5 reviewers said (anonymized round)</summary><div class="body">
+<ul>
+<li><strong>Strongest response:</strong> split 3–2 between the <strong>Executor</strong> (only advisor grounded in the actual build — the push-notification gap is the decisive operational defect) and <strong>First Principles</strong> (the trust-vs-access decomposition "subsumes the critiques the others orbit without landing"). Two reviewers who checked the repo demoted the Executor for the false "no timeout" claim.</li>
+<li><strong>Biggest blind spot:</strong> unanimous, 5/5 — the <strong>Expansionist</strong>. "Evaluates the idea while never touching the artifact." His data-rails thesis assumes jobs complete; every other advisor explains why they won't (no push, no Android supply, off-app cash settlement).</li>
+<li><strong>What all five advisors missed:</strong> Bank Indonesia e-money licensing (flagged by all 5 reviewers); the dispute→instant-refund fraud vector (later verified real); SDG 3.6/11.2 road safety as an alternative tag; the pre-arrival physical-safety/predation exposure of broadcasting location + budget to strangers.</li>
+</ul>
+</div></details>
+
+<footer>
+LLM Council session · 2026-06-10 · Counciled: BengkelIn capstone — SDG fit, problem reality, feature–problem fit · 5 advisors + 5 anonymized peer reviews + chairman synthesis · 2 schema claims fact-checked against <code>supabase/schema/orders.sql</code> · Full transcript: <code>council-transcript-20260610.md</code>
+</footer>
+
+</div>
+</body>
+</html>
