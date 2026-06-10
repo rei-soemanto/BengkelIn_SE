@@ -16,8 +16,6 @@ struct MechanicHistoryView: View {
             .background(Color(.systemGroupedBackground))
             .task { await viewModel.loadOrders() }
             .refreshable { await viewModel.loadOrders() }
-            // Active orders PUSH the route/work screen (not a fullScreenCover): a sheet
-            // presented from inside a fullScreenCover gets dismissed when its map updates.
             .navigationDestination(isPresented: detailBinding) {
                 if let order = viewModel.detailOrder {
                     if order.status == "accepted" {
@@ -51,7 +49,6 @@ struct MechanicHistoryView: View {
             LazyVStack(spacing: 12) {
                 ForEach(viewModel.orders) { order in
                     OrderHistoryRow(order: order, onTap: {
-                        // Active → route/work screen, finished → detail; both pushed.
                         viewModel.select(order)
                     }, onReport: {
                         reportOrder = order

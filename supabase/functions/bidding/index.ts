@@ -1,11 +1,3 @@
-// BengkelIn — bidding edge function (Marketplace tier).
-// Actions: ordersForMechanic (nearby open orders), mechanicsForCustomer
-// (nearby verified bengkels), placeBid (upsert a revisable offer).
-// Open-order status is lowercase 'pending'; the customer's offered price is read
-// from service_requests.price (bigint). accept_bid lives in SQL, not here.
-//
-// DEPLOYED 2026-06-10 to project tednrjmhtusdglsembzu (version 1, verify_jwt on).
-
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
@@ -100,7 +92,6 @@ Deno.serve(async (req: Request) => {
                     return json({ error: "Order sudah tidak menerima tawaran" }, 409);
                 }
 
-                // The bengkel being bid on must belong to the caller.
                 const { data: bengkel, error: bengkelError } = await supabase
                     .from("bengkels")
                     .select("id, provider_uid")
@@ -109,8 +100,7 @@ Deno.serve(async (req: Request) => {
                 if (bengkelError || !bengkel || bengkel.provider_uid !== userId) {
                     return json({ error: "Bengkel bukan milik Anda" }, 403);
                 }
-
-                // Bid must meet the customer's price floor.
+                
                 const price = Number(payload.price);
                 if (!Number.isFinite(price) || price <= 0) {
                     return json({ error: "Harga tidak valid" }, 400);
@@ -119,11 +109,6 @@ Deno.serve(async (req: Request) => {
                     return json({ error: "Tawaran di bawah harga pelanggan" }, 400);
                 }
 
-                // Upsert on (service_request_id, provider_uid) so a bengkel can revise a
-                // previously-declined offer; resetting status to 'Pending' re-surfaces it.
-                // Bid statuses are capitalized (Pending/Accepted/Rejected/Expired/AutoRejected)
-                // to match the customer-side card, which is case-sensitive — unlike the lowercase
-                // service_requests.status vocabulary.
                 const { data, error } = await supabase
                     .from("bids")
                     .upsert(

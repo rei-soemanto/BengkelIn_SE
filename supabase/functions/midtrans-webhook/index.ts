@@ -1,9 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
-
-// DEPLOYED 2026-06-10 to project tednrjmhtusdglsembzu (version 1, verify_jwt OFF).
-// verify_jwt is intentionally disabled: Midtrans calls this with no Supabase JWT.
-// Authentication is the SHA-512 signature check below.
 const MIDTRANS_SERVER_KEY = Deno.env.get("MIDTRANS_SERVER_KEY") ?? "";
 
 /** Midtrans HTTP notification fields this webhook reads (snake_case per Midtrans). */

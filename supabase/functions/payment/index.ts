@@ -1,10 +1,6 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
 
-// DEPLOYED 2026-06-10 to project tednrjmhtusdglsembzu (version 1, verify_jwt on).
-// Midtrans config (inlined). Set as Edge Function secrets:
-//   MIDTRANS_SERVER_KEY=SB-Mid-server-xxxxxxxx
-//   MIDTRANS_IS_PRODUCTION=false  (optional)
 const MIDTRANS_SERVER_KEY = Deno.env.get("MIDTRANS_SERVER_KEY") ?? "";
 const IS_PRODUCTION = (Deno.env.get("MIDTRANS_IS_PRODUCTION") ?? "false").toLowerCase() === "true";
 const SNAP_BASE_URL = IS_PRODUCTION

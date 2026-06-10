@@ -16,8 +16,6 @@ struct OrderDetailView: View {
     @StateObject private var ratingViewModel = OrderRatingViewModel()
     @StateObject private var locationPublisher = LocationPublishViewModel()
     @State private var region: MKCoordinateRegion
-
-    // Local copy so the view reflects a freshly-submitted rating without a refetch.
     @State private var localRating: Int?
     @State private var selectedRating: Int = 0
 
@@ -33,7 +31,6 @@ struct OrderDetailView: View {
 
     private var hasRating: Bool { (localRating ?? 0) > 0 }
     private var canRate: Bool { isCustomer && order.status == "completed" && !hasRating }
-    // The assigned bengkel broadcasts its live location while the order is active.
     private var shouldPublishLocation: Bool { !isCustomer && order.status == "accepted" }
 
     var body: some View {

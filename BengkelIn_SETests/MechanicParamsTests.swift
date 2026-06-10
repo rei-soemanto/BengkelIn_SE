@@ -4,10 +4,6 @@
 //
 //  Created by Amadeus Eugene Dirgantara on 02/06/26.
 //
-//  Encoding checks for the mechanic RPC params. The load-bearing case is
-//  AssignMechanicParams: a nil mechanic id must NOT send a concrete value, so the
-//  assign_mechanic RPC falls through to its DEFAULT null = "Self" (provider works it).
-//
 
 import XCTest
 @testable import BengkelIn_SE
@@ -20,8 +16,7 @@ final class MechanicParamsTests: XCTestCase {
         let data = try encoder.encode(value)
         return try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
     }
-
-    // "Self": nil mechanic id → key omitted so the SQL default (null) applies.
+    
     func testAssignParamsSelfOmitsMechanicId() throws {
         let obj = try jsonObject(AssignMechanicParams(p_request_id: "req-1", p_mechanic_id: nil))
 
@@ -29,7 +24,6 @@ final class MechanicParamsTests: XCTestCase {
         XCTAssertNil(obj["p_mechanic_id"], "Self assignment must not send a concrete mechanic id")
     }
 
-    // Delegated: a concrete mechanic id is sent verbatim.
     func testAssignParamsCarriesMechanicId() throws {
         let obj = try jsonObject(AssignMechanicParams(p_request_id: "req-1", p_mechanic_id: "mech-7"))
 

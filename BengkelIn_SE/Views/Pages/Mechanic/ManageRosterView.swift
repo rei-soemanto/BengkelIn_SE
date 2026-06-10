@@ -6,9 +6,6 @@
 //
 
 import SwiftUI
-
-// Provider-side roster management (UC8): invite mechanics by email, see pending
-// invitations, and remove accepted members.
 struct ManageRosterView: View {
     @StateObject private var viewModel = MechanicRosterViewModel()
 

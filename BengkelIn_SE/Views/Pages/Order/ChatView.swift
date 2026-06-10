@@ -15,12 +15,7 @@ private struct ZoomableImageURL: Identifiable {
 
 struct ChatView: View {
     let title: String
-    // View-only: the bengkel provider can read the mechanic <-> customer thread but
-    // can't send (enforced server-side too — the provider is off the chat send RLS).
     let readOnly: Bool
-    // When set (e.g. the provider observing), messages from this sender align right and the
-    // rest align left — so the bengkel sees the mechanic on the right, customer on the left.
-    // Nil falls back to the viewer's own id (the normal "my messages on the right").
     let rightSenderId: String?
 
     @StateObject private var viewModel: ChatViewModel
@@ -68,8 +63,6 @@ struct ChatView: View {
         .fullScreenCover(item: $fullScreenImage) { item in
             FullScreenImageView(urlString: item.url)
         }
-        // Send / image-upload failures only set errorMessage before — the message stayed
-        // in the field and it looked like the send button did nothing. Surface it.
         .alert("Gagal Mengirim", isPresented: Binding(
             get: { viewModel.errorMessage != nil },
             set: { if !$0 { viewModel.errorMessage = nil } }

@@ -10,9 +10,6 @@ import Combine
 import CoreLocation
 import Supabase
 
-// Holds only the fast-moving GPS coordinates for the route screen, kept apart from
-// BengkelRouteViewModel so per-frame location updates don't invalidate (and dismiss the
-// sheets on) the screen that observes the view model. The map + proximity views observe this.
 @MainActor
 final class RouteLocationStore: ObservableObject {
     @Published var me: CLLocationCoordinate2D?        // the viewer's own device GPS
@@ -20,31 +17,14 @@ final class RouteLocationStore: ObservableObject {
     @Published var handler: CLLocationCoordinate2D?   // the handler marker (self/mechanic)
 }
 
-// Drives the route/work screen, role-aware so tracking matches who's handling the job:
-//  • Dispatched mechanic  → publishes their live device GPS (they travel to the customer).
-//  • Bengkel "Self"       → the handler is the SHOP, so we publish the bengkel's registered
-//                           coordinates (a shop doesn't move; this avoids the phone's GPS —
-//                           which in a simulator can sit on the customer — "teleporting" onto them).
-//  • Provider monitoring  → doesn't publish; reads the assigned mechanic's order_locations so
-//                           the provider can watch the mechanic + customer.
-// The customer always reads order_locations to see whoever is assigned.
 @MainActor
 class BengkelRouteViewModel: NSObject, ObservableObject, CLLocationManagerDelegate {
     @Published var order: NearbyOrder?
     @Published var myUid: String?
-    // True once the viewer was the assigned mechanic but the order has since been reassigned to
-    // someone else — the route screen dismisses so the old mechanic can no longer work the order.
     @Published var reassignedAway = false
     private var wasAssignee = false
 
-    // Per-frame GPS lives in a SEPARATE observable. If these were @Published on this view
-    // model, every location update would fire objectWillChange and invalidate the route
-    // screen that owns this VM — which dismisses any presented sheet (assign/report) mid-flow.
-    // Only the map + proximity children observe `locationStore`; the parent does not.
     let locationStore = RouteLocationStore()
-    // While a modal (assign/report) is open, freeze the map markers. MapKit churning its
-    // annotations under a sheet-over-fullScreenCover dismisses the sheet — most visibly for
-    // the mechanic, whose marker updates on every device GPS frame.
     var isPaused = false
     var bengkelCoordinate: CLLocationCoordinate2D? {              // the viewer's own device GPS
         get { locationStore.me } set { guard !isPaused else { return }; locationStore.me = newValue }
@@ -76,7 +56,6 @@ class BengkelRouteViewModel: NSObject, ObservableObject, CLLocationManagerDelega
 
     var status: String { order?.status ?? "pending" }
 
-    // MARK: Role of the viewer relative to this order
     private var mechanicId: String? { order?.mechanicId }
     private var amProvider: Bool { myUid != nil && myUid == providerUid }
     var selfAssigned: Bool { mechanicId != nil && mechanicId == providerUid }   // bengkel handles it itself
@@ -349,8 +328,6 @@ class BengkelRouteViewModel: NSObject, ObservableObject, CLLocationManagerDelega
         }
     }
 
-    // Publish the latest known GPS immediately (e.g. right after assignment) so the handler's
-    // marker appears without waiting for the next location update.
     private func publishCurrentGPSIfPossible() {
         guard amAssignee, status == "accepted", let requestId = serviceRequestId,
               let coord = bengkelCoordinate else { return }

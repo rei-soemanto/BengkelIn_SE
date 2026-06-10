@@ -11,9 +11,7 @@ struct OrderRequestCard: View {
     let order: NearbyOrder
     let pendingBid: Bid?
     let onBid: () -> Void
-    // Fired once when the customer's 2-minute request window elapses.
     var onExpire: (() -> Void)? = nil
-    // True when our previous offer on this order was declined by the customer.
     var wasRejected: Bool = false
 
     private var priceLabel: String { order.price.map { "Rp\($0)" } ?? "-" }

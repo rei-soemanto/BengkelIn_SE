@@ -186,15 +186,7 @@ struct ProfileView: View {
                         NavigationLink(destination: UpdateProfileView(authViewModel: authViewModel, profileViewModel: profileViewModel)) {
                             ActionRow(icon: "person.text.rectangle", title: "Profile Settings")
                         }
-                        
-                        // An ADMIN account is customer-only on mobile: it may not
-                        // register a bengkel or accept mechanic invitations. (The
-                        // server enforces this too — see migration
-                        // 20260602200000_freeze_dispute_and_admin_role_guards.sql.)
                         if let role = authViewModel.currentUser?.role, role != "PROVIDER", role != "ADMIN" {
-                            // A mechanic is bound to a bengkel's roster and cannot run their
-                            // own bengkel — they must be removed (fired) from the roster first,
-                            // which resets their role to USER and re-shows this option.
                             if role != "MECHANIC" {
                                 NavigationLink(destination: RegisterBengkelView()) {
                                     ActionRow(icon: "wrench.and.screwdriver", title: "Register as Bengkel")
@@ -218,8 +210,6 @@ struct ProfileView: View {
                             
                             Toggle("Dark Mode", isOn: $isDarkMode)
                                 .font(.body)
-                                // Explicit tint: the app's global .tint(.primary) turns the
-                                // "on" track white in dark mode, hiding the white knob.
                                 .tint(.green)
                         }
                         .padding()

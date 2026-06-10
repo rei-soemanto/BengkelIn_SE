@@ -20,9 +20,6 @@ struct BengkelRouteView: View {
     @State private var reportReason = ""
     @State private var reportPhotoItem: PhotosPickerItem?
     @State private var reportPhotoData: Data?
-
-    // A single sheet selector — two `.sheet(isPresented:)` modifiers on one view conflict
-    // in SwiftUI (one flickers shut), so assign + report share one item-driven sheet.
     private enum RouteSheet: Identifiable {
         case assign, report
         var id: Int { self == .assign ? 0 : 1 }
@@ -35,14 +32,10 @@ struct BengkelRouteView: View {
             counterpartName: order.customerName ?? "Pelanggan"
         ))
     }
-
-    // Assignment state (drives the dispatch gate). Reads the live order from the VM so it
-    // reflects a just-made assignment, falling back to the order passed in.
     private var assignedMechanicId: String? {
         viewModel.order?.mechanicId ?? order.mechanicId
     }
     private var isUnassigned: Bool { assignedMechanicId == nil }
-    // Provider delegated to a mechanic (someone other than the viewer) — viewer just monitors.
     private var assignedToOther: Bool {
         guard let assignee = assignedMechanicId, let me = viewModel.myUid else { return false }
         return assignee != me
@@ -54,9 +47,6 @@ struct BengkelRouteView: View {
                 reassignedScreen
             } else {
                 VStack(spacing: 0) {
-                    // The map fully owns its region/camera state. If region were a @State here,
-                    // the map's continuous region writeback would recompute THIS view mid-
-                    // presentation and tear down the assign/report sheets (the bug you saw).
                     RouteTrackingMap(
                         store: viewModel.locationStore,
                         order: order,
@@ -79,8 +69,6 @@ struct BengkelRouteView: View {
         .task { await viewModel.start(order: order) }
         .task { await chatWatch.start() }
         .onAppear { OrderRouteState.shared.enter(order.id) }
-        // Freeze the live map while a modal is up so MapKit's annotation churn doesn't
-        // dismiss the sheet (worst for the mechanic, whose marker tracks per-frame GPS).
         .onChange(of: activeSheet != nil) { isModalOpen in viewModel.isPaused = isModalOpen }
         .onChange(of: viewModel.status) { newStatus in
             if newStatus == "cancelled" {
@@ -96,8 +84,6 @@ struct BengkelRouteView: View {
             switch sheet {
             case .assign:
                 AssignMechanicSheet(requestId: order.id) {
-                    // After assigning, refresh the order so the gate updates immediately
-                    // (the realtime watcher also picks up the change).
                     Task { await viewModel.refreshAfterAssignment() }
                 }
                 .presentationDetents([.medium, .large])
@@ -107,7 +93,6 @@ struct BengkelRouteView: View {
         }
     }
 
-    // Shown to a mechanic whose order was reassigned to someone else: they can no longer work it.
     private var reassignedScreen: some View {
         VStack(spacing: 16) {
             Spacer()
@@ -212,8 +197,6 @@ struct BengkelRouteView: View {
                         .font(.caption).foregroundColor(.secondary)
                 }
                 Spacer()
-                // Chat exists only once a mechanic is assigned. The mechanic chats; the
-                // provider can only VIEW the mechanic <-> customer thread (read-only).
                 if viewModel.status == "accepted", assignedMechanicId != nil {
                     NavigationLink(destination: ChatView(
                         serviceRequestId: order.id,
@@ -248,7 +231,6 @@ struct BengkelRouteView: View {
             switch viewModel.status {
             case "accepted":
                 if isUnassigned {
-                    // Provider hasn't dispatched yet — show the assignment gate (UC2).
                     Button {
                         activeSheet = .assign
                     } label: {
@@ -263,8 +245,6 @@ struct BengkelRouteView: View {
                         .cornerRadius(12)
                     }
                 } else if assignedToOther {
-                    // Provider delegated to a mechanic — monitor only; the mechanic completes.
-                    // The provider can reassign on the go if the mechanic is wrong/unavailable.
                     statusLine(text: "Ditugaskan ke mekanik. Memantau pekerjaan…",
                                icon: "person.fill.checkmark", color: .blue)
                     if viewModel.viewerIsProvider {
@@ -283,8 +263,6 @@ struct BengkelRouteView: View {
                         }
                     }
                 } else {
-                    // The dispatched mechanic does the work, completes it, and is the only
-                    // party who can report a kendala (the provider just monitors).
                     MechanicCompleteButton(store: viewModel.locationStore, order: order)
                     reportButton
                 }
@@ -336,9 +314,6 @@ struct BengkelRouteView: View {
     }
 }
 
-// Self-contained tracking map. Observes ONLY the location store (not the route view model),
-// and owns its region — so neither the rapid GPS updates nor the map's region writeback
-// recompute the parent route screen that hosts the assign/report sheets.
 private struct RouteTrackingMap: View {
     @ObservedObject var store: RouteLocationStore
     let order: NearbyOrder
@@ -397,8 +372,6 @@ private struct RouteTrackingMap: View {
     }
 }
 
-// The mechanic's completion button. Observes the location store (not the route view model) so
-// proximity recomputes here, off the sheet-hosting parent. Enabled within 80 m of the customer.
 private struct MechanicCompleteButton: View {
     @ObservedObject var store: RouteLocationStore
     let order: NearbyOrder

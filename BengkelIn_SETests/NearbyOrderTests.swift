@@ -4,9 +4,6 @@
 //
 //  Created by Amadeus Eugene Dirgantara on 02/06/26.
 //
-//  Decoding of a service_requests row into NearbyOrder (including the mechanic_id added
-//  for dispatch), plus the dispatch-gate rule that decides unassigned / self / delegated.
-//
 
 import XCTest
 @testable import BengkelIn_SE
@@ -40,7 +37,6 @@ final class NearbyOrderTests: XCTestCase {
     }
 
     func testNearbyOrderUnassignedHasNilMechanicId() throws {
-        // A freshly accepted order before dispatch carries no mechanic_id.
         let json = """
         { "id": "o", "customer_id": "c", "latitude": 0, "longitude": 0, "status": "accepted",
           "bengkel_id": "b" }
@@ -50,11 +46,6 @@ final class NearbyOrderTests: XCTestCase {
         XCTAssertNil(order.mechanicId)
     }
 
-    // MARK: Dispatch-gate rule
-    //
-    // Mirrors BengkelRouteView's gate: the active-job screen is shared by provider and
-    // mechanic, and the decision is purely (order.mechanicId, viewerUid).
-
     private func isUnassigned(_ order: NearbyOrder) -> Bool { order.mechanicId == nil }
     private func assignedToOther(_ order: NearbyOrder, viewer: String?) -> Bool {
         guard let assignee = order.mechanicId, let me = viewer else { return false }
@@ -62,13 +53,11 @@ final class NearbyOrderTests: XCTestCase {
     }
 
     private func makeOrder(mechanicId: String?) -> NearbyOrder {
-        // Build via JSON to avoid depending on the synthesized memberwise initializer.
         let mech = mechanicId.map { "\"mechanic_id\": \"\($0)\"," } ?? ""
         let json = """
         { "id": "o", "customer_id": "c", "latitude": 0, "longitude": 0,
           "status": "accepted", "bengkel_id": "b", \(mech) "price": 1 }
         """.data(using: .utf8)!
-        // swiftlint:disable:next force_try
         return try! decoder.decode(NearbyOrder.self, from: json)
     }
 
@@ -79,7 +68,6 @@ final class NearbyOrderTests: XCTestCase {
     }
 
     func testGateSelfAssignedIsWorkUI() {
-        // Provider chose "Self": mechanic_id == provider's own uid → not "other".
         let order = makeOrder(mechanicId: "provider-uid")
         XCTAssertFalse(isUnassigned(order))
         XCTAssertFalse(assignedToOther(order, viewer: "provider-uid"))
@@ -87,9 +75,7 @@ final class NearbyOrderTests: XCTestCase {
 
     func testGateDelegatedIsMonitoringForProviderButWorkForMechanic() {
         let order = makeOrder(mechanicId: "mech-1")
-        // Provider viewing a delegated job → monitoring.
         XCTAssertTrue(assignedToOther(order, viewer: "provider-uid"))
-        // The assigned mechanic viewing the same job → work UI (not "other").
         XCTAssertFalse(assignedToOther(order, viewer: "mech-1"))
     }
 }

@@ -7,8 +7,6 @@
 
 import SwiftUI
 
-// A self-contained rating + review sheet. Used for the automatic prompt shown
-// when an order completes, and reusable anywhere a review is collected.
 struct OrderReviewSheet: View {
     let requestId: String
     var existingRating: Int? = nil

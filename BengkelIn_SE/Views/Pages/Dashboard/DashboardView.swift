@@ -7,9 +7,6 @@
 
 import SwiftUI
 
-// Routes pushed onto the customer dashboard's navigation stack. Driving the
-// order flow through a path (rather than a plain NavigationLink) lets the
-// bidding screen pop all the way back to Beranda when an order is cancelled.
 enum DashboardRoute: Hashable {
     case createOrder
 }
@@ -19,13 +16,6 @@ struct DashboardView: View {
     @ObservedObject var bengkelBiddingViewModel: BengkelBiddingViewModel
     @ObservedObject var mechanicDashboardViewModel: MechanicDashboardViewModel
     var onOpenSaldo: () -> Void = {}
-    // The active route/work screen is PUSHED here (not a fullScreenCover) so its assign/report
-    // sheets aren't dismissed by the live map. Fed by the mechanic's job taps and by the
-    // app-level triggers (won bid / incoming assignment) routed in from ContentView.
-    @Binding var routeOrder: NearbyOrder?
-    // Drives the customer's "Pesanan Terbaru" list — reused from the History tab so a
-    // pending order stranded by an app-kill is reachable (and resumable) from the home
-    // screen, instead of forcing a re-order that drains more held balance.
     @StateObject private var customerOrdersVM = HistoryViewModel()
     @State private var path = NavigationPath()
     @Environment(\.scenePhase) private var scenePhase
@@ -177,8 +167,6 @@ struct DashboardView: View {
                     } else {
                         ForEach(customerOrdersVM.orders.prefix(3)) { order in
                             OrderHistoryRow(order: order, onTap: {
-                                // Pending = an order still mid-search: tapping resumes the
-                                // bidding screen so the customer doesn't strand it and re-order.
                                 Task { await customerOrdersVM.select(order) }
                             })
                         }

@@ -7,7 +7,6 @@
 
 import SwiftUI
 
-// Small tappable thumbnail of the damage photo; opens a full-screen viewer.
 struct OrderPhotoThumbnail: View {
     let photoUrl: String
     @State private var showPhoto = false

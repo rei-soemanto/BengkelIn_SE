@@ -136,8 +136,6 @@ class OrderRepository {
         .value
     }
 
-    // MARK: Watch companion support
-
     func fetchActiveOrder(customerId: String) async throws -> NearbyOrder? {
         let orders: [NearbyOrder] = try await supabase.from("service_requests")
             .select()

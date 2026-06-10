@@ -34,9 +34,6 @@ struct OrderTrackingView: View {
         self.bid = bid
         self.customerCoordinate = customerCoordinate
         self.popToRoot = popToRoot
-        // Fit both the customer and the bengkel from the start, using the bengkel's
-        // registered location until a live position arrives — so the bengkel marker is
-        // on-screen the moment the order is active.
         let initialBengkel: CLLocationCoordinate2D? = {
             guard let lat = bid.bengkel?.latitude, let lon = bid.bengkel?.longitude else { return nil }
             return CLLocationCoordinate2D(latitude: lat, longitude: lon)
@@ -81,8 +78,6 @@ struct OrderTrackingView: View {
         }
         .task { await trackingViewModel.start(serviceRequestId: bid.serviceRequestId) }
         .task { await chatWatch.start() }
-        // Co-located from the start (e.g. the order was placed at the bengkel,
-        // no one moves): evaluate once using the known shop / order coordinates.
         .onAppear {
             OrderRouteState.shared.enter(bid.serviceRequestId)
             evaluateProximity()
@@ -108,15 +103,10 @@ struct OrderTrackingView: View {
             fitBothIfNeeded()
             evaluateProximity()
         }
-        // The customer may be the one who travels to the bengkel, so re-check
-        // proximity whenever the customer's own live location moves too.
         .onChange(of: locationPublisher.currentCoordinate?.latitude) { _ in
             evaluateProximity()
         }
-        // Re-check when the bengkel assigns a handler: a self-assigned, co-located
-        // order becomes "arrived" the moment the assignment lands.
         .onChange(of: trackingViewModel.order?.mechanicId) { _ in
-            // A new handler was assigned — re-fit so the new marker is on-screen.
             didFitBoth = false
             fitBothIfNeeded()
             evaluateProximity()
@@ -185,36 +175,24 @@ struct OrderTrackingView: View {
         }
     }
 
-    // Fit to whatever bengkel position is shown (live, else the registered shop), so the
-    // map zooms to include both markers — not only after a live publish arrives.
     private func fitBothIfNeeded() {
         guard !didFitBoth, let bengkel = liveBengkelCoordinate else { return }
         didFitBoth = true
         region = .fitting(customerPosition, bengkel)
     }
 
-    // Fires the "bengkel sudah dekat" notification once when the handler first comes within
-    // range. Completion eligibility itself uses live `isBengkelNear`, not a sticky flag.
     private func evaluateProximity() {
         guard isBengkelNear, !didNotifyNear else { return }
         didNotifyNear = true
         trackingViewModel.notifyBengkelNear()
     }
 
-    // The customer's real position (their live fix), falling back to the order's
-    // static location before the first GPS fix arrives.
     private var customerPosition: CLLocationCoordinate2D {
         locationPublisher.currentCoordinate ?? customerCoordinate
     }
 
-    // The bengkel has assigned someone to the job once mechanic_id is set — either
-    // a roster mechanic or the provider itself (assign_mechanic with no mechanic).
     private var isAssigned: Bool { trackingViewModel.order?.mechanicId != nil }
 
-    // Position of the party actually handling the service: their live published
-    // location only. The bengkel's fixed shop coordinate is never used here —
-    // arrival must be confirmed by an actual live GPS fix, otherwise a customer
-    // sitting near the shop would look "arrived" while the handler is elsewhere.
     private var handlerCoordinate: CLLocationCoordinate2D? {
         trackingViewModel.providerCoordinate
     }
@@ -232,15 +210,8 @@ struct OrderTrackingView: View {
         return false
     }
 
-    // The customer may only complete while a handler is assigned AND CURRENTLY within range
-    // (not merely "was near once") — matching the bengkel side. If the handler moves back out
-    // of range the button reverts to "Menunggu bengkel tiba di lokasi".
     private var canCustomerComplete: Bool { isAssigned && isBengkelNear }
-
-    // The handler's marker: the live published location of whoever the bengkel
-    // assigned (the bengkel itself when self-handling, or the dispatched mechanic).
-    // No marker until a handler is assigned and starts publishing — the static shop
-    // coordinate is never shown, so the customer never sees a phantom bengkel.
+    
     private var liveBengkelCoordinate: CLLocationCoordinate2D? {
         trackingViewModel.providerCoordinate
     }

@@ -9,7 +9,6 @@ import SwiftUI
 import CoreLocation
 
 struct CustomerBiddingView: View {
-    // Pops the whole order flow back to Beranda when the order is cancelled.
     var popToRoot: () -> Void = {}
 
     @StateObject private var viewModel: CustomerBiddingViewModel

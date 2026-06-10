@@ -45,7 +45,6 @@ struct UpdateBengkelView: View {
                 }
                 .ignoresSafeArea(edges: .top)
 
-                // Controls
                 VStack(spacing: 0) {
                     LocationInputCard(
                         address: $bengkelViewModel.locationAddress,
@@ -114,7 +113,6 @@ struct UpdateBengkelView: View {
                 .background(Color(.systemBackground))
             }
 
-            // Back button (sibling, within safe area)
             Button(action: {
                 dismiss()
             }) {
@@ -129,7 +127,6 @@ struct UpdateBengkelView: View {
             .padding(.top, 8)
             .padding(.leading, 20)
 
-            // Search overlay
             if bengkelViewModel.isEditingLocation {
                 LocationSearchView(viewModel: bengkelViewModel)
                     .transition(.move(edge: .bottom))

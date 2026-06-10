@@ -6,10 +6,6 @@
 //
 
 import SwiftUI
-
-// Mechanic-side invite inbox (UC8). Reachable by any user from their profile, so a
-// plain customer can accept an invitation and become a mechanic. Accepting refreshes
-// the auth user so the Mekanik mode switcher appears immediately.
 struct MechanicInvitesView: View {
     @ObservedObject var authViewModel: AuthViewModel
     @StateObject private var viewModel = MechanicInviteViewModel()

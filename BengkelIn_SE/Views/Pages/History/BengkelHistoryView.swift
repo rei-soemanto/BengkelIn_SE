@@ -16,9 +16,6 @@ struct BengkelHistoryView: View {
             .background(Color(.systemGroupedBackground))
             .task { await viewModel.loadOrders() }
             .refreshable { await viewModel.loadOrders() }
-            // Active orders PUSH the route screen (not a fullScreenCover): a sheet presented
-            // from inside a fullScreenCover gets dismissed when its map updates. The role
-            // switcher is hidden via OrderRouteState while the route screen is up.
             .navigationDestination(isPresented: detailBinding) {
                 if let order = viewModel.detailOrder {
                     if order.status == "accepted" {

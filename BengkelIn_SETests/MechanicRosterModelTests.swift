@@ -4,8 +4,6 @@
 //
 //  Created by Amadeus Eugene Dirgantara on 02/06/26.
 //
-//  Decodes the JSON shapes returned by the roster RPCs (bengkel_roster,
-//  my_mechanic_invites, available_mechanics) and checks the status helpers.
 //
 
 import XCTest
@@ -14,8 +12,6 @@ import XCTest
 final class MechanicRosterModelTests: XCTestCase {
 
     private let decoder = JSONDecoder()
-
-    // MARK: RosterMember (bengkel_roster)
 
     func testRosterMemberDecodesPendingFromSnakeCase() throws {
         let json = """
@@ -35,7 +31,6 @@ final class MechanicRosterModelTests: XCTestCase {
         XCTAssertEqual(member.mechanicId, "mech-1")
         XCTAssertEqual(member.mechanicName, "Budi Santoso")
         XCTAssertEqual(member.mechanicEmail, "budi@contoh.com")
-        // Identifiable id is the registration id.
         XCTAssertEqual(member.id, "reg-1")
         XCTAssertTrue(member.isPending)
         XCTAssertFalse(member.isAccepted)
@@ -51,12 +46,9 @@ final class MechanicRosterModelTests: XCTestCase {
 
         XCTAssertTrue(member.isAccepted)
         XCTAssertFalse(member.isPending)
-        // Optional fields tolerate absence.
         XCTAssertNil(member.mechanicEmail)
         XCTAssertNil(member.createdAt)
     }
-
-    // MARK: MechanicInvite (my_mechanic_invites)
 
     func testMechanicInviteDecodes() throws {
         let json = """
@@ -85,8 +77,6 @@ final class MechanicRosterModelTests: XCTestCase {
         let invite = try decoder.decode(MechanicInvite.self, from: json)
         XCTAssertFalse(invite.isPending)
     }
-
-    // MARK: AvailableMechanic (available_mechanics — the assignment seam read)
 
     func testAvailableMechanicDecodesAndIdentifiesByMechanicId() throws {
         let json = """

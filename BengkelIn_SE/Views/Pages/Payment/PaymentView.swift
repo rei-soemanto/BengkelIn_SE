@@ -21,7 +21,6 @@ struct PaymentView: View {
     @State private var customAmount: String = ""
     @State private var showBankSheet = false
     @State private var showWithdrawSheet = false
-    // Top-up options stay hidden until the user taps the balance card (or its + button).
     @State private var showTopUp = false
 
     private var enteredAmount: Int { Int(customAmount) ?? 0 }
@@ -112,7 +111,6 @@ struct PaymentView: View {
 
                 Spacer()
 
-                // Tap to open the top-up modal.
                 Image(systemName: "plus")
                     .font(.title2.weight(.bold))
                     .foregroundColor(Color.primary.opacity(0.9))
@@ -129,7 +127,6 @@ struct PaymentView: View {
         .buttonStyle(.plain)
     }
 
-    // Top-up options, presented as a modal sheet from the balance card's + button.
     private var topUpModal: some View {
         NavigationStack {
             ScrollView {

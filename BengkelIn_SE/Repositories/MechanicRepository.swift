@@ -8,12 +8,7 @@
 import Foundation
 import Supabase
 
-// Roster CRUD over mechanic_registrations. All writes go through SECURITY DEFINER RPCs
-// (the table itself only exposes SELECT via RLS), so this repository is thin.
 class MechanicRepository {
-
-    // MARK: Provider side
-
     func fetchRoster() async throws -> [RosterMember] {
         return try await supabase.rpc("bengkel_roster")
             .execute()
@@ -36,8 +31,6 @@ class MechanicRepository {
         .execute()
     }
 
-    // Accepted mechanics for the caller's bengkel — used by the assignment picker. Takes the
-    // order id so each mechanic carries a `busy` flag and the current assignee is marked.
     func fetchAvailableMechanics(requestId: String) async throws -> [AvailableMechanic] {
         return try await supabase.rpc(
             "available_mechanics",
@@ -46,8 +39,6 @@ class MechanicRepository {
         .execute()
         .value
     }
-
-    // MARK: Mechanic side
 
     func fetchMyInvites() async throws -> [MechanicInvite] {
         return try await supabase.rpc("my_mechanic_invites")

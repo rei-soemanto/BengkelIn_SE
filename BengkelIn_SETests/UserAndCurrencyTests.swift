@@ -4,9 +4,6 @@
 //
 //  Created by Amadeus Eugene Dirgantara on 02/06/26.
 //
-//  User decoding + availableBalance (balance minus held), and the Rupiah formatter
-//  invariants (locale output spacing varies, so assert structure not an exact string).
-//
 
 import XCTest
 @testable import BengkelIn_SE
@@ -32,7 +29,6 @@ final class UserAndCurrencyTests: XCTestCase {
         XCTAssertEqual(user.role, "USER")
         XCTAssertEqual(user.balance, 100000)
         XCTAssertEqual(user.heldBalance, 30000)
-        // available = balance - held
         XCTAssertEqual(user.availableBalance, 70000)
     }
 

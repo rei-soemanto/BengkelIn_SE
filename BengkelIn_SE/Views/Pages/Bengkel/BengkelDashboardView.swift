@@ -9,7 +9,6 @@ import SwiftUI
 
 struct BengkelDashboardView: View {
     @ObservedObject var authViewModel: AuthViewModel
-    // Shared with ContentView so watching/notifications run regardless of tab.
     @ObservedObject var bengkelBiddingViewModel: BengkelBiddingViewModel
 
     @StateObject private var bengkelViewModel = BengkelViewModel()
@@ -105,8 +104,6 @@ struct BengkelDashboardView: View {
                     }
 
                     if bengkelBiddingViewModel.myBengkel == nil {
-                        // The feed never initialized (e.g. the bengkel fetch failed). Don't
-                        // show this as "no demand" — offer a retry so it isn't wedged.
                         VStack(spacing: 12) {
                             Image(systemName: "exclamationmark.triangle.fill")
                                 .font(.largeTitle)
@@ -200,9 +197,6 @@ struct BengkelDashboardView: View {
                 Task { await bengkelBiddingViewModel.placeBid(order: order, price: price, notes: notes) }
             }
         }
-        // Without this, every failure path (bid rejected by the floor check, load error,
-        // bengkel fetch error) only set errorMessage and was never shown — failures looked
-        // like "nothing happened" or "no demand".
         .alert("Terjadi Kesalahan", isPresented: Binding(
             get: { bengkelBiddingViewModel.errorMessage != nil },
             set: { if !$0 { bengkelBiddingViewModel.errorMessage = nil } }

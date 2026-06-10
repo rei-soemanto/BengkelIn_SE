@@ -6,16 +6,9 @@
 //
 
 import SwiftUI
-
-// Home screen shown when a MECHANIC switches to Mekanik mode. Shows the "Pekerjaan Aktif"
-// feed. The realtime watch + the arrived-assignment IncomingAssignmentModal are owned by
-// ContentView (app-wide, like the bengkel's incoming-order modal), so this screen only
-// renders the shared view model's state and handles tapping a job in the list.
 struct MechanicDashboardView: View {
     @ObservedObject var authViewModel: AuthViewModel
     @ObservedObject var viewModel: MechanicDashboardViewModel
-    // Tapping a job asks the enclosing DashboardView to PUSH the route screen (the single
-    // push point for this tab), so the route screen's sheets aren't dismissed by a cover.
     var onOpenRoute: (NearbyOrder) -> Void = { _ in }
 
     var body: some View {

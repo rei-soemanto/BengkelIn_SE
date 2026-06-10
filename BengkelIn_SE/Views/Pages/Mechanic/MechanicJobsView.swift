@@ -7,14 +7,9 @@
 
 import SwiftUI
 
-// The assigned-job feed shown inside the mechanic dashboard (E4). Tapping a job opens
-// the shared route/work screen — chat, live tracking, and completion are re-threaded to
-// the mechanic there because BengkelRouteView resolves the actor from the session uid.
 struct MechanicJobsView: View {
     @StateObject private var viewModel = MechanicJobsViewModel()
     @Environment(\.scenePhase) private var scenePhase
-    // Presented full-screen (not pushed) so the route/work screen covers the
-    // app-mode role switcher that lives above the tab bar in ContentView.
     @State private var jobToOpen: NearbyOrder?
 
     var body: some View {
