@@ -6,7 +6,7 @@ Class diagrams for the iOS app (`BengkelIn_SE/`), split by feature. Each section
 
 **Arrows**: `..>` depends on / uses · `-->` association · `*--` composition · `..|>` realizes interface.
 
-> All ViewModels are `@MainActor ObservableObject`; properties shown are `@Published` state. Repositories/Services are stateless. See the root `CLAUDE.md` for the layering rules.
+> All ViewModels are `@MainActor ObservableObject`. **Every member is shown** — `+` = public surface (`@Published` state, computed properties, public methods, `init`/`deinit`), `-` = private implementation (injected Repository/Service dependencies, realtime channels & reader tasks, `CLLocationManager`, and private helper methods). Swift has no `protected`; its default `internal` and `private(set)` members are rendered with the closest UML symbol (`-` for private/internal stored state that isn't part of the API, `+` for publicly-readable members). Repositories/Services are stateless and expose only the public methods listed. See the root `CLAUDE.md` for the layering rules.
 
 ---
 
@@ -106,11 +106,16 @@ classDiagram
     class AuthViewModel {
         +SupabaseUser? userSession
         +User? currentUser
-        +AppMode appMode
         +Bool isLoading
         +Bool isInitializing
         +String? errorMessage
         +String? successMessage
+        +AppMode appMode
+        -AuthService authService
+        -UserRepository userRepository
+        -Task? authStateTask
+        +init()
+        +deinit()
         +loadInitialSession()
         +login(email, password)
         +signUp(email, password, name, phoneNumber)
@@ -123,6 +128,9 @@ classDiagram
         +Bool isLoading
         +String? errorMessage
         +String? successMessage
+        -AuthService authService
+        -UserRepository userRepository
+        -StorageService storageService
         +updateProfile(name, phoneNumber) Bool
         +uploadProfileImage(data) Bool
     }
@@ -224,10 +232,12 @@ classDiagram
         +Bool isLoading
         +String? errorMessage
         +String? successMessage
+        -AuthService authService
+        -VehicleRepository vehicleRepository
         +fetchVehicles()
-        +addVehicle(manufacturer, model, year, plate, color) Bool
-        +updateVehicle(id, ...) Bool
-        +deleteVehicle(id) Bool
+        +addVehicle(manufacturer, model, year, licensePlate, color) Bool
+        +updateVehicle(vehicleId, manufacturer, model, year, licensePlate, color) Bool
+        +deleteVehicle(vehicleId) Bool
     }
     class Vehicle {
         +String? id
@@ -334,16 +344,28 @@ classDiagram
     }
     class BengkelViewModel {
         +Bengkel? myBengkel
-        +Double todaysEarnings
-        +Bool hasAcceptedMechanic
         +Bool isLoading
         +String? errorMessage
         +String? successMessage
+        +Double todaysEarnings
+        +Bool hasAcceptedMechanic
         +String locationAddress
         +Bool isEditingLocation
         +Bool isFetchingLocation
         +PhotonSearchFeature[] searchResults
         +MKCoordinateRegion region
+        -AuthService authService
+        -BengkelRepository bengkelRepository
+        -OrderRepository orderRepository
+        -MechanicRepository mechanicRepository
+        -LocationService locationService
+        -CLLocationManager locationManager
+        -Set~AnyCancellable~ cancellables
+        -RealtimeChannelV2? realtimeChannel
+        -RealtimeChannelV2? earningsChannel
+        -Task[] realtimeReaderTasks
+        +init()
+        +deinit()
         +registerBengkel(name, address) Bool
         +updateBengkel(id, name, address) Bool
         +deleteBengkel(id, password, email) Bool
@@ -362,6 +384,10 @@ classDiagram
         +locationManagerDidChangeAuthorization(manager)
         +locationManager(manager, didUpdateLocations)
         +locationManager(manager, didFailWithError)
+        -searchOSM(query)
+        -fetchAddress(coordinate)
+        -startRealtimeSubscription(uid)
+        -startEarningsSubscription(bengkelId)
     }
     class LocationSearchable {
         <<interface>>
@@ -396,6 +422,18 @@ classDiagram
         +UUID id
         +PhotonSearchProperties properties
         +PhotonSearchGeometry geometry
+        +eq(lhs, rhs) Bool$
+        +hash(into hasher)
+    }
+    class PhotonSearchProperties {
+        +Int? osm_id
+        +String? name
+        +String? street
+        +String? city
+        +String? state
+    }
+    class PhotonSearchGeometry {
+        +Double[] coordinates
     }
     class BengkelUpdatePayload {
         +String name
@@ -418,6 +456,8 @@ classDiagram
     BengkelRepository ..> BengkelUpdatePayload
     BengkelRepository ..> BengkelServicesUpdatePayload
     LocationService ..> PhotonSearchFeature
+    PhotonSearchFeature "1" *-- "1" PhotonSearchProperties : properties
+    PhotonSearchFeature "1" *-- "1" PhotonSearchGeometry : geometry
     Bengkel "1" *-- "*" BengkelService : offers
     BengkelService --> ServiceType
 
@@ -932,31 +972,35 @@ classDiagram
     }
     class BengkelRosterViewModel {
         +RosterMember[] roster
-        +RosterMember[] pendingMembers
-        +RosterMember[] acceptedMembers
         +String inviteEmail
-        +Bool isInviting
         +Bool isLoading
+        +Bool isInviting
         +String? errorMessage
         +String? successMessage
+        +RosterMember[] pendingMembers
+        +RosterMember[] acceptedMembers
+        -MechanicRepository mechanicRepository
         +fetchRoster()
         +invite() Bool
         +remove(member)
     }
     class MechanicInviteViewModel {
         +MechanicInvite[] invites
-        +MechanicInvite[] pendingInvites
         +Bool isLoading
         +String? errorMessage
+        +MechanicInvite[] pendingInvites
         +Bool hasPendingInvites
+        -MechanicRepository mechanicRepository
         +fetchInvites()
         +respond(invite, accept) Bool
     }
     class AssignMechanicViewModel {
         +AvailableMechanic[] availableMechanics
-        +Bool isAssigning
         +Bool isLoading
+        +Bool isAssigning
         +String? errorMessage
+        -MechanicRepository mechanicRepository
+        -MechanicAssignmentRepository assignmentRepository
         +fetchAvailableMechanics(reqId)
         +assign(reqId, mechanicId) Bool
     }
@@ -965,15 +1009,34 @@ classDiagram
         +NearbyOrder? newAssignmentAlert
         +Bool isLoading
         +String? errorMessage
+        -MechanicAssignmentRepository assignmentRepository
+        -AuthService authService
+        -NotificationService notificationService
+        -RealtimeChannelV2? channel
+        -RealtimeChannelV2? broadcastChannel
+        -Task[] realtimeReaderTasks
+        -Dictionary~String,String~ knownAssignments
+        -Bool didInitialLoad
+        -Bool hasStarted
+        -String? myUid
+        +deinit()
         +start()
         +reset()
         +refreshOnForeground()
         +stop()
+        -loadJobs()
+        -subscribe()
+        -startReconcilePoll()
+        -subscribeMechanicBroadcast(uid)
+        -handleAssigned(message)
+        -handleReassignedAway(message)
     }
     class MechanicJobsViewModel {
         +NearbyOrder[] jobs
         +Bool isLoading
         +String? errorMessage
+        -MechanicAssignmentRepository assignmentRepository
+        -AuthService authService
         +fetchJobs()
     }
     class RosterMember {
@@ -1113,6 +1176,14 @@ classDiagram
         +Bool isSending
         +Bool isLocked
         +String? errorMessage
+        -ChatRepository chatRepository
+        -OrderRepository orderRepository
+        -StorageService storageService
+        -AuthService authService
+        -RealtimeChannelV2? realtimeChannel
+        -Task[] realtimeReaderTasks
+        +init(serviceRequestId)
+        +deinit()
         +start()
         +loadMessages()
         +loadLockState()
@@ -1120,12 +1191,29 @@ classDiagram
         +stopRealtimeSubscription()
         +sendText()
         +sendImage(data)
+        -send(content, imageUrl) Bool
     }
     class ChatWatchViewModel {
         +Int unreadCount
+        -String serviceRequestId
+        -String counterpartName
+        -ChatReadCursor cursor
+        -String currentUserId
+        -ChatRepository chatRepository
+        -NotificationService notificationService
+        -AuthService authService
+        -RealtimeChannelV2? channel
+        -Task[] realtimeReaderTasks
+        -Set~String~ notifiedIds
+        -Bool didLoadOnce
+        +init(serviceRequestId, counterpartName)
+        +deinit()
         +start()
         +stop()
         +markAllRead()
+        -subscribe()
+        -reload()
+        -notificationBody(message) String
     }
     class ImageCompressor {
         +compressed(data, maxDimension, quality) Data$
@@ -1133,6 +1221,7 @@ classDiagram
     class ChatReadCursor {
         +String serviceRequestId
         +Date lastReadAt
+        -String key
         +markRead(at)
         +unreadCount(incoming) Int
         +date(of message) Date$
@@ -1140,6 +1229,7 @@ classDiagram
     class ChatPresence {
         +ChatPresence shared$
         +String? activeServiceRequestId
+        -init()
     }
     class ChatMessage {
         +String id
@@ -1242,35 +1332,68 @@ classDiagram
     }
     class OrderTrackingViewModel {
         +CLLocationCoordinate2D? providerCoordinate
+        +String? lastUpdated
         +NearbyOrder? order
         +Bool isLive
-        +String? lastUpdated
+        +String? errorMessage
         +String status
         +Bool alreadyRated
-        +String? errorMessage
+        -OrderLocationRepository locationRepository
+        -OrderRepository orderRepository
+        -NotificationService notificationService
+        -Bool iInitiatedCancel
+        -RealtimeChannelV2? channel
+        -String? serviceRequestId
+        -Task[] realtimeReaderTasks
+        +deinit()
         +start(reqId)
+        +stop()
         +openDispute(reason) Bool
         +notifyBengkelNear()
-        +stop()
+        -notifyOnCancellation(previous, updated)
+        -notifyOnAssignment(previous, updated)
+        -apply(location)
     }
     class LocationPublishViewModel {
         +Bool isPublishing
         +String? errorMessage
+        -CLLocationManager locationManager
+        -OrderLocationRepository repository
+        -AuthService authService
+        -OrderRepository orderRepository
+        -String? serviceRequestId
+        -CLLocationCoordinate2D? customerCoordinate
+        -Date? lastPublishedAt
+        -RealtimeChannelV2? statusChannel
+        -Task? statusReaderTask
+        +init()
+        +deinit()
         +start(reqId, coordinate)
         +stop()
         +locationManagerDidChangeAuthorization(manager)
         +locationManager(manager, didUpdateLocations)
         +locationManager(manager, didFailWithError)
+        -observeOrderStatus(requestId)
+        -interval(forDistance) TimeInterval
+        -publish(coordinate, requestId)
     }
     class CustomerLocationPublishViewModel {
         +Bool isPublishing
-        +CLLocationCoordinate2D? currentCoordinate
         +String? errorMessage
+        +CLLocationCoordinate2D? currentCoordinate
+        -CLLocationManager locationManager
+        -OrderLocationRepository repository
+        -AuthService authService
+        -String? serviceRequestId
+        -Date? lastPublishedAt
+        -TimeInterval minInterval
+        +init()
         +start(reqId)
         +stop()
         +locationManagerDidChangeAuthorization(manager)
         +locationManager(manager, didUpdateLocations)
         +locationManager(manager, didFailWithError)
+        -publish(coordinate, requestId)
     }
     class BengkelRouteViewModel {
         +NearbyOrder? order
@@ -1278,15 +1401,37 @@ classDiagram
         +Bool reassignedAway
         +RouteLocationStore locationStore
         +Bool isPaused
+        +CLLocationCoordinate2D? bengkelCoordinate
+        +CLLocationCoordinate2D? customerLiveCoordinate
+        +CLLocationCoordinate2D? assigneeCoordinate
         +String status
         +Bool selfAssigned
         +Bool amAssignee
         +Bool viewerIsProvider
         +Bool viewerIsAssignee
         +String handlerLabel
-        +CLLocationCoordinate2D? bengkelCoordinate
-        +CLLocationCoordinate2D? customerLiveCoordinate
-        +CLLocationCoordinate2D? assigneeCoordinate
+        -Bool wasAssignee
+        -CLLocationManager locationManager
+        -OrderRepository orderRepository
+        -BengkelRepository bengkelRepository
+        -StorageService storageService
+        -OrderLocationRepository locationRepository
+        -AuthService authService
+        -NotificationService notificationService
+        -Bool iInitiatedCancel
+        -String? serviceRequestId
+        -CLLocationCoordinate2D? customerCoordinate
+        -String? providerUid
+        -CLLocationCoordinate2D? shopCoordinate
+        -Date? lastPublishedAt
+        -RealtimeChannelV2? channel
+        -Task[] realtimeReaderTasks
+        -NSObjectProtocol? reassignObserver
+        -String? mechanicId
+        -Bool amProvider
+        -Bool monitoringMechanic
+        +init()
+        +deinit()
         +start(order)
         +refreshOrder()
         +refreshAfterAssignment()
@@ -1295,6 +1440,14 @@ classDiagram
         +locationManagerDidChangeAuthorization(manager)
         +locationManager(manager, didUpdateLocations)
         +locationManager(manager, didFailWithError)
+        -resolveBengkelIfNeeded()
+        -reconfigureForRole()
+        -refreshAssigneeFromOrderLocations()
+        -notifyOnCancellation(previous, updated)
+        -stopChannel()
+        -interval(forDistance) TimeInterval
+        -publishCurrentGPSIfPossible()
+        -publish(coordinate, requestId)
     }
     class RouteLocationStore {
         +CLLocationCoordinate2D? me
@@ -1534,23 +1687,33 @@ classDiagram
     class PaymentViewModel {
         +Double balance
         +Double heldBalance
-        +Double availableBalance
         +Int points
         +Int pendingPoints
         +Topup[] topups
         +Withdrawal[] withdrawals
-        +String bankName
-        +String bankAccountNumber
-        +String bankAccountName
-        +Bool hasBankDetails
-        +Int[] presetAmounts
-        +Int minTopupAmount
-        +Int maxTopupAmount
         +Bool isLoading
         +String? errorMessage
         +String? successMessage
+        +String bankName
+        +String bankAccountNumber
+        +String bankAccountName
         +PaymentTarget? paymentTarget
         +String? currentOrderId
+        +Int[] presetAmounts
+        +Int minTopupAmount
+        +Int maxTopupAmount
+        +Bool hasBankDetails
+        +Double availableBalance
+        -AuthService authService
+        -UserRepository userRepository
+        -TopupRepository topupRepository
+        -WithdrawalRepository withdrawalRepository
+        -PaymentService paymentService
+        -RealtimeChannelV2? realtimeChannel
+        -Task[] realtimeReaderTasks
+        -Set~String~ knownSuccessTopupIds
+        -Bool didLoadTopupsOnce
+        +deinit()
         +start()
         +startRealtimeSubscription()
         +stop()
@@ -1560,6 +1723,7 @@ classDiagram
         +paymentFlowFinished()
         +saveBankDetails(name, number, accName) Bool
         +requestWithdrawal(amount) Bool
+        -detectSuccessfulTopups(fetched)
     }
     class Topup {
         +String? id
@@ -1856,6 +2020,8 @@ classDiagram
     class BehaviorReportViewModel {
         +Bool isSubmitting
         +String? errorMessage
+        -BehaviorReportRepository repository
+        -AuthService authService
         +submit(reqId, reason) Bool
     }
     class BehaviorReportPayload {
