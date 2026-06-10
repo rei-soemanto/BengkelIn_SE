@@ -6,7 +6,7 @@ Class diagrams for the iOS app (`BengkelIn_SE/`), split by feature. Each section
 
 **Arrows**: `..>` depends on / uses · `-->` association · `*--` composition · `..|>` realizes interface.
 
-> All ViewModels are `@MainActor ObservableObject`. **Every member is shown** — `+` = public surface (`@Published` state, computed properties, public methods, `init`/`deinit`), `-` = private implementation (injected Repository/Service dependencies, realtime channels & reader tasks, `CLLocationManager`, and private helper methods). Swift has no `protected`; its default `internal` and `private(set)` members are rendered with the closest UML symbol (`-` for private/internal stored state that isn't part of the API, `+` for publicly-readable members). Repositories/Services are stateless and expose only the public methods listed. See the root `CLAUDE.md` for the layering rules.
+> All ViewModels are `@MainActor ObservableObject`. **Every member is shown** — `+` = public surface (`@Published` state, computed properties, public methods, `init`/`deinit`), `-` = private implementation (injected Repository/Service dependencies, realtime channels & reader tasks, `CLLocationManager`, and private helper methods). Swift has no `protected`; its default `internal` and `private(set)` members are rendered with the closest UML symbol (`-` for private/internal stored state that isn't part of the API, `+` for publicly-readable members). Repositories/Services are stateless and expose only the public methods listed. **Injected Service/Repository dependencies are shown as role-named association arrows (`ViewModel --> AuthService : authService`), not repeated as attributes** — the arrow IS the field, so listing it in the attribute box too would be redundant (a property typed by another class and an association are the same thing in UML). Value/state attributes, model references, enums, and types without their own box (`Task`, `CLLocationManager`, `RealtimeChannelV2`, `Set`) remain in the attribute compartment. See the root `CLAUDE.md` for the layering rules.
 
 ---
 
@@ -111,8 +111,6 @@ classDiagram
         +String? errorMessage
         +String? successMessage
         +AppMode appMode
-        -AuthService authService
-        -UserRepository userRepository
         -Task? authStateTask
         +init()
         +deinit()
@@ -128,9 +126,6 @@ classDiagram
         +Bool isLoading
         +String? errorMessage
         +String? successMessage
-        -AuthService authService
-        -UserRepository userRepository
-        -StorageService storageService
         +updateProfile(name, phoneNumber) Bool
         +uploadProfileImage(data) Bool
     }
@@ -176,13 +171,13 @@ classDiagram
         +String bank_account_name
     }
 
-    AuthViewModel ..> AuthService
-    AuthViewModel ..> UserRepository
+    AuthViewModel --> AuthService : authService
+    AuthViewModel --> UserRepository : userRepository
     AuthViewModel --> User
     AuthViewModel --> AppMode
-    ProfileViewModel ..> AuthService
-    ProfileViewModel ..> UserRepository
-    ProfileViewModel ..> StorageService
+    ProfileViewModel --> AuthService : authService
+    ProfileViewModel --> UserRepository : userRepository
+    ProfileViewModel --> StorageService : storageService
     ProfileViewModel ..> ImageCompressor
     AuthService ..> SignUpRequest
     AuthService ..> AuthServiceError
@@ -232,8 +227,6 @@ classDiagram
         +Bool isLoading
         +String? errorMessage
         +String? successMessage
-        -AuthService authService
-        -VehicleRepository vehicleRepository
         +fetchVehicles()
         +addVehicle(manufacturer, model, year, licensePlate, color) Bool
         +updateVehicle(vehicleId, manufacturer, model, year, licensePlate, color) Bool
@@ -257,8 +250,8 @@ classDiagram
         +String color
     }
 
-    VehicleViewModel ..> AuthService
-    VehicleViewModel ..> VehicleRepository
+    VehicleViewModel --> AuthService : authService
+    VehicleViewModel --> VehicleRepository : vehicleRepository
     VehicleViewModel --> Vehicle
     VehicleRepository ..> Vehicle
     VehicleRepository ..> VehicleUpdatePayload
@@ -354,11 +347,6 @@ classDiagram
         +Bool isFetchingLocation
         +PhotonSearchFeature[] searchResults
         +MKCoordinateRegion region
-        -AuthService authService
-        -BengkelRepository bengkelRepository
-        -OrderRepository orderRepository
-        -MechanicRepository mechanicRepository
-        -LocationService locationService
         -CLLocationManager locationManager
         -Set~AnyCancellable~ cancellables
         -RealtimeChannelV2? realtimeChannel
@@ -446,11 +434,11 @@ classDiagram
     }
 
     BengkelViewModel ..|> LocationSearchable
-    BengkelViewModel ..> BengkelRepository
-    BengkelViewModel ..> LocationService
-    BengkelViewModel ..> OrderRepository
-    BengkelViewModel ..> MechanicRepository
-    BengkelViewModel ..> AuthService
+    BengkelViewModel --> BengkelRepository : bengkelRepository
+    BengkelViewModel --> LocationService : locationService
+    BengkelViewModel --> OrderRepository : orderRepository
+    BengkelViewModel --> MechanicRepository : mechanicRepository
+    BengkelViewModel --> AuthService : authService
     BengkelViewModel --> Bengkel
     BengkelRepository ..> Bengkel
     BengkelRepository ..> BengkelUpdatePayload
@@ -656,12 +644,6 @@ classDiagram
         +Bool requiresTireCount
         +String[] services
         +CLLocationCoordinate2D defaultCenter$
-        -AuthService authService
-        -LocationService locationService
-        -OrderRepository orderRepository
-        -StorageService storageService
-        -UserRepository userRepository
-        -VehicleRepository vehicleRepository
         -CLLocationManager locationManager
         -Set~AnyCancellable~ cancellables
         +init()
@@ -711,12 +693,6 @@ classDiagram
         +String? vehicleId
         +String? vehicleInfo
         +Bool usePoints
-        -AuthService authService
-        -UserRepository userRepository
-        -OrderRepository orderRepository
-        -BidRepository bidRepository
-        -StorageService storageService
-        -NotificationService notificationService
         -UInt64 searchTimeoutSeconds
         -UInt64 decisionTimeoutSeconds
         -TimeInterval bidDecisionWindowSeconds
@@ -765,13 +741,6 @@ classDiagram
         +String? orderUnavailableAlert
         +Bid[] myRejectedBids
         +Bool hasMechanics
-        -AuthService authService
-        -OrderRepository orderRepository
-        -BengkelRepository bengkelRepository
-        -BidRepository bidRepository
-        -BiddingService biddingService
-        -MechanicRepository mechanicRepository
-        -NotificationService notificationService
         -RealtimeChannelV2? realtimeChannel
         -Task[] realtimeReaderTasks
         -Set~String~ knownOrderIds
@@ -856,26 +825,26 @@ classDiagram
     }
 
     OrderViewModel ..|> LocationSearchable
-    OrderViewModel ..> OrderRepository
-    OrderViewModel ..> LocationService
-    OrderViewModel ..> StorageService
-    OrderViewModel ..> UserRepository
-    OrderViewModel ..> VehicleRepository
-    OrderViewModel ..> AuthService
-    CustomerBiddingViewModel ..> OrderRepository
-    CustomerBiddingViewModel ..> BidRepository
-    CustomerBiddingViewModel ..> UserRepository
-    CustomerBiddingViewModel ..> StorageService
-    CustomerBiddingViewModel ..> NotificationService
-    CustomerBiddingViewModel ..> AuthService
+    OrderViewModel --> OrderRepository : orderRepository
+    OrderViewModel --> LocationService : locationService
+    OrderViewModel --> StorageService : storageService
+    OrderViewModel --> UserRepository : userRepository
+    OrderViewModel --> VehicleRepository : vehicleRepository
+    OrderViewModel --> AuthService : authService
+    CustomerBiddingViewModel --> OrderRepository : orderRepository
+    CustomerBiddingViewModel --> BidRepository : bidRepository
+    CustomerBiddingViewModel --> UserRepository : userRepository
+    CustomerBiddingViewModel --> StorageService : storageService
+    CustomerBiddingViewModel --> NotificationService : notificationService
+    CustomerBiddingViewModel --> AuthService : authService
     CustomerBiddingViewModel --> Bid
-    BengkelBiddingViewModel ..> OrderRepository
-    BengkelBiddingViewModel ..> BidRepository
-    BengkelBiddingViewModel ..> BiddingService
-    BengkelBiddingViewModel ..> BengkelRepository
-    BengkelBiddingViewModel ..> MechanicRepository
-    BengkelBiddingViewModel ..> NotificationService
-    BengkelBiddingViewModel ..> AuthService
+    BengkelBiddingViewModel --> OrderRepository : orderRepository
+    BengkelBiddingViewModel --> BidRepository : bidRepository
+    BengkelBiddingViewModel --> BiddingService : biddingService
+    BengkelBiddingViewModel --> BengkelRepository : bengkelRepository
+    BengkelBiddingViewModel --> MechanicRepository : mechanicRepository
+    BengkelBiddingViewModel --> NotificationService : notificationService
+    BengkelBiddingViewModel --> AuthService : authService
     BengkelBiddingViewModel --> NearbyOrder
     OrderViewModel --> Vehicle
     OrderViewModel --> LoadingPhase
@@ -979,7 +948,6 @@ classDiagram
         +String? successMessage
         +RosterMember[] pendingMembers
         +RosterMember[] acceptedMembers
-        -MechanicRepository mechanicRepository
         +fetchRoster()
         +invite() Bool
         +remove(member)
@@ -990,7 +958,6 @@ classDiagram
         +String? errorMessage
         +MechanicInvite[] pendingInvites
         +Bool hasPendingInvites
-        -MechanicRepository mechanicRepository
         +fetchInvites()
         +respond(invite, accept) Bool
     }
@@ -999,8 +966,6 @@ classDiagram
         +Bool isLoading
         +Bool isAssigning
         +String? errorMessage
-        -MechanicRepository mechanicRepository
-        -MechanicAssignmentRepository assignmentRepository
         +fetchAvailableMechanics(reqId)
         +assign(reqId, mechanicId) Bool
     }
@@ -1009,9 +974,6 @@ classDiagram
         +NearbyOrder? newAssignmentAlert
         +Bool isLoading
         +String? errorMessage
-        -MechanicAssignmentRepository assignmentRepository
-        -AuthService authService
-        -NotificationService notificationService
         -RealtimeChannelV2? channel
         -RealtimeChannelV2? broadcastChannel
         -Task[] realtimeReaderTasks
@@ -1035,8 +997,6 @@ classDiagram
         +NearbyOrder[] jobs
         +Bool isLoading
         +String? errorMessage
-        -MechanicAssignmentRepository assignmentRepository
-        -AuthService authService
         +fetchJobs()
     }
     class RosterMember {
@@ -1084,19 +1044,19 @@ classDiagram
         +String p_request_id
     }
 
-    BengkelRosterViewModel ..> MechanicRepository
+    BengkelRosterViewModel --> MechanicRepository : mechanicRepository
     BengkelRosterViewModel --> RosterMember
-    MechanicInviteViewModel ..> MechanicRepository
+    MechanicInviteViewModel --> MechanicRepository : mechanicRepository
     MechanicInviteViewModel --> MechanicInvite
-    AssignMechanicViewModel ..> MechanicRepository
-    AssignMechanicViewModel ..> MechanicAssignmentRepository
+    AssignMechanicViewModel --> MechanicRepository : mechanicRepository
+    AssignMechanicViewModel --> MechanicAssignmentRepository : assignmentRepository
     AssignMechanicViewModel --> AvailableMechanic
-    MechanicDashboardViewModel ..> MechanicAssignmentRepository
-    MechanicDashboardViewModel ..> AuthService
-    MechanicDashboardViewModel ..> NotificationService
+    MechanicDashboardViewModel --> MechanicAssignmentRepository : assignmentRepository
+    MechanicDashboardViewModel --> AuthService : authService
+    MechanicDashboardViewModel --> NotificationService : notificationService
     MechanicDashboardViewModel --> NearbyOrder
-    MechanicJobsViewModel ..> MechanicAssignmentRepository
-    MechanicJobsViewModel ..> AuthService
+    MechanicJobsViewModel --> MechanicAssignmentRepository : assignmentRepository
+    MechanicJobsViewModel --> AuthService : authService
     MechanicJobsViewModel --> NearbyOrder
     MechanicRepository ..> RosterMember
     MechanicRepository ..> MechanicInvite
@@ -1176,10 +1136,6 @@ classDiagram
         +Bool isSending
         +Bool isLocked
         +String? errorMessage
-        -ChatRepository chatRepository
-        -OrderRepository orderRepository
-        -StorageService storageService
-        -AuthService authService
         -RealtimeChannelV2? realtimeChannel
         -Task[] realtimeReaderTasks
         +init(serviceRequestId)
@@ -1199,9 +1155,6 @@ classDiagram
         -String counterpartName
         -ChatReadCursor cursor
         -String currentUserId
-        -ChatRepository chatRepository
-        -NotificationService notificationService
-        -AuthService authService
         -RealtimeChannelV2? channel
         -Task[] realtimeReaderTasks
         -Set~String~ notifiedIds
@@ -1246,15 +1199,15 @@ classDiagram
         +String? image_url
     }
 
-    ChatViewModel ..> ChatRepository
-    ChatViewModel ..> OrderRepository
-    ChatViewModel ..> StorageService
+    ChatViewModel --> ChatRepository : chatRepository
+    ChatViewModel --> OrderRepository : orderRepository
+    ChatViewModel --> StorageService : storageService
     ChatViewModel ..> ImageCompressor
-    ChatViewModel ..> AuthService
+    ChatViewModel --> AuthService : authService
     ChatViewModel --> ChatMessage
-    ChatWatchViewModel ..> ChatRepository
-    ChatWatchViewModel ..> NotificationService
-    ChatWatchViewModel ..> AuthService
+    ChatWatchViewModel --> ChatRepository : chatRepository
+    ChatWatchViewModel --> NotificationService : notificationService
+    ChatWatchViewModel --> AuthService : authService
     ChatWatchViewModel ..> ChatReadCursor
     ChatWatchViewModel ..> ChatPresence
     ChatRepository ..> ChatMessage
@@ -1338,9 +1291,6 @@ classDiagram
         +String? errorMessage
         +String status
         +Bool alreadyRated
-        -OrderLocationRepository locationRepository
-        -OrderRepository orderRepository
-        -NotificationService notificationService
         -Bool iInitiatedCancel
         -RealtimeChannelV2? channel
         -String? serviceRequestId
@@ -1358,9 +1308,6 @@ classDiagram
         +Bool isPublishing
         +String? errorMessage
         -CLLocationManager locationManager
-        -OrderLocationRepository repository
-        -AuthService authService
-        -OrderRepository orderRepository
         -String? serviceRequestId
         -CLLocationCoordinate2D? customerCoordinate
         -Date? lastPublishedAt
@@ -1382,8 +1329,6 @@ classDiagram
         +String? errorMessage
         +CLLocationCoordinate2D? currentCoordinate
         -CLLocationManager locationManager
-        -OrderLocationRepository repository
-        -AuthService authService
         -String? serviceRequestId
         -Date? lastPublishedAt
         -TimeInterval minInterval
@@ -1412,12 +1357,6 @@ classDiagram
         +String handlerLabel
         -Bool wasAssignee
         -CLLocationManager locationManager
-        -OrderRepository orderRepository
-        -BengkelRepository bengkelRepository
-        -StorageService storageService
-        -OrderLocationRepository locationRepository
-        -AuthService authService
-        -NotificationService notificationService
         -Bool iInitiatedCancel
         -String? serviceRequestId
         -CLLocationCoordinate2D? customerCoordinate
@@ -1483,20 +1422,20 @@ classDiagram
         +Double longitude
     }
 
-    OrderTrackingViewModel ..> OrderLocationRepository
-    OrderTrackingViewModel ..> OrderRepository
-    OrderTrackingViewModel ..> NotificationService
-    LocationPublishViewModel ..> OrderLocationRepository
-    LocationPublishViewModel ..> OrderRepository
-    LocationPublishViewModel ..> AuthService
-    CustomerLocationPublishViewModel ..> OrderLocationRepository
-    CustomerLocationPublishViewModel ..> AuthService
-    BengkelRouteViewModel ..> OrderRepository
-    BengkelRouteViewModel ..> BengkelRepository
-    BengkelRouteViewModel ..> OrderLocationRepository
-    BengkelRouteViewModel ..> StorageService
-    BengkelRouteViewModel ..> AuthService
-    BengkelRouteViewModel ..> NotificationService
+    OrderTrackingViewModel --> OrderLocationRepository : locationRepository
+    OrderTrackingViewModel --> OrderRepository : orderRepository
+    OrderTrackingViewModel --> NotificationService : notificationService
+    LocationPublishViewModel --> OrderLocationRepository : repository
+    LocationPublishViewModel --> OrderRepository : orderRepository
+    LocationPublishViewModel --> AuthService : authService
+    CustomerLocationPublishViewModel --> OrderLocationRepository : repository
+    CustomerLocationPublishViewModel --> AuthService : authService
+    BengkelRouteViewModel --> OrderRepository : orderRepository
+    BengkelRouteViewModel --> BengkelRepository : bengkelRepository
+    BengkelRouteViewModel --> OrderLocationRepository : locationRepository
+    BengkelRouteViewModel --> StorageService : storageService
+    BengkelRouteViewModel --> AuthService : authService
+    BengkelRouteViewModel --> NotificationService : notificationService
     BengkelRouteViewModel "1" *-- "1" RouteLocationStore : locationStore
     OrderLocationRepository ..> OrderLocation
     OrderLocationRepository ..> CustomerLocation
@@ -1596,10 +1535,6 @@ classDiagram
         +String status
         +Bool isFinished
         +Bool mySideCompleted
-        -AuthService authService
-        -OrderRepository orderRepository
-        -StorageService storageService
-        -NotificationService notificationService
         -RealtimeChannelV2? realtimeChannel
         -Task[] realtimeReaderTasks
         -Bool hasLoadedOnce
@@ -1615,7 +1550,6 @@ classDiagram
     class OrderRatingViewModel {
         +Bool isSubmitting
         +String? errorMessage
-        -OrderRepository orderRepository
         +submit(reqId, rating) Bool
     }
     class MarkCompletedParams {
@@ -1627,12 +1561,12 @@ classDiagram
         +Int p_rating
     }
 
-    OrderCompletionViewModel ..> OrderRepository
-    OrderCompletionViewModel ..> StorageService
-    OrderCompletionViewModel ..> AuthService
-    OrderCompletionViewModel ..> NotificationService
+    OrderCompletionViewModel --> OrderRepository : orderRepository
+    OrderCompletionViewModel --> StorageService : storageService
+    OrderCompletionViewModel --> AuthService : authService
+    OrderCompletionViewModel --> NotificationService : notificationService
     OrderCompletionViewModel --> NearbyOrder
-    OrderRatingViewModel ..> OrderRepository
+    OrderRatingViewModel --> OrderRepository : orderRepository
     OrderRepository ..> MarkCompletedParams
     OrderRepository ..> RateOrderParams
     OrderRepository ..> NearbyOrder
@@ -1704,11 +1638,6 @@ classDiagram
         +Int maxTopupAmount
         +Bool hasBankDetails
         +Double availableBalance
-        -AuthService authService
-        -UserRepository userRepository
-        -TopupRepository topupRepository
-        -WithdrawalRepository withdrawalRepository
-        -PaymentService paymentService
         -RealtimeChannelV2? realtimeChannel
         -Task[] realtimeReaderTasks
         -Set~String~ knownSuccessTopupIds
@@ -1780,11 +1709,11 @@ classDiagram
         +URL url
     }
 
-    PaymentViewModel ..> PaymentService
-    PaymentViewModel ..> TopupRepository
-    PaymentViewModel ..> WithdrawalRepository
-    PaymentViewModel ..> UserRepository
-    PaymentViewModel ..> AuthService
+    PaymentViewModel --> PaymentService : paymentService
+    PaymentViewModel --> TopupRepository : topupRepository
+    PaymentViewModel --> WithdrawalRepository : withdrawalRepository
+    PaymentViewModel --> UserRepository : userRepository
+    PaymentViewModel --> AuthService : authService
     PaymentViewModel --> Topup
     PaymentViewModel --> Withdrawal
     PaymentViewModel --> PaymentTarget
@@ -1890,10 +1819,6 @@ classDiagram
         +Bid? trackingBid
         +CLLocationCoordinate2D? trackingCoordinate
         +Set~String~ reportedOrderIds
-        -AuthService authService
-        -OrderRepository orderRepository
-        -BidRepository bidRepository
-        -BehaviorReportRepository behaviorReportRepository
         +loadOrders()
         +select(order)
         +markReported(orderId)
@@ -1907,10 +1832,6 @@ classDiagram
         +String? errorMessage
         +NearbyOrder? detailOrder
         +Set~String~ reportedOrderIds
-        -BengkelRepository bengkelRepository
-        -OrderRepository orderRepository
-        -BehaviorReportRepository behaviorReportRepository
-        -AuthService authService
         -RealtimeChannelV2? channel
         -String? bengkelId
         -Task[] realtimeReaderTasks
@@ -1929,9 +1850,6 @@ classDiagram
         +String? errorMessage
         +NearbyOrder? detailOrder
         +Set~String~ reportedOrderIds
-        -OrderRepository orderRepository
-        -BehaviorReportRepository behaviorReportRepository
-        -AuthService authService
         -String? mechanicId
         -NSObjectProtocol? ordersChangedObserver
         -NSObjectProtocol? reassignObserver
@@ -1951,19 +1869,19 @@ classDiagram
         +updateStatus(bidId, status)
     }
 
-    HistoryViewModel ..> OrderRepository
-    HistoryViewModel ..> BidRepository
-    HistoryViewModel ..> BehaviorReportRepository
-    HistoryViewModel ..> AuthService
+    HistoryViewModel --> OrderRepository : orderRepository
+    HistoryViewModel --> BidRepository : bidRepository
+    HistoryViewModel --> BehaviorReportRepository : behaviorReportRepository
+    HistoryViewModel --> AuthService : authService
     HistoryViewModel --> NearbyOrder
-    BengkelHistoryViewModel ..> OrderRepository
-    BengkelHistoryViewModel ..> BengkelRepository
-    BengkelHistoryViewModel ..> BehaviorReportRepository
-    BengkelHistoryViewModel ..> AuthService
+    BengkelHistoryViewModel --> OrderRepository : orderRepository
+    BengkelHistoryViewModel --> BengkelRepository : bengkelRepository
+    BengkelHistoryViewModel --> BehaviorReportRepository : behaviorReportRepository
+    BengkelHistoryViewModel --> AuthService : authService
     BengkelHistoryViewModel --> NearbyOrder
-    MechanicHistoryViewModel ..> OrderRepository
-    MechanicHistoryViewModel ..> BehaviorReportRepository
-    MechanicHistoryViewModel ..> AuthService
+    MechanicHistoryViewModel --> OrderRepository : orderRepository
+    MechanicHistoryViewModel --> BehaviorReportRepository : behaviorReportRepository
+    MechanicHistoryViewModel --> AuthService : authService
     MechanicHistoryViewModel --> NearbyOrder
     OrderRepository ..> NearbyOrder
 
@@ -2020,8 +1938,6 @@ classDiagram
     class BehaviorReportViewModel {
         +Bool isSubmitting
         +String? errorMessage
-        -BehaviorReportRepository repository
-        -AuthService authService
         +submit(reqId, reason) Bool
     }
     class BehaviorReportPayload {
@@ -2038,8 +1954,8 @@ classDiagram
         +String service_request_id
     }
 
-    BehaviorReportViewModel ..> BehaviorReportRepository
-    BehaviorReportViewModel ..> AuthService
+    BehaviorReportViewModel --> BehaviorReportRepository : repository
+    BehaviorReportViewModel --> AuthService : authService
     BehaviorReportRepository ..> BehaviorReportPayload
     BehaviorReportRepository ..> ReportedRequestRow
     OrderRepository ..> OpenDisputeParams
