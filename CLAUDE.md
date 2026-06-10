@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **BengkelIn** is a roadside-assistance marketplace: vehicle owners broadcast an emergency service request, nearby workshops ("bengkel") **bid** on it, the customer accepts a bid, the bengkel dispatches a **mechanic** (or handles it "Self"), and the two sides chat + live-track until the job is completed with a proof photo and paid out of an in-app wallet. Money moves through a **server-side escrow** the client cannot bypass.
 
-This is a **single git repo containing three deployables that share one Supabase project** (`ipxwpxozreksmuiztwcy`):
+This is a **single git repo containing three deployables that share one Supabase project** (`tednrjmhtusdglsembzu`):
 
 | Path | What | Stack | Has its own guidance |
 |------|------|-------|----------------------|
@@ -49,7 +49,7 @@ pnpm start    # serve prod        pnpm lint   # eslint
 ```
 
 ### Supabase backend (`supabase/`)
-Schema changes are SQL migrations in `supabase/migrations/` (timestamp-prefixed, applied in order). **To read/understand the backend, prefer `supabase/schema/`** — clean, feature-grouped source-of-truth SQL introspected from the live DB (`schema.sql` tables/RLS, plus `account/bidding/orders/mechanics/payment/admin.sql`); it replaces the migration trail for comprehension but is **not** tracked by the migration CLI. Edge functions are in `supabase/functions/{bidding,payment,midtrans-webhook}/index.ts`. Apply migrations / deploy functions via the **Supabase MCP tools** (or the `supabase` CLI against project `ipxwpxozreksmuiztwcy`). `config.toml` carries only `project_id`.
+`supabase/migrations/` holds exactly **8 baseline migrations** (`20260610*`): the first 7 are verbatim copies of `supabase/schema/`, the 8th adds what introspection can't capture (storage buckets+policies, realtime publication + `REPLICA IDENTITY FULL`, function grants). Together they rebuild the entire backend on an empty project with one `supabase db push`. The older 2026-06-02/03 migration trail was retired (recoverable via git history) — never resurrect it; it assumed a pre-existing base schema and cannot run on a fresh project. **To read/understand the backend, prefer `supabase/schema/`** — clean, feature-grouped source-of-truth SQL introspected from the live DB (`schema.sql` tables/RLS, plus `account/bidding/orders/mechanics/payment/admin.sql`); it is **not** tracked by the migration CLI, so schema changes need a new timestamp-prefixed migration **and** a matching edit to the `schema/` (and baseline) copy. Edge functions are in `supabase/functions/{bidding,payment,midtrans-webhook}/index.ts` (`midtrans-webhook` must be deployed with `--no-verify-jwt`). Apply migrations / deploy functions via the **Supabase MCP tools** (or the `supabase` CLI against project `tednrjmhtusdglsembzu`). `config.toml` carries only `project_id`. Two settings live outside the repo and must be re-done on any new project: dashboard Auth → "Confirm email" is intentionally OFF (the iOS signup flow has no confirmation UX, and Supabase's built-in mailer is rate-limited to ~2/hour), and secrets (`MIDTRANS_SERVER_KEY`) are set per-project via `supabase secrets set`.
 
 ---
 
@@ -113,7 +113,7 @@ Supporting RPCs: `accept_bid` (frees this order's own hold before the affordabil
 
 ## Backend surface (shared Supabase project)
 
-**Tables**: `users`, `vehicles`, `bengkels` (JSONB `offered_services`), `service_requests` (the "order"), `bids`, `chat_messages`, `order_locations`, `customer_locations`, `topups`, `withdrawals`, `behavior_reports`. RPC-backed (no direct iOS `.from`): `mechanic_registrations` (the bengkel↔mechanic roster) and `order_disputes`. Server-side only: `platform_revenue` (fee ledger written by the escrow engine on completion; read by the admin revenue RPCs — never touched by iOS). **Vouchers were removed** (migration `..._drop_voucher_tables.sql`) — ignore any older mention of `vouchers`/`user_vouchers`/`mechanic_invitations`/`mechanic_resignations`.
+**Tables**: `users`, `vehicles`, `bengkels` (JSONB `offered_services`), `service_requests` (the "order"), `bids`, `chat_messages`, `order_locations`, `customer_locations`, `topups`, `withdrawals`, `behavior_reports`. RPC-backed (no direct iOS `.from`): `mechanic_registrations` (the bengkel↔mechanic roster) and `order_disputes`. Server-side only: `platform_revenue` (fee ledger written by the escrow engine on completion; read by the admin revenue RPCs — never touched by iOS). **Vouchers were removed** (in the retired 2026-06 migration trail, before the baseline) — ignore any older mention of `vouchers`/`user_vouchers`/`mechanic_invitations`/`mechanic_resignations`.
 
 **Storage buckets**: `avatars` (`{uid}/profile.jpg`), `order-photos`, `chat-images`.
 

@@ -151,7 +151,9 @@ class PaymentViewModel: ObservableObject {
             // returning to this tab after an order) is not a user-facing error.
             if error is CancellationError { return }
             if (error as? URLError)?.code == .cancelled { return }
-            self.errorMessage = error.localizedDescription
+            if !(error is CancellationError) {
+                self.errorMessage = error.localizedDescription
+            }
         }
     }
 
@@ -192,7 +194,9 @@ class PaymentViewModel: ObservableObject {
                 self.errorMessage = "URL pembayaran tidak valid."
             }
         } catch {
-            self.errorMessage = error.localizedDescription
+            if !(error is CancellationError) {
+                self.errorMessage = error.localizedDescription
+            }
         }
         isLoading = false
     }
@@ -214,7 +218,9 @@ class PaymentViewModel: ObservableObject {
             successMessage = "Rekening bank tersimpan."
             return true
         } catch {
-            self.errorMessage = error.localizedDescription
+            if !(error is CancellationError) {
+                self.errorMessage = error.localizedDescription
+            }
             isLoading = false
             return false
         }
@@ -247,7 +253,9 @@ class PaymentViewModel: ObservableObject {
             successMessage = "Permintaan penarikan dikirim. Menunggu persetujuan."
             return true
         } catch {
-            self.errorMessage = error.localizedDescription
+            if !(error is CancellationError) {
+                self.errorMessage = error.localizedDescription
+            }
             isLoading = false
             return false
         }

@@ -41,7 +41,9 @@ class HistoryViewModel: ObservableObject {
                 self.reportedOrderIds = Set(reported)
             }
         } catch {
-            self.errorMessage = error.localizedDescription
+            if !(error is CancellationError) {
+                self.errorMessage = error.localizedDescription
+            }
         }
         isLoading = false
     }
@@ -72,7 +74,9 @@ class HistoryViewModel: ObservableObject {
                 self.detailOrder = order
             }
         } catch {
-            self.errorMessage = error.localizedDescription
+            if !(error is CancellationError) {
+                self.errorMessage = error.localizedDescription
+            }
         }
     }
 

@@ -122,7 +122,9 @@ class OrderTrackingViewModel: ObservableObject, Sendable {
         } catch {
             iInitiatedCancel = false
             // Was returned silently before — the cancel sheet just sat there doing nothing.
-            errorMessage = error.localizedDescription
+            if !(error is CancellationError) {
+                errorMessage = error.localizedDescription
+            }
             return false
         }
     }

@@ -30,7 +30,9 @@ class MechanicRosterViewModel: ObservableObject {
         do {
             roster = try await mechanicRepository.fetchRoster()
         } catch {
-            errorMessage = error.localizedDescription
+            if !(error is CancellationError) {
+                errorMessage = error.localizedDescription
+            }
         }
         isLoading = false
     }
@@ -53,7 +55,9 @@ class MechanicRosterViewModel: ObservableObject {
             isInviting = false
             return true
         } catch {
-            errorMessage = error.localizedDescription
+            if !(error is CancellationError) {
+                errorMessage = error.localizedDescription
+            }
             isInviting = false
             return false
         }
@@ -65,7 +69,9 @@ class MechanicRosterViewModel: ObservableObject {
             try await mechanicRepository.removeMechanic(registrationId: member.registrationId)
             await fetchRoster()
         } catch {
-            errorMessage = error.localizedDescription
+            if !(error is CancellationError) {
+                errorMessage = error.localizedDescription
+            }
         }
     }
 }

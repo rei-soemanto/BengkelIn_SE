@@ -53,7 +53,9 @@ class ChatViewModel: ObservableObject {
         do {
             self.messages = try await chatRepository.fetchMessages(serviceRequestId: serviceRequestId)
         } catch {
-            self.errorMessage = error.localizedDescription
+            if !(error is CancellationError) {
+                self.errorMessage = error.localizedDescription
+            }
         }
     }
 
@@ -123,7 +125,9 @@ class ChatViewModel: ObservableObject {
             let url = try await storageService.uploadChatImage(serviceRequestId: serviceRequestId, data: compressed)
             await send(content: nil, imageUrl: url)
         } catch {
-            self.errorMessage = error.localizedDescription
+            if !(error is CancellationError) {
+                self.errorMessage = error.localizedDescription
+            }
         }
         isSending = false
     }
@@ -144,7 +148,9 @@ class ChatViewModel: ObservableObject {
             isSending = false
             return true
         } catch {
-            self.errorMessage = error.localizedDescription
+            if !(error is CancellationError) {
+                self.errorMessage = error.localizedDescription
+            }
             isSending = false
             return false
         }

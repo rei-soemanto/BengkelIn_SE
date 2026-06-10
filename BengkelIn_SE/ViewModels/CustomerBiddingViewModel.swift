@@ -174,8 +174,12 @@ final class CustomerBiddingViewModel: ObservableObject {
             await loadReceivedBids()
             startSearchCountdown()
         } catch {
-            self.errorMessage = error.localizedDescription
-            loadingPhase = .failed(title: "Gagal memulai pencarian", message: error.localizedDescription)
+            if !(error is CancellationError) {
+                self.errorMessage = error.localizedDescription
+            }
+            if !(error is CancellationError) {
+                loadingPhase = .failed(title: "Gagal memulai pencarian", message: error.localizedDescription)
+            }
         }
         isStartingSearch = false
     }
@@ -268,7 +272,9 @@ final class CustomerBiddingViewModel: ObservableObject {
         do {
             try await orderRepository.cancelOrder(id: id)
         } catch {
-            errorMessage = error.localizedDescription
+            if !(error is CancellationError) {
+                errorMessage = error.localizedDescription
+            }
             return
         }
         stopSearchingState()
@@ -357,7 +363,9 @@ final class CustomerBiddingViewModel: ObservableObject {
                 stopSearchingState()
             }
         } catch {
-            self.errorMessage = error.localizedDescription
+            if !(error is CancellationError) {
+                self.errorMessage = error.localizedDescription
+            }
         }
     }
 
@@ -380,7 +388,9 @@ final class CustomerBiddingViewModel: ObservableObject {
             }
             stopSearchingState()
         } catch {
-            self.errorMessage = error.localizedDescription
+            if !(error is CancellationError) {
+                self.errorMessage = error.localizedDescription
+            }
         }
         isLoading = false
     }
@@ -392,7 +402,9 @@ final class CustomerBiddingViewModel: ObservableObject {
             try await bidRepository.updateStatus(bidId: bid.id, status: "Rejected")
             await loadReceivedBids()
         } catch {
-            self.errorMessage = error.localizedDescription
+            if !(error is CancellationError) {
+                self.errorMessage = error.localizedDescription
+            }
         }
         isLoading = false
     }
@@ -405,7 +417,9 @@ final class CustomerBiddingViewModel: ObservableObject {
             try await bidRepository.updateStatus(bidId: bid.id, status: "Expired")
             await loadReceivedBids()
         } catch {
-            self.errorMessage = error.localizedDescription
+            if !(error is CancellationError) {
+                self.errorMessage = error.localizedDescription
+            }
         }
     }
 

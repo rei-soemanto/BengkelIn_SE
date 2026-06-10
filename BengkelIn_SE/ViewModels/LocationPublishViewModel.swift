@@ -157,7 +157,9 @@ class LocationPublishViewModel: NSObject, ObservableObject, CLLocationManagerDel
                 longitude: coordinate.longitude
             ))
         } catch {
-            self.errorMessage = error.localizedDescription
+            if !(error is CancellationError) {
+                self.errorMessage = error.localizedDescription
+            }
         }
     }
 }

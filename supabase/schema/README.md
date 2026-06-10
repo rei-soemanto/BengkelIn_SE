@@ -1,6 +1,6 @@
 # supabase/schema — clean source-of-truth SQL
 
-Generated from the LIVE database (project ipxwpxozreksmuiztwcy) via introspection.
+Generated from the LIVE database (project tednrjmhtusdglsembzu) via introspection.
 This is a clean, comment-free, feature-grouped view of the backend. It REPLACES the
 role of supabase/migrations/ for reading/understanding and for rebuilding from scratch.
 It is NOT tracked by the Supabase migration CLI.

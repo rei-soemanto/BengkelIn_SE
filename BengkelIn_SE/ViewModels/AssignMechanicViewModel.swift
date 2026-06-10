@@ -27,7 +27,9 @@ class AssignMechanicViewModel: ObservableObject {
         do {
             availableMechanics = try await mechanicRepository.fetchAvailableMechanics(requestId: requestId)
         } catch {
-            errorMessage = error.localizedDescription
+            if !(error is CancellationError) {
+                errorMessage = error.localizedDescription
+            }
         }
         isLoading = false
     }
@@ -42,7 +44,9 @@ class AssignMechanicViewModel: ObservableObject {
             isAssigning = false
             return true
         } catch {
-            errorMessage = error.localizedDescription
+            if !(error is CancellationError) {
+                errorMessage = error.localizedDescription
+            }
             isAssigning = false
             return false
         }

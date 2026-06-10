@@ -339,7 +339,9 @@ class OrderViewModel: NSObject, ObservableObject, CLLocationManagerDelegate, Loc
                 self.loadingPhase = .idle
                 self.navigateToBidding = true
             } catch {
-                self.errorMessage = error.localizedDescription
+                if !(error is CancellationError) {
+                    self.errorMessage = error.localizedDescription
+                }
                 self.loadingPhase = .failed(
                     title: "Gagal mengunggah foto",
                     message: "Periksa koneksi internet kamu dan coba lagi."

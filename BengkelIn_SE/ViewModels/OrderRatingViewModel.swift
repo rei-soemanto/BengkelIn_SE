@@ -28,7 +28,9 @@ class OrderRatingViewModel: ObservableObject {
             isSubmitting = false
             return true
         } catch {
-            errorMessage = error.localizedDescription
+            if !(error is CancellationError) {
+                errorMessage = error.localizedDescription
+            }
             isSubmitting = false
             return false
         }

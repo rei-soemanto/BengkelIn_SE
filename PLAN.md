@@ -9,7 +9,7 @@ _Authoritative plan. Supersedes the ALP-root `split-decision.md` /
    MbengkelIn implementation into BengkelIn.** Split follows MbengkelIn git authorship
    so everyone ports code they wrote.
 2. **Combine the two backends:** bring MbengkelIn's Supabase schema + logic into
-   BengkelIn's project (`ipxwpxozreksmuiztwcy`), reconciled to BengkelIn's conventions.
+   BengkelIn's project (`tednrjmhtusdglsembzu`), reconciled to BengkelIn's conventions.
 3. **Mechanics LAST** — added only after parity. This is the one true differentiator
    (a bengkel assigns a mechanic / "Self" to an accepted job; chat, tracking, and
    completion re-thread onto that mechanic). Everything before it is parity.

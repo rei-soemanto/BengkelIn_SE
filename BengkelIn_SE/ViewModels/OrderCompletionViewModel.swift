@@ -58,7 +58,9 @@ class OrderCompletionViewModel: ObservableObject {
             notifyOnCounterpartCompletion(previous: order, updated: updated)
             self.order = updated
         } catch {
-            self.errorMessage = error.localizedDescription
+            if !(error is CancellationError) {
+                self.errorMessage = error.localizedDescription
+            }
         }
     }
 
@@ -123,7 +125,9 @@ class OrderCompletionViewModel: ObservableObject {
             }
             self.order = try await orderRepository.markOrderCompleted(requestId: requestId, completionPhotoUrl: photoUrl)
         } catch {
-            self.errorMessage = error.localizedDescription
+            if !(error is CancellationError) {
+                self.errorMessage = error.localizedDescription
+            }
         }
         isLoading = false
     }

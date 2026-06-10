@@ -76,7 +76,9 @@ class AuthViewModel: ObservableObject {
             self.userSession = session.user
             await fetchUser()
         } catch {
-            self.errorMessage = error.localizedDescription
+            if !(error is CancellationError) {
+                self.errorMessage = error.localizedDescription
+            }
         }
         isLoading = false
     }
@@ -99,7 +101,9 @@ class AuthViewModel: ObservableObject {
             self.successMessage = "Pendaftaran berhasil! Silakan periksa email Anda untuk mengaktifkan akun."
             
         } catch {
-            self.errorMessage = error.localizedDescription
+            if !(error is CancellationError) {
+                self.errorMessage = error.localizedDescription
+            }
         }
         isLoading = false
     }
@@ -125,7 +129,9 @@ class AuthViewModel: ObservableObject {
                 self.userSession = nil
                 self.currentUser = nil
             } else {
-                self.errorMessage = error.localizedDescription
+                if !(error is CancellationError) {
+                    self.errorMessage = error.localizedDescription
+                }
             }
         }
     }
@@ -136,7 +142,9 @@ class AuthViewModel: ObservableObject {
             try await authService.resetPassword(email: email)
             self.successMessage = "Email reset kata sandi terkirim. Silakan periksa kotak masuk Anda."
         } catch {
-            self.errorMessage = error.localizedDescription
+            if !(error is CancellationError) {
+                self.errorMessage = error.localizedDescription
+            }
         }
     }
     
@@ -155,7 +163,9 @@ class AuthViewModel: ObservableObject {
             self.currentUser = nil
             
         } catch {
-            self.errorMessage = error.localizedDescription
+            if !(error is CancellationError) {
+                self.errorMessage = error.localizedDescription
+            }
         }
         isLoading = false
     }
@@ -167,7 +177,9 @@ class AuthViewModel: ObservableObject {
                 self.userSession = nil
                 self.currentUser = nil
             } catch {
-                self.errorMessage = error.localizedDescription
+                if !(error is CancellationError) {
+                    self.errorMessage = error.localizedDescription
+                }
             }
         }
     }

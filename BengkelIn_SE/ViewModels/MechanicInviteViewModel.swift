@@ -28,7 +28,9 @@ class MechanicInviteViewModel: ObservableObject {
         do {
             invites = try await mechanicRepository.fetchMyInvites()
         } catch {
-            errorMessage = error.localizedDescription
+            if !(error is CancellationError) {
+                errorMessage = error.localizedDescription
+            }
         }
         isLoading = false
     }
@@ -42,7 +44,9 @@ class MechanicInviteViewModel: ObservableObject {
             await fetchInvites()
             return accept
         } catch {
-            errorMessage = error.localizedDescription
+            if !(error is CancellationError) {
+                errorMessage = error.localizedDescription
+            }
             return false
         }
     }

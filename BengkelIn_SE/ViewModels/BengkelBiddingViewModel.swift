@@ -81,7 +81,9 @@ class BengkelBiddingViewModel: ObservableObject {
         do {
             self.myBengkel = try await bengkelRepository.fetchBengkel(providerUid: uid)
         } catch {
-            self.errorMessage = error.localizedDescription
+            if !(error is CancellationError) {
+                self.errorMessage = error.localizedDescription
+            }
             isLoading = false
             hasStarted = false
             providerUid = nil
@@ -285,7 +287,9 @@ class BengkelBiddingViewModel: ObservableObject {
             print("[BengkelRT] loadOrders -> \(filteredOrders.count) nearby order(s), didInitialLoad=\(didInitialLoad)")
         } catch {
             print("[BengkelRT] loadOrders error: \(error.localizedDescription)")
-            self.errorMessage = error.localizedDescription
+            if !(error is CancellationError) {
+                self.errorMessage = error.localizedDescription
+            }
         }
     }
 
@@ -331,7 +335,9 @@ class BengkelBiddingViewModel: ObservableObject {
             // this order to the route screen only when the customer accepts (bid -> accepted).
             await loadOrders()
         } catch {
-            self.errorMessage = error.localizedDescription
+            if !(error is CancellationError) {
+                self.errorMessage = error.localizedDescription
+            }
         }
         isLoading = false
     }
@@ -353,7 +359,9 @@ class BengkelBiddingViewModel: ObservableObject {
             try await bidRepository.updateStatus(bidId: bid.id, status: "Expired")
             await loadOrders()
         } catch {
-            self.errorMessage = error.localizedDescription
+            if !(error is CancellationError) {
+                self.errorMessage = error.localizedDescription
+            }
         }
     }
 
@@ -362,7 +370,9 @@ class BengkelBiddingViewModel: ObservableObject {
             try await bidRepository.updateStatus(bidId: bid.id, status: "Rejected")
             await loadOrders()
         } catch {
-            self.errorMessage = error.localizedDescription
+            if !(error is CancellationError) {
+                self.errorMessage = error.localizedDescription
+            }
         }
     }
 }

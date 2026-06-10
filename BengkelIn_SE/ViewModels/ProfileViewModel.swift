@@ -42,7 +42,9 @@ class ProfileViewModel: ObservableObject {
             return true
             
         } catch {
-            self.errorMessage = error.localizedDescription
+            if !(error is CancellationError) {
+                self.errorMessage = error.localizedDescription
+            }
             isLoading = false
             return false
         }
@@ -71,7 +73,9 @@ class ProfileViewModel: ObservableObject {
             return true
             
         } catch {
-            self.errorMessage = "Gagal mengunggah gambar: \(error.localizedDescription)"
+            if !(error is CancellationError) {
+                self.errorMessage = "Gagal mengunggah gambar: \(error.localizedDescription)"
+            }
             isLoading = false
             return false
         }

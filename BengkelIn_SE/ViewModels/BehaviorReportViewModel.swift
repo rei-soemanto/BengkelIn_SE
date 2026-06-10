@@ -34,7 +34,9 @@ class BehaviorReportViewModel: ObservableObject {
             if (error as? PostgrestError)?.code == "23505" {
                 errorMessage = "Anda sudah melaporkan pesanan ini."
             } else {
-                errorMessage = error.localizedDescription
+                if !(error is CancellationError) {
+                    errorMessage = error.localizedDescription
+                }
             }
             return false
         }

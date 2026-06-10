@@ -3,4 +3,4 @@
 # / `supabase db push` and the in-repo migrations have a home. Run
 # `supabase init` locally to regenerate the full default config if you need the
 # local stack — only `project_id` is required to link the remote project.
-project_id = "ipxwpxozreksmuiztwcy"
+project_id = "tednrjmhtusdglsembzu"

@@ -91,7 +91,9 @@ class CustomerLocationPublishViewModel: NSObject, ObservableObject, CLLocationMa
                 longitude: coordinate.longitude
             ))
         } catch {
-            self.errorMessage = error.localizedDescription
+            if !(error is CancellationError) {
+                self.errorMessage = error.localizedDescription
+            }
         }
     }
 }

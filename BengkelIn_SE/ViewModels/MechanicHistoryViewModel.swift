@@ -64,7 +64,9 @@ class MechanicHistoryViewModel: ObservableObject {
                 self.reportedOrderIds = Set(reported)
             }
         } catch {
-            self.errorMessage = error.localizedDescription
+            if !(error is CancellationError) {
+                self.errorMessage = error.localizedDescription
+            }
         }
         isLoading = false
     }

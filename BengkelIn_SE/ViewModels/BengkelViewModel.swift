@@ -187,7 +187,9 @@ class BengkelViewModel: NSObject, ObservableObject, CLLocationManagerDelegate, L
             isLoading = false
             return true
         } catch {
-            self.errorMessage = error.localizedDescription
+            if !(error is CancellationError) {
+                self.errorMessage = error.localizedDescription
+            }
             isLoading = false
             return false
         }
@@ -318,7 +320,9 @@ class BengkelViewModel: NSObject, ObservableObject, CLLocationManagerDelegate, L
             let fetchedBengkel = try await bengkelRepository.fetchBengkel(providerUid: uid)
             self.myBengkel = fetchedBengkel
         } catch {
-            self.errorMessage = "Gagal memuat Bengkel: \(error.localizedDescription)"
+            if !(error is CancellationError) {
+                self.errorMessage = "Gagal memuat Bengkel: \(error.localizedDescription)"
+            }
         }
         isLoading = false
     }
@@ -339,7 +343,9 @@ class BengkelViewModel: NSObject, ObservableObject, CLLocationManagerDelegate, L
             isLoading = false
             return true
         } catch {
-            self.errorMessage = error.localizedDescription
+            if !(error is CancellationError) {
+                self.errorMessage = error.localizedDescription
+            }
             isLoading = false
             return false
         }
@@ -357,7 +363,9 @@ class BengkelViewModel: NSObject, ObservableObject, CLLocationManagerDelegate, L
             isLoading = false
             return true
         } catch {
-            self.errorMessage = error.localizedDescription
+            if !(error is CancellationError) {
+                self.errorMessage = error.localizedDescription
+            }
             isLoading = false
             return false
         }
@@ -389,7 +397,9 @@ class BengkelViewModel: NSObject, ObservableObject, CLLocationManagerDelegate, L
             isLoading = false
             return true
         } catch {
-            self.errorMessage = error.localizedDescription
+            if !(error is CancellationError) {
+                self.errorMessage = error.localizedDescription
+            }
             isLoading = false
             return false
         }
@@ -415,7 +425,9 @@ class BengkelViewModel: NSObject, ObservableObject, CLLocationManagerDelegate, L
             isLoading = false
             return true
         } catch {
-            self.errorMessage = error.localizedDescription
+            if !(error is CancellationError) {
+                self.errorMessage = error.localizedDescription
+            }
             isLoading = false
             return false
         }
@@ -438,7 +450,9 @@ class BengkelViewModel: NSObject, ObservableObject, CLLocationManagerDelegate, L
             isLoading = false
             return true
         } catch {
-            self.errorMessage = error.localizedDescription
+            if !(error is CancellationError) {
+                self.errorMessage = error.localizedDescription
+            }
             isLoading = false
             return false
         }

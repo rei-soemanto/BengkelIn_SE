@@ -31,7 +31,9 @@ class MechanicJobsViewModel: ObservableObject {
             }
             jobs = try await assignmentRepository.fetchAssignedJobs(mechanicId: uid)
         } catch {
-            errorMessage = error.localizedDescription
+            if !(error is CancellationError) {
+                errorMessage = error.localizedDescription
+            }
         }
         isLoading = false
     }

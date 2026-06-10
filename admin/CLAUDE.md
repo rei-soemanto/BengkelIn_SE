@@ -9,7 +9,7 @@ This file guides Claude Code when working inside the `admin/` directory. These r
 **BengkelIn Admin** is the web admin dashboard for the BengkelIn platform. It manages the same data as the SwiftUI iOS app (see the repo-root [`../CLAUDE.md`](../CLAUDE.md) for the iOS app and the full Supabase schema). It talks to the **same Supabase project** the iOS app uses:
 
 ```
-Supabase URL: https://ipxwpxozreksmuiztwcy.supabase.co
+Supabase URL: https://tednrjmhtusdglsembzu.supabase.co
 ```
 
 ### Stack
@@ -121,7 +121,7 @@ Connects to the **same Supabase project** as the iOS app. The DB schema (tables 
 Credentials go in `.env.local` (never hard-code them, never commit them):
 
 ```
-NEXT_PUBLIC_SUPABASE_URL=https://ipxwpxozreksmuiztwcy.supabase.co
+NEXT_PUBLIC_SUPABASE_URL=https://tednrjmhtusdglsembzu.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=<anon/publishable key>
 ```
 

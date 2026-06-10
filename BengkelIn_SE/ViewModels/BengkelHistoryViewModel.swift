@@ -52,7 +52,9 @@ class BengkelHistoryViewModel: ObservableObject, Sendable {
             }
             startRealtimeIfNeeded()
         } catch {
-            self.errorMessage = error.localizedDescription
+            if !(error is CancellationError) {
+                self.errorMessage = error.localizedDescription
+            }
         }
         isLoading = false
     }

@@ -127,7 +127,9 @@ class MechanicDashboardViewModel: ObservableObject {
                 NotificationCenter.default.post(name: .mechanicOrdersChanged, object: nil)
             }
         } catch {
-            errorMessage = error.localizedDescription
+            if !(error is CancellationError) {
+                errorMessage = error.localizedDescription
+            }
         }
     }
 

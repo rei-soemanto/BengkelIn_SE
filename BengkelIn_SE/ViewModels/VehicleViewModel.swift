@@ -59,7 +59,9 @@ class VehicleViewModel: ObservableObject {
             isLoading = false
             return true
         } catch {
-            self.errorMessage = error.localizedDescription
+            if !(error is CancellationError) {
+                self.errorMessage = error.localizedDescription
+            }
             isLoading = false
             return false
         }
@@ -85,7 +87,9 @@ class VehicleViewModel: ObservableObject {
             isLoading = false
             return true
         } catch {
-            self.errorMessage = error.localizedDescription
+            if !(error is CancellationError) {
+                self.errorMessage = error.localizedDescription
+            }
             isLoading = false
             return false
         }
@@ -99,7 +103,9 @@ class VehicleViewModel: ObservableObject {
             await fetchVehicles()
             return true
         } catch {
-            self.errorMessage = error.localizedDescription
+            if !(error is CancellationError) {
+                self.errorMessage = error.localizedDescription
+            }
             return false
         }
     }
