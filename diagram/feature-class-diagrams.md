@@ -67,7 +67,7 @@ Setiap fitur (§1–§11) dipresentasikan oleh **pembuat asli** ViewModel-nya �
 | 2 | Vehicles | **Rei Soemanto** | `VehicleViewModel` |
 | 3 | Bengkel & Location | **Rei Soemanto** | `BengkelViewModel`; dashboard/port oleh **Jason (DkXenos)** |
 | 4 | Order Creation & Bidding | **Bryan** (`OrderViewModel`) + **Eugene** (`CustomerBiddingViewModel`, `BengkelBiddingViewModel`) | inti marketplace |
-| 5 | Mechanics & Roster | **Jason (DkXenos)** | pembuat `MechanicViewModel`/dashboard mekanik awal; `AssignMechanicViewModel` oleh **Eugene** |
+| 5 | Mechanics & Roster | **Jason (DkXenos)** | pembuat dashboard mekanik awal (kini `MechanicDashboardViewModel`); `AssignMechanicViewModel` oleh **Eugene** |
 | 6 | Chat | **Eugene** | `ChatViewModel`, `ChatWatchViewModel` |
 | 7 | Live Tracking | **Eugene** | `OrderTrackingViewModel`, `BengkelRouteViewModel` (refinement oleh Bryan) |
 | 8 | Completion & Rating | **Bryan** | `OrderCompletionViewModel`, `OrderRatingViewModel` (dibuat **Eugene**) |
@@ -124,6 +124,7 @@ classDiagram
     class AuthServiceError {
         <<enumeration>>
         emailAlreadyRegistered
+        +String? errorDescription
     }
     class UserRepository {
         +fetchUser(uid) User
@@ -243,7 +244,7 @@ classDiagram
         +signUp(request)
         +signOut()
         +resetPassword(email)
-        +updatePhoneNumber(phone)
+        +updatePhoneNumber(phoneNumber)
     }
     class VehicleRepository {
         +fetchVehicles(customerId) Vehicle[]
@@ -256,8 +257,6 @@ classDiagram
         +Bool isLoading
         +String? errorMessage
         +String? successMessage
-        -AuthService authService
-        -VehicleRepository vehicleRepository
         +fetchVehicles()
         +addVehicle(manufacturer, model, year, licensePlate, color) Bool
         +updateVehicle(vehicleId, manufacturer, model, year, licensePlate, color) Bool
@@ -281,8 +280,8 @@ classDiagram
         +String color
     }
 
-    VehicleViewModel ..> AuthService : reads session
-    VehicleViewModel ..> VehicleRepository : reads/updates
+    VehicleViewModel "1" --> "1" AuthService : reads session
+    VehicleViewModel "1" --> "1" VehicleRepository : reads/updates
     VehicleViewModel "1" --> "*" Vehicle : manages
     VehicleRepository ..> Vehicle : returns
     VehicleRepository ..> VehicleUpdatePayload : sends
@@ -315,7 +314,7 @@ classDiagram
         +signUp(request)
         +signOut()
         +resetPassword(email)
-        +updatePhoneNumber(phone)
+        +updatePhoneNumber(phoneNumber)
     }
     class LocationService {
         +searchOSM(query, coordinate) PhotonSearchFeature[]
@@ -509,7 +508,7 @@ classDiagram
         +signUp(request)
         +signOut()
         +resetPassword(email)
-        +updatePhoneNumber(phone)
+        +updatePhoneNumber(phoneNumber)
     }
     class StorageService {
         +uploadAvatar(uid, data) String
@@ -857,7 +856,6 @@ classDiagram
     }
 
     OrderViewModel ..|> LocationSearchable
-    OrderViewModel "1" --> "1" OrderRepository : creates via
     OrderViewModel "1" --> "1" LocationService : geocodes via
     OrderViewModel "1" --> "1" StorageService : uploads via
     OrderViewModel "1" --> "1" UserRepository : reads
@@ -899,9 +897,12 @@ classDiagram
     BiddingService ..> OrdersRequest : sends
     BiddingService ..> OrdersResponse : returns
     BiddingService ..> NearbyOrder : returns
+    BiddingService ..> Bid : returns
     Bid "1" --> "0..1" Bengkel : references
 
 ```
+
+> Catatan: `OrderRepository` juga mengirim `MarkCompletedParams`, `RateOrderParams`, dan `OpenDisputeParams` (untuk `markOrderCompleted` / `submitRating` / `openDispute`) — ketiga DTO itu digambar di §8 dan §11 agar diagram ini tidak makin besar. Pembuatan order (`createOrder`) terjadi di `CustomerBiddingViewModel.startSearch()`, bukan di `OrderViewModel` (yang hanya memvalidasi, meng-upload foto, lalu navigasi ke bidding).
 
 ---
 
@@ -929,7 +930,7 @@ classDiagram
         +signUp(request)
         +signOut()
         +resetPassword(email)
-        +updatePhoneNumber(phone)
+        +updatePhoneNumber(phoneNumber)
     }
     class NotificationService {
         +requestAuthorization()
@@ -1133,7 +1134,7 @@ classDiagram
         +signUp(request)
         +signOut()
         +resetPassword(email)
-        +updatePhoneNumber(phone)
+        +updatePhoneNumber(phoneNumber)
     }
     class StorageService {
         +uploadAvatar(uid, data) String
@@ -1278,7 +1279,7 @@ classDiagram
         +signUp(request)
         +signOut()
         +resetPassword(email)
-        +updatePhoneNumber(phone)
+        +updatePhoneNumber(phoneNumber)
     }
     class StorageService {
         +uploadAvatar(uid, data) String
@@ -1507,7 +1508,7 @@ classDiagram
         +signUp(request)
         +signOut()
         +resetPassword(email)
-        +updatePhoneNumber(phone)
+        +updatePhoneNumber(phoneNumber)
     }
     class StorageService {
         +uploadAvatar(uid, data) String
@@ -1636,7 +1637,7 @@ classDiagram
         +signUp(request)
         +signOut()
         +resetPassword(email)
-        +updatePhoneNumber(phone)
+        +updatePhoneNumber(phoneNumber)
     }
     class PaymentService {
         +createTopup(amount) CreateTopupResponse
@@ -1789,7 +1790,7 @@ classDiagram
         +signUp(request)
         +signOut()
         +resetPassword(email)
-        +updatePhoneNumber(phone)
+        +updatePhoneNumber(phoneNumber)
     }
     class BengkelRepository {
         +fetchBengkel(providerUid) Bengkel
@@ -1905,25 +1906,39 @@ classDiagram
         +fetchBidsForBengkel(bengkelId) Bid[]
         +updateStatus(bidId, status)
     }
+    class Bid {
+        +String id
+        +String serviceRequestId
+        +String providerUid
+        +String bengkelId
+        +Int price
+        +String? notes
+        +String status
+        +String? createdAt
+        +Bengkel? bengkel
+    }
 
     HistoryViewModel "1" --> "1" OrderRepository : reads
     HistoryViewModel "1" --> "1" BidRepository : reads
     HistoryViewModel "1" --> "1" BehaviorReportRepository : reads
     HistoryViewModel "1" --> "1" AuthService : reads session
     HistoryViewModel "1" --> "*" NearbyOrder : displays
-    HistoryViewModel "1" --> "0..1" NearbyOrder : tracks
+    HistoryViewModel "1" --> "0..1" NearbyOrder : shows detail of
+    HistoryViewModel "1" --> "0..1" NearbyOrder : resumes bidding for
+    HistoryViewModel "1" --> "0..1" Bid : tracks
     BengkelHistoryViewModel "1" --> "1" OrderRepository : reads
     BengkelHistoryViewModel "1" --> "1" BengkelRepository : reads
     BengkelHistoryViewModel "1" --> "1" BehaviorReportRepository : reads
     BengkelHistoryViewModel "1" --> "1" AuthService : reads session
     BengkelHistoryViewModel "1" --> "*" NearbyOrder : displays
-    BengkelHistoryViewModel "1" --> "0..1" NearbyOrder : tracks
+    BengkelHistoryViewModel "1" --> "0..1" NearbyOrder : shows detail of
     MechanicHistoryViewModel "1" --> "1" OrderRepository : reads
     MechanicHistoryViewModel "1" --> "1" BehaviorReportRepository : reads
     MechanicHistoryViewModel "1" --> "1" AuthService : reads session
     MechanicHistoryViewModel "1" --> "*" NearbyOrder : displays
-    MechanicHistoryViewModel "1" --> "0..1" NearbyOrder : tracks
+    MechanicHistoryViewModel "1" --> "0..1" NearbyOrder : shows detail of
     OrderRepository ..> NearbyOrder : returns
+    BidRepository ..> Bid : returns
 
 ```
 
@@ -1953,7 +1968,7 @@ classDiagram
         +signUp(request)
         +signOut()
         +resetPassword(email)
-        +updatePhoneNumber(phone)
+        +updatePhoneNumber(phoneNumber)
     }
     class OrderRepository {
         +createOrder(payload) CreatedServiceRequest

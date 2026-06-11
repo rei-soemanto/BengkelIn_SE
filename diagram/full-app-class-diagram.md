@@ -2,13 +2,13 @@
 
 One comprehensive class diagram of the **entire iOS app's logic layers** (`BengkelIn_SE/`): every Enum, Model, Protocol, DTO, Repository, Service, and ViewModel, wired with their real relationships. **Every member is shown** — this is the unified superset of the per-feature diagrams in [`feature-class-diagrams.md`](feature-class-diagrams.md), so the two stay in lock-step with each other and with the codebase.
 
-SwiftUI `View` structs are intentionally excluded — in a class diagram they would just be ~70 leaf nodes pointing at the ViewModels below. For a per-feature, presentation-friendly breakdown (each renders small and clean), see [`feature-class-diagrams.md`](feature-class-diagrams.md).
+SwiftUI `View` structs are intentionally excluded — in a class diagram they would just be ~70 leaf nodes pointing at the ViewModels below. Also intentionally excluded (app/presentation plumbing, not logic layers): the app entry pair `BengkelInApp` + `AppDelegate` (`BengkelInApp.swift` — the delegate only wires `UNUserNotificationCenter` foreground banners), the `Extensions/` map helper (`MKCoordinateRegion.fitting`, used only by tracking Views), and view-local helper types (`OSMTileOverlay`, `Rupiah`, `DashboardRoute`). For a per-feature, presentation-friendly breakdown (each renders small and clean), see [`feature-class-diagrams.md`](feature-class-diagrams.md).
 
 > **Layout compatibility:** this diagram is written **without `namespace` blocks on purpose**, so it renders in **both** the default (dagre) layout **and** the "adaptive" / **ELK** layout. The ELK layout engine does **not** support class-diagram `namespace` boxes — using them is what throws an error when you switch layouts. It is rendered in plain **black & white**; the layer of each class is read from its **name suffix / annotation** (see legend), so no color is needed.
 
-**Layers** (identify by class-name suffix / annotation): `<<enumeration>>` = Enum · `<<interface>>` = Protocol · `*ViewModel` = ViewModel · `*Repository` = Repository · `*Service` = Service · `*Payload`/`*Params`/`*Request`/`*Response`/`*Row`/`*Update` = DTO · everything else = Model.
+**Layers** (identify by class-name suffix / annotation): `<<enumeration>>` = Enum · `<<interface>>` = Protocol · `<<extension>>` = Swift extension (the `Notification.Name` keys used as cross-ViewModel signals) · `*ViewModel` = ViewModel · `*Repository` = Repository · `*Service` = Service · `*Payload`/`*Params`/`*Request`/`*Response`/`*Row`/`*Update` = DTO · everything else = Model.
 
-**Members**: `+` = public surface (`@Published` state, computed properties, public methods, `init`/`deinit`) · `-` = private implementation (realtime channels & reader `Task`s, `CLLocationManager`, private helpers) · `$` = static. **Injected Service/Repository dependencies are association arrows with multiplicities (`ViewModel "1" --> "1" AuthService`), not repeated as attributes** — the arrow *is* the field. Edge labels are semantic association names (verbs: `reads/updates`, `manages`, `displays`, `tracks`, `contains`, `embeds`, `owns`, `listens`, `publishes via`, `sends`, `returns`, …), not field names; multiplicity (`1`, `0..1`, `*`) is derived from the field's Swift type (`X`, `X?`, `[X]`).
+**Members**: `+` = public surface (`@Published` state, computed properties, public methods, `init`/`deinit`) · `-` = private implementation (realtime channels & reader `Task`s, `CLLocationManager`, private helpers) · `$` = static. Swift's `private(set)` members are publicly *readable*, so they carry `+` (the restricted setter has no UML symbol). **Injected Service/Repository dependencies are association arrows with multiplicities (`ViewModel "1" --> "1" AuthService`), not repeated as attributes** — the arrow *is* the field. Edge labels are semantic association names (verbs: `reads/updates`, `manages`, `displays`, `tracks`, `contains`, `embeds`, `owns`, `listens`, `publishes via`, `sends`, `returns`, …), not field names; multiplicity (`1`, `0..1`, `*`) is derived from the field's Swift type (`X`, `X?`, `[X]`).
 
 **Arrows**: `..>` depends on / uses · `-->` association (incl. injected dependency) · `*--` composition · `..|>` realizes interface.
 
@@ -570,6 +570,10 @@ classDiagram
     }
     class NetworkMonitor {
         +Bool isConnected
+        -NWPathMonitor monitor
+        -DispatchQueue queue
+        +init()
+        +deinit()
         +recheck()
     }
     class ImageCompressor {
@@ -587,6 +591,11 @@ classDiagram
         +ChatPresence shared$
         +String? activeServiceRequestId
         -init()
+    }
+    class MechanicNotifications["Notification.Name (extension)"] {
+        <<extension>>
+        +mechanicReassignedAway$
+        +mechanicOrdersChanged$
     }
 
     %% ============================================================
@@ -1172,7 +1181,6 @@ classDiagram
     BengkelViewModel "1" --> "1" OrderRepository : reads
     BengkelViewModel "1" --> "1" MechanicRepository : reads
     BengkelViewModel "1" --> "1" AuthService : reads session
-    OrderViewModel "1" --> "1" OrderRepository : creates via
     OrderViewModel "1" --> "1" LocationService : geocodes via
     OrderViewModel "1" --> "1" StorageService : uploads via
     OrderViewModel "1" --> "1" UserRepository : reads
@@ -1259,11 +1267,14 @@ classDiagram
     OrderViewModel "1" --> "*" Vehicle : displays
     OrderViewModel "1" --> "*" PhotonSearchFeature : displays
     OrderViewModel "1" --> "1" LoadingPhase : tracks
+    OrderViewModel "1" --> "0..1" ServiceType : tracks
     CustomerBiddingViewModel "1" --> "*" Bid : manages
     CustomerBiddingViewModel "1" --> "0..1" Bid : tracks
     CustomerBiddingViewModel "1" --> "1" LoadingPhase : tracks
+    CustomerBiddingViewModel "1" --> "1" ServiceType : tracks
     BengkelBiddingViewModel "1" --> "*" NearbyOrder : displays
     BengkelBiddingViewModel "1" --> "0..1" NearbyOrder : tracks
+    BengkelBiddingViewModel "1" --> "0..1" NearbyOrder : alerts
     BengkelBiddingViewModel "1" --> "*" Bid : tracks
     BengkelBiddingViewModel "1" --> "0..1" Bengkel : references
     BengkelRosterViewModel "1" --> "*" RosterMember : manages
@@ -1278,12 +1289,13 @@ classDiagram
     BengkelRouteViewModel "1" *-- "1" RouteLocationStore : owns
     OrderCompletionViewModel "1" --> "0..1" NearbyOrder : tracks
     HistoryViewModel "1" --> "*" NearbyOrder : displays
-    HistoryViewModel "1" --> "0..1" NearbyOrder : tracks
+    HistoryViewModel "1" --> "0..1" NearbyOrder : shows detail of
+    HistoryViewModel "1" --> "0..1" NearbyOrder : resumes bidding for
     HistoryViewModel "1" --> "0..1" Bid : tracks
     BengkelHistoryViewModel "1" --> "*" NearbyOrder : displays
-    BengkelHistoryViewModel "1" --> "0..1" NearbyOrder : tracks
+    BengkelHistoryViewModel "1" --> "0..1" NearbyOrder : shows detail of
     MechanicHistoryViewModel "1" --> "*" NearbyOrder : displays
-    MechanicHistoryViewModel "1" --> "0..1" NearbyOrder : tracks
+    MechanicHistoryViewModel "1" --> "0..1" NearbyOrder : shows detail of
     PaymentViewModel "1" --> "*" Topup : displays
     PaymentViewModel "1" --> "*" Withdrawal : displays
     PaymentViewModel "1" --> "0..1" PaymentTarget : tracks
@@ -1334,6 +1346,7 @@ classDiagram
     WithdrawalRepository ..> RequestWithdrawalParams : sends
     AuthService ..> SignUpRequest : sends
     AuthService ..> AuthServiceError : throws
+    LocationService ..> PhotonSearchResponse : decodes
     LocationService ..> PhotonSearchFeature : returns
     PaymentService ..> CreateTopupRequest : sends
     PaymentService ..> CreateTopupResponse : returns
@@ -1342,6 +1355,15 @@ classDiagram
     BiddingService ..> PlaceBidRequest : sends
     BiddingService ..> PlaceBidResponse : returns
     BiddingService ..> NearbyOrder : returns
+    BiddingService ..> Bid : returns
+    ChatReadCursor ..> ChatMessage : reads
+
+    %% ============================================================
+    %% CROSS-VIEWMODEL SIGNALS  (NotificationCenter keys)
+    %% ============================================================
+    MechanicDashboardViewModel ..> MechanicNotifications : posts
+    MechanicHistoryViewModel ..> MechanicNotifications : observes
+    BengkelRouteViewModel ..> MechanicNotifications : observes
 ```
 
 ## How to read it
@@ -1349,7 +1371,7 @@ classDiagram
 - **Layer = name suffix / annotation** (no color): `<<enumeration>>`/`<<interface>>` mark Enums/Protocol; `*ViewModel`, `*Repository`, `*Service` name their layer; `*Payload`/`*Params`/`*Request`/`*Response`/`*Row`/`*Update` are DTOs; everything else is a Model. The ELK/adaptive layout naturally clusters nodes that are wired together.
 - **The MVVM rule made literal:** every ViewModel reaches the backend only through Repositories and Services (the role-named `-->` arrows are the injected fields) — none touches `supabase.from(...)` directly. The one sanctioned exception is realtime channel setup, which lives inside the ViewModels as `RealtimeChannelV2?` state (no separate class node).
 - **`NearbyOrder`** (the `service_requests` row) is the hub entity — bidding, mechanics, tracking, completion, and history all revolve around it. **`AuthService`** is the other ubiquitous node, injected into almost every ViewModel.
-- **Arrow directions:** `-->` from a ViewModel = an injected Repository/Service dependency (verb label says what it does: `reads`, `updates`, `creates via`, …) or, to a Model, the state it holds (`manages`/`displays`/`tracks` with multiplicity from the field type); `..>` into a DTO/Model = that Repository/Service `sends`/`returns` it; `*--` = structural composition (`contains`/`embeds`/`owns`); `..|>` = protocol realization.
+- **Arrow directions:** `-->` from a ViewModel = an injected Repository/Service dependency (verb label says what it does: `reads`, `updates`, `places bids via`, …) or, to a Model, the state it holds (`manages`/`displays`/`tracks` with multiplicity from the field type); `..>` into a DTO/Model = that Repository/Service `sends`/`returns` it; `*--` = structural composition (`contains`/`embeds`/`owns`); `..|>` = protocol realization.
 - **Two View-layer types are included** because they hold cross-cutting app state even though they live outside `ViewModels/`: `OrderRouteState` (a shared `ObservableObject` in `ContentView.swift` gating the tracking route) and `NetworkMonitor` (the offline-banner publisher). `NearbyMechanic` (decoded by a map card) and `PhotonSearchResponse` (the geocoder envelope) round out the model set.
 
 > **If you want the grouped namespace boxes back** (the version with `namespace Models { ... }` etc.), it only renders under the **default (dagre)** layout — keep the layout on default, don't switch to adaptive/ELK. This flat version is the one to use for adaptive.

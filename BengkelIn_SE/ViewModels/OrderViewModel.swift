@@ -59,7 +59,6 @@ class OrderViewModel: NSObject, ObservableObject, CLLocationManagerDelegate, Loc
     private var cancellables = Set<AnyCancellable>()
     
     private let locationService = LocationService()
-    private let orderRepository = OrderRepository()
     private let storageService = StorageService()
     private let userRepository = UserRepository()
 
