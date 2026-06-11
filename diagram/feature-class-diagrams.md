@@ -6,7 +6,7 @@ Class diagrams for the iOS app (`BengkelIn_SE/`), split by feature. Each section
 
 **Arrows**: `..>` depends on / uses · `-->` association · `*--` composition · `..|>` realizes interface.
 
-> All ViewModels are `@MainActor ObservableObject`. **Every member is shown** — `+` = public surface (`@Published` state, computed properties, public methods, `init`/`deinit`), `-` = private implementation (injected Repository/Service dependencies, realtime channels & reader tasks, `CLLocationManager`, and private helper methods). Swift has no `protected`; its default `internal` and `private(set)` members are rendered with the closest UML symbol (`-` for private/internal stored state that isn't part of the API, `+` for publicly-readable members). Repositories/Services are stateless and expose only the public methods listed. **Injected Service/Repository dependencies are shown as role-named association arrows (`ViewModel --> AuthService : authService`), not repeated as attributes** — the arrow IS the field, so listing it in the attribute box too would be redundant (a property typed by another class and an association are the same thing in UML). Value/state attributes, model references, enums, and types without their own box (`Task`, `CLLocationManager`, `RealtimeChannelV2`, `Set`) remain in the attribute compartment. See the root `CLAUDE.md` for the layering rules.
+> All ViewModels are `@MainActor ObservableObject`. **Every member is shown** — `+` = public surface (`@Published` state, computed properties, public methods, `init`/`deinit`), `-` = private implementation (injected Repository/Service dependencies, realtime channels & reader tasks, `CLLocationManager`, and private helper methods). Swift has no `protected`; its default `internal` and `private(set)` members are rendered with the closest UML symbol (`-` for private/internal stored state that isn't part of the API, `+` for publicly-readable members). Repositories/Services are stateless and expose only the public methods listed. **Injected Service/Repository dependencies are shown as plain association arrows with multiplicities (`ViewModel "1" --> "1" AuthService`), not repeated as attributes** — the arrow IS the field, so listing it in the attribute box too would be redundant (a property typed by another class and an association are the same thing in UML). Edge labels are semantic association names (verbs: `reads/updates`, `manages`, `displays`, `tracks`, `contains`, `embeds`, `owns`, `listens`, `publishes via`, `sends`, `returns`, …) describing what the relationship does — not field names. Multiplicity (`1`, `0..1`, `*`) is derived from the field's Swift type (`X`, `X?`, `[X]`). Value/state attributes, model references, enums, and types without their own box (`Task`, `CLLocationManager`, `RealtimeChannelV2`, `Set`) remain in the attribute compartment. See the root `CLAUDE.md` for the layering rules.
 
 ---
 
@@ -54,6 +54,35 @@ flowchart TB
     APP === SB[("☁️ Supabase<br/>Postgres + RLS · Realtime · Storage<br/>Edge Fns: bidding · payment · midtrans-webhook")]
 
 ```
+
+---
+
+## Pembagian Presentasi per Anggota (berdasarkan git commit)
+
+Setiap fitur (§1–§11) dipresentasikan oleh **pembuat asli** ViewModel-nya — ditentukan dari *first commit* tiap file di git history (bukan sekadar header "Created by"). Bryan melakukan *port/konsolidasi* lintas-fitur di akhir (lihat `PLAN.md`), jadi penyaji ditetapkan berdasarkan **siapa yang pertama membangun fitur**, bukan jumlah commit total.
+
+| § | Fitur | Penyaji utama | Kontributor / catatan |
+|---|-------|---------------|------------------------|
+| 1 | Authentication & Profile | **Rei Soemanto** | `AuthViewModel`, `ProfileViewModel` |
+| 2 | Vehicles | **Rei Soemanto** | `VehicleViewModel` |
+| 3 | Bengkel & Location | **Rei Soemanto** | `BengkelViewModel`; dashboard/port oleh **Jason (DkXenos)** |
+| 4 | Order Creation & Bidding | **Bryan** (`OrderViewModel`) + **Eugene** (`CustomerBiddingViewModel`, `BengkelBiddingViewModel`) | inti marketplace |
+| 5 | Mechanics & Roster | **Jason (DkXenos)** | pembuat `MechanicViewModel`/dashboard mekanik awal; `AssignMechanicViewModel` oleh **Eugene** |
+| 6 | Chat | **Eugene** | `ChatViewModel`, `ChatWatchViewModel` |
+| 7 | Live Tracking | **Eugene** | `OrderTrackingViewModel`, `BengkelRouteViewModel` (refinement oleh Bryan) |
+| 8 | Completion & Rating | **Bryan** | `OrderCompletionViewModel`, `OrderRatingViewModel` (dibuat **Eugene**) |
+| 9 | Payment / Wallet · Escrow | **Eugene** | `PaymentViewModel` |
+| 10 | Order History | **Jason (DkXenos)** | `HistoryViewModel` dibuat **Bryan**; per-role history |
+| 11 | Reports & Disputes | **Eugene** | `BehaviorReportViewModel` |
+
+**Ringkasan per anggota**
+
+- **Rei Soemanto** — Fondasi/Akun: §1 Auth & Profile, §2 Vehicles, §3 Bengkel & Location.
+- **Bryan Fernando Dinata** — Order & Completion: §4 Order Creation & Bidding (sisi Order), §8 Completion & Rating; plus konsolidasi/port lintas-fitur.
+- **Jason (DkXenos)** — Mechanics & History: §5 Mechanics & Roster, §10 Order History; plus **Admin dashboard** (`admin/`, deployable terpisah — di luar diagram iOS ini).
+- **Amadeus Eugene Dirgantara** — Job Lifecycle & Uang: §4 (Bidding), §6 Chat, §7 Live Tracking, §9 Payment, §11 Reports (dasar §5 Assign & §8 Completion).
+
+> Catatan: §5 grounded ke Jason (pembuat dashboard mekanik awal). §8 ke Bryan & §10 ke Jason adalah penugasan **presentasi** untuk menyeimbangkan beban — secara *first commit*, §8 Completion dibuat Eugene dan `HistoryViewModel` (§10) dibuat Bryan. Tabel mencerminkan **siapa presentasi apa**, bukan murni atribusi git.
 
 ---
 
@@ -171,20 +200,20 @@ classDiagram
         +String bank_account_name
     }
 
-    AuthViewModel --> AuthService : authService
-    AuthViewModel --> UserRepository : userRepository
-    AuthViewModel --> User
-    AuthViewModel --> AppMode
-    ProfileViewModel --> AuthService : authService
-    ProfileViewModel --> UserRepository : userRepository
-    ProfileViewModel --> StorageService : storageService
-    ProfileViewModel ..> ImageCompressor
-    AuthService ..> SignUpRequest
-    AuthService ..> AuthServiceError
-    UserRepository ..> User
-    UserRepository ..> ProfileUpdatePayload
-    UserRepository ..> ProfileImageUpdatePayload
-    UserRepository ..> BankDetailsUpdatePayload
+    AuthViewModel "1" --> "1" AuthService : authenticates via
+    AuthViewModel "1" --> "1" UserRepository : reads/updates
+    AuthViewModel "1" --> "0..1" User : manages
+    AuthViewModel "1" --> "1" AppMode : switches
+    ProfileViewModel "1" --> "1" AuthService : reads session
+    ProfileViewModel "1" --> "1" UserRepository : updates
+    ProfileViewModel "1" --> "1" StorageService : uploads via
+    ProfileViewModel ..> ImageCompressor : uses
+    AuthService ..> SignUpRequest : sends
+    AuthService ..> AuthServiceError : throws
+    UserRepository ..> User : returns
+    UserRepository ..> ProfileUpdatePayload : sends
+    UserRepository ..> ProfileImageUpdatePayload : sends
+    UserRepository ..> BankDetailsUpdatePayload : sends
 
 ```
 
@@ -252,11 +281,11 @@ classDiagram
         +String color
     }
 
-    VehicleViewModel ..> AuthService
-    VehicleViewModel ..> VehicleRepository
-    VehicleViewModel --> Vehicle
-    VehicleRepository ..> Vehicle
-    VehicleRepository ..> VehicleUpdatePayload
+    VehicleViewModel ..> AuthService : reads session
+    VehicleViewModel ..> VehicleRepository : reads/updates
+    VehicleViewModel "1" --> "*" Vehicle : manages
+    VehicleRepository ..> Vehicle : returns
+    VehicleRepository ..> VehicleUpdatePayload : sends
 
 ```
 
@@ -436,20 +465,21 @@ classDiagram
     }
 
     BengkelViewModel ..|> LocationSearchable
-    BengkelViewModel --> BengkelRepository : bengkelRepository
-    BengkelViewModel --> LocationService : locationService
-    BengkelViewModel --> OrderRepository : orderRepository
-    BengkelViewModel --> MechanicRepository : mechanicRepository
-    BengkelViewModel --> AuthService : authService
-    BengkelViewModel --> Bengkel
-    BengkelRepository ..> Bengkel
-    BengkelRepository ..> BengkelUpdatePayload
-    BengkelRepository ..> BengkelServicesUpdatePayload
-    LocationService ..> PhotonSearchFeature
-    PhotonSearchFeature "1" *-- "1" PhotonSearchProperties : properties
-    PhotonSearchFeature "1" *-- "1" PhotonSearchGeometry : geometry
-    Bengkel "1" *-- "*" BengkelService : offers
-    BengkelService --> ServiceType
+    BengkelViewModel "1" --> "1" BengkelRepository : reads/updates
+    BengkelViewModel "1" --> "1" LocationService : geocodes via
+    BengkelViewModel "1" --> "1" OrderRepository : reads
+    BengkelViewModel "1" --> "1" MechanicRepository : reads
+    BengkelViewModel "1" --> "1" AuthService : reads session
+    BengkelViewModel "1" --> "0..1" Bengkel : manages
+    BengkelViewModel "1" --> "*" PhotonSearchFeature : displays
+    BengkelRepository ..> Bengkel : returns
+    BengkelRepository ..> BengkelUpdatePayload : sends
+    BengkelRepository ..> BengkelServicesUpdatePayload : sends
+    LocationService ..> PhotonSearchFeature : returns
+    PhotonSearchFeature "1" *-- "1" PhotonSearchProperties : embeds
+    PhotonSearchFeature "1" *-- "1" PhotonSearchGeometry : embeds
+    Bengkel "1" *-- "*" BengkelService : contains
+    BengkelService "1" --> "1" ServiceType : references
 
 ```
 
@@ -827,45 +857,49 @@ classDiagram
     }
 
     OrderViewModel ..|> LocationSearchable
-    OrderViewModel --> OrderRepository : orderRepository
-    OrderViewModel --> LocationService : locationService
-    OrderViewModel --> StorageService : storageService
-    OrderViewModel --> UserRepository : userRepository
-    OrderViewModel --> VehicleRepository : vehicleRepository
-    OrderViewModel --> AuthService : authService
-    CustomerBiddingViewModel --> OrderRepository : orderRepository
-    CustomerBiddingViewModel --> BidRepository : bidRepository
-    CustomerBiddingViewModel --> UserRepository : userRepository
-    CustomerBiddingViewModel --> StorageService : storageService
-    CustomerBiddingViewModel --> NotificationService : notificationService
-    CustomerBiddingViewModel --> AuthService : authService
-    CustomerBiddingViewModel --> Bid
-    BengkelBiddingViewModel --> OrderRepository : orderRepository
-    BengkelBiddingViewModel --> BidRepository : bidRepository
-    BengkelBiddingViewModel --> BiddingService : biddingService
-    BengkelBiddingViewModel --> BengkelRepository : bengkelRepository
-    BengkelBiddingViewModel --> MechanicRepository : mechanicRepository
-    BengkelBiddingViewModel --> NotificationService : notificationService
-    BengkelBiddingViewModel --> AuthService : authService
-    BengkelBiddingViewModel --> NearbyOrder
-    OrderViewModel --> Vehicle
-    OrderViewModel --> LoadingPhase
-    CustomerBiddingViewModel --> LoadingPhase
-    OrderRepository ..> ServiceRequestPayload
-    OrderRepository ..> NearbyOrder
-    OrderRepository ..> AcceptBidParams
-    OrderRepository ..> CreatedServiceRequest
-    OrderRepository ..> CancelOrderParams
-    OrderRepository ..> StartSearchPayload
-    OrderRepository ..> TodaysEarningRow
-    BidRepository ..> Bid
-    BidRepository ..> BidStatusUpdate
-    BiddingService ..> PlaceBidRequest
-    BiddingService ..> PlaceBidResponse
-    BiddingService ..> OrdersRequest
-    BiddingService ..> OrdersResponse
-    BiddingService ..> NearbyOrder
-    Bid --> "0..1" Bengkel : bengkel
+    OrderViewModel "1" --> "1" OrderRepository : creates via
+    OrderViewModel "1" --> "1" LocationService : geocodes via
+    OrderViewModel "1" --> "1" StorageService : uploads via
+    OrderViewModel "1" --> "1" UserRepository : reads
+    OrderViewModel "1" --> "1" VehicleRepository : reads
+    OrderViewModel "1" --> "1" AuthService : reads session
+    CustomerBiddingViewModel "1" --> "1" OrderRepository : reads/updates
+    CustomerBiddingViewModel "1" --> "1" BidRepository : reads/updates
+    CustomerBiddingViewModel "1" --> "1" UserRepository : reads
+    CustomerBiddingViewModel "1" --> "1" StorageService : deletes photos via
+    CustomerBiddingViewModel "1" --> "1" NotificationService : notifies via
+    CustomerBiddingViewModel "1" --> "1" AuthService : reads session
+    CustomerBiddingViewModel "1" --> "*" Bid : manages
+    CustomerBiddingViewModel "1" --> "0..1" Bid : tracks
+    BengkelBiddingViewModel "1" --> "1" OrderRepository : reads
+    BengkelBiddingViewModel "1" --> "1" BidRepository : reads/updates
+    BengkelBiddingViewModel "1" --> "1" BiddingService : places bids via
+    BengkelBiddingViewModel "1" --> "1" BengkelRepository : reads
+    BengkelBiddingViewModel "1" --> "1" MechanicRepository : reads
+    BengkelBiddingViewModel "1" --> "1" NotificationService : notifies via
+    BengkelBiddingViewModel "1" --> "1" AuthService : reads session
+    BengkelBiddingViewModel "1" --> "*" NearbyOrder : displays
+    BengkelBiddingViewModel "1" --> "0..1" NearbyOrder : tracks
+    BengkelBiddingViewModel "1" --> "*" Bid : tracks
+    BengkelBiddingViewModel "1" --> "0..1" Bengkel : references
+    OrderViewModel "1" --> "*" Vehicle : displays
+    OrderViewModel "1" --> "1" LoadingPhase : tracks
+    CustomerBiddingViewModel "1" --> "1" LoadingPhase : tracks
+    OrderRepository ..> ServiceRequestPayload : sends
+    OrderRepository ..> NearbyOrder : returns
+    OrderRepository ..> AcceptBidParams : sends
+    OrderRepository ..> CreatedServiceRequest : returns
+    OrderRepository ..> CancelOrderParams : sends
+    OrderRepository ..> StartSearchPayload : sends
+    OrderRepository ..> TodaysEarningRow : returns
+    BidRepository ..> Bid : returns
+    BidRepository ..> BidStatusUpdate : sends
+    BiddingService ..> PlaceBidRequest : sends
+    BiddingService ..> PlaceBidResponse : returns
+    BiddingService ..> OrdersRequest : sends
+    BiddingService ..> OrdersResponse : returns
+    BiddingService ..> NearbyOrder : returns
+    Bid "1" --> "0..1" Bengkel : references
 
 ```
 
@@ -1046,29 +1080,30 @@ classDiagram
         +String p_request_id
     }
 
-    BengkelRosterViewModel --> MechanicRepository : mechanicRepository
-    BengkelRosterViewModel --> RosterMember
-    MechanicInviteViewModel --> MechanicRepository : mechanicRepository
-    MechanicInviteViewModel --> MechanicInvite
-    AssignMechanicViewModel --> MechanicRepository : mechanicRepository
-    AssignMechanicViewModel --> MechanicAssignmentRepository : assignmentRepository
-    AssignMechanicViewModel --> AvailableMechanic
-    MechanicDashboardViewModel --> MechanicAssignmentRepository : assignmentRepository
-    MechanicDashboardViewModel --> AuthService : authService
-    MechanicDashboardViewModel --> NotificationService : notificationService
-    MechanicDashboardViewModel --> NearbyOrder
-    MechanicJobsViewModel --> MechanicAssignmentRepository : assignmentRepository
-    MechanicJobsViewModel --> AuthService : authService
-    MechanicJobsViewModel --> NearbyOrder
-    MechanicRepository ..> RosterMember
-    MechanicRepository ..> MechanicInvite
-    MechanicRepository ..> AvailableMechanic
-    MechanicRepository ..> RespondInviteParams
-    MechanicRepository ..> InviteMechanicParams
-    MechanicRepository ..> RemoveMechanicParams
-    MechanicRepository ..> AvailableMechanicsParams
-    MechanicAssignmentRepository ..> AssignMechanicParams
-    MechanicAssignmentRepository ..> NearbyOrder
+    BengkelRosterViewModel "1" --> "1" MechanicRepository : reads/updates
+    BengkelRosterViewModel "1" --> "*" RosterMember : manages
+    MechanicInviteViewModel "1" --> "1" MechanicRepository : reads/updates
+    MechanicInviteViewModel "1" --> "*" MechanicInvite : manages
+    AssignMechanicViewModel "1" --> "1" MechanicRepository : reads
+    AssignMechanicViewModel "1" --> "1" MechanicAssignmentRepository : assigns via
+    AssignMechanicViewModel "1" --> "*" AvailableMechanic : displays
+    MechanicDashboardViewModel "1" --> "1" MechanicAssignmentRepository : reads
+    MechanicDashboardViewModel "1" --> "1" AuthService : reads session
+    MechanicDashboardViewModel "1" --> "1" NotificationService : notifies via
+    MechanicDashboardViewModel "1" --> "*" NearbyOrder : displays
+    MechanicDashboardViewModel "1" --> "0..1" NearbyOrder : tracks
+    MechanicJobsViewModel "1" --> "1" MechanicAssignmentRepository : reads
+    MechanicJobsViewModel "1" --> "1" AuthService : reads session
+    MechanicJobsViewModel "1" --> "*" NearbyOrder : displays
+    MechanicRepository ..> RosterMember : returns
+    MechanicRepository ..> MechanicInvite : returns
+    MechanicRepository ..> AvailableMechanic : returns
+    MechanicRepository ..> RespondInviteParams : sends
+    MechanicRepository ..> InviteMechanicParams : sends
+    MechanicRepository ..> RemoveMechanicParams : sends
+    MechanicRepository ..> AvailableMechanicsParams : sends
+    MechanicAssignmentRepository ..> AssignMechanicParams : sends
+    MechanicAssignmentRepository ..> NearbyOrder : returns
 
 ```
 
@@ -1201,19 +1236,19 @@ classDiagram
         +String? image_url
     }
 
-    ChatViewModel --> ChatRepository : chatRepository
-    ChatViewModel --> OrderRepository : orderRepository
-    ChatViewModel --> StorageService : storageService
-    ChatViewModel ..> ImageCompressor
-    ChatViewModel --> AuthService : authService
-    ChatViewModel --> ChatMessage
-    ChatWatchViewModel --> ChatRepository : chatRepository
-    ChatWatchViewModel --> NotificationService : notificationService
-    ChatWatchViewModel --> AuthService : authService
-    ChatWatchViewModel ..> ChatReadCursor
-    ChatWatchViewModel ..> ChatPresence
-    ChatRepository ..> ChatMessage
-    ChatRepository ..> ChatMessagePayload
+    ChatViewModel "1" --> "1" ChatRepository : reads/updates
+    ChatViewModel "1" --> "1" OrderRepository : reads
+    ChatViewModel "1" --> "1" StorageService : uploads via
+    ChatViewModel ..> ImageCompressor : uses
+    ChatViewModel "1" --> "1" AuthService : reads session
+    ChatViewModel "1" --> "*" ChatMessage : manages
+    ChatWatchViewModel "1" --> "1" ChatRepository : listens
+    ChatWatchViewModel "1" --> "1" NotificationService : notifies via
+    ChatWatchViewModel "1" --> "1" AuthService : reads session
+    ChatWatchViewModel "1" *-- "1" ChatReadCursor : owns
+    ChatWatchViewModel ..> ChatPresence : reads
+    ChatRepository ..> ChatMessage : returns
+    ChatRepository ..> ChatMessagePayload : sends
 
 ```
 
@@ -1424,25 +1459,25 @@ classDiagram
         +Double longitude
     }
 
-    OrderTrackingViewModel --> OrderLocationRepository : locationRepository
-    OrderTrackingViewModel --> OrderRepository : orderRepository
-    OrderTrackingViewModel --> NotificationService : notificationService
-    LocationPublishViewModel --> OrderLocationRepository : repository
-    LocationPublishViewModel --> OrderRepository : orderRepository
-    LocationPublishViewModel --> AuthService : authService
-    CustomerLocationPublishViewModel --> OrderLocationRepository : repository
-    CustomerLocationPublishViewModel --> AuthService : authService
-    BengkelRouteViewModel --> OrderRepository : orderRepository
-    BengkelRouteViewModel --> BengkelRepository : bengkelRepository
-    BengkelRouteViewModel --> OrderLocationRepository : locationRepository
-    BengkelRouteViewModel --> StorageService : storageService
-    BengkelRouteViewModel --> AuthService : authService
-    BengkelRouteViewModel --> NotificationService : notificationService
-    BengkelRouteViewModel "1" *-- "1" RouteLocationStore : locationStore
-    OrderLocationRepository ..> OrderLocation
-    OrderLocationRepository ..> CustomerLocation
-    OrderLocationRepository ..> OrderLocationPayload
-    OrderLocationRepository ..> CustomerLocationPayload
+    OrderTrackingViewModel "1" --> "1" OrderLocationRepository : listens
+    OrderTrackingViewModel "1" --> "1" OrderRepository : reads
+    OrderTrackingViewModel "1" --> "1" NotificationService : notifies via
+    LocationPublishViewModel "1" --> "1" OrderLocationRepository : publishes via
+    LocationPublishViewModel "1" --> "1" OrderRepository : reads
+    LocationPublishViewModel "1" --> "1" AuthService : reads session
+    CustomerLocationPublishViewModel "1" --> "1" OrderLocationRepository : publishes via
+    CustomerLocationPublishViewModel "1" --> "1" AuthService : reads session
+    BengkelRouteViewModel "1" --> "1" OrderRepository : reads/updates
+    BengkelRouteViewModel "1" --> "1" BengkelRepository : reads
+    BengkelRouteViewModel "1" --> "1" OrderLocationRepository : publishes via
+    BengkelRouteViewModel "1" --> "1" StorageService : uploads via
+    BengkelRouteViewModel "1" --> "1" AuthService : reads session
+    BengkelRouteViewModel "1" --> "1" NotificationService : notifies via
+    BengkelRouteViewModel "1" *-- "1" RouteLocationStore : owns
+    OrderLocationRepository ..> OrderLocation : returns
+    OrderLocationRepository ..> CustomerLocation : returns
+    OrderLocationRepository ..> OrderLocationPayload : sends
+    OrderLocationRepository ..> CustomerLocationPayload : sends
 
 ```
 
@@ -1563,15 +1598,15 @@ classDiagram
         +Int p_rating
     }
 
-    OrderCompletionViewModel --> OrderRepository : orderRepository
-    OrderCompletionViewModel --> StorageService : storageService
-    OrderCompletionViewModel --> AuthService : authService
-    OrderCompletionViewModel --> NotificationService : notificationService
-    OrderCompletionViewModel --> NearbyOrder
-    OrderRatingViewModel --> OrderRepository : orderRepository
-    OrderRepository ..> MarkCompletedParams
-    OrderRepository ..> RateOrderParams
-    OrderRepository ..> NearbyOrder
+    OrderCompletionViewModel "1" --> "1" OrderRepository : reads/updates
+    OrderCompletionViewModel "1" --> "1" StorageService : uploads via
+    OrderCompletionViewModel "1" --> "1" AuthService : reads session
+    OrderCompletionViewModel "1" --> "1" NotificationService : notifies via
+    OrderCompletionViewModel "1" --> "0..1" NearbyOrder : tracks
+    OrderRatingViewModel "1" --> "1" OrderRepository : updates
+    OrderRepository ..> MarkCompletedParams : sends
+    OrderRepository ..> RateOrderParams : sends
+    OrderRepository ..> NearbyOrder : returns
 
 ```
 
@@ -1711,20 +1746,20 @@ classDiagram
         +URL url
     }
 
-    PaymentViewModel --> PaymentService : paymentService
-    PaymentViewModel --> TopupRepository : topupRepository
-    PaymentViewModel --> WithdrawalRepository : withdrawalRepository
-    PaymentViewModel --> UserRepository : userRepository
-    PaymentViewModel --> AuthService : authService
-    PaymentViewModel --> Topup
-    PaymentViewModel --> Withdrawal
-    PaymentViewModel --> PaymentTarget
-    PaymentService ..> CreateTopupRequest
-    PaymentService ..> CreateTopupResponse
-    TopupRepository ..> Topup
-    WithdrawalRepository ..> Withdrawal
-    WithdrawalRepository ..> RequestWithdrawalParams
-    UserRepository ..> BankDetailsUpdatePayload
+    PaymentViewModel "1" --> "1" PaymentService : creates topup via
+    PaymentViewModel "1" --> "1" TopupRepository : reads
+    PaymentViewModel "1" --> "1" WithdrawalRepository : reads/updates
+    PaymentViewModel "1" --> "1" UserRepository : reads/updates
+    PaymentViewModel "1" --> "1" AuthService : reads session
+    PaymentViewModel "1" --> "*" Topup : displays
+    PaymentViewModel "1" --> "*" Withdrawal : displays
+    PaymentViewModel "1" --> "0..1" PaymentTarget : tracks
+    PaymentService ..> CreateTopupRequest : sends
+    PaymentService ..> CreateTopupResponse : returns
+    TopupRepository ..> Topup : returns
+    WithdrawalRepository ..> Withdrawal : returns
+    WithdrawalRepository ..> RequestWithdrawalParams : sends
+    UserRepository ..> BankDetailsUpdatePayload : sends
 
 ```
 
@@ -1871,21 +1906,24 @@ classDiagram
         +updateStatus(bidId, status)
     }
 
-    HistoryViewModel --> OrderRepository : orderRepository
-    HistoryViewModel --> BidRepository : bidRepository
-    HistoryViewModel --> BehaviorReportRepository : behaviorReportRepository
-    HistoryViewModel --> AuthService : authService
-    HistoryViewModel --> NearbyOrder
-    BengkelHistoryViewModel --> OrderRepository : orderRepository
-    BengkelHistoryViewModel --> BengkelRepository : bengkelRepository
-    BengkelHistoryViewModel --> BehaviorReportRepository : behaviorReportRepository
-    BengkelHistoryViewModel --> AuthService : authService
-    BengkelHistoryViewModel --> NearbyOrder
-    MechanicHistoryViewModel --> OrderRepository : orderRepository
-    MechanicHistoryViewModel --> BehaviorReportRepository : behaviorReportRepository
-    MechanicHistoryViewModel --> AuthService : authService
-    MechanicHistoryViewModel --> NearbyOrder
-    OrderRepository ..> NearbyOrder
+    HistoryViewModel "1" --> "1" OrderRepository : reads
+    HistoryViewModel "1" --> "1" BidRepository : reads
+    HistoryViewModel "1" --> "1" BehaviorReportRepository : reads
+    HistoryViewModel "1" --> "1" AuthService : reads session
+    HistoryViewModel "1" --> "*" NearbyOrder : displays
+    HistoryViewModel "1" --> "0..1" NearbyOrder : tracks
+    BengkelHistoryViewModel "1" --> "1" OrderRepository : reads
+    BengkelHistoryViewModel "1" --> "1" BengkelRepository : reads
+    BengkelHistoryViewModel "1" --> "1" BehaviorReportRepository : reads
+    BengkelHistoryViewModel "1" --> "1" AuthService : reads session
+    BengkelHistoryViewModel "1" --> "*" NearbyOrder : displays
+    BengkelHistoryViewModel "1" --> "0..1" NearbyOrder : tracks
+    MechanicHistoryViewModel "1" --> "1" OrderRepository : reads
+    MechanicHistoryViewModel "1" --> "1" BehaviorReportRepository : reads
+    MechanicHistoryViewModel "1" --> "1" AuthService : reads session
+    MechanicHistoryViewModel "1" --> "*" NearbyOrder : displays
+    MechanicHistoryViewModel "1" --> "0..1" NearbyOrder : tracks
+    OrderRepository ..> NearbyOrder : returns
 
 ```
 
@@ -1956,11 +1994,11 @@ classDiagram
         +String service_request_id
     }
 
-    BehaviorReportViewModel --> BehaviorReportRepository : repository
-    BehaviorReportViewModel --> AuthService : authService
-    BehaviorReportRepository ..> BehaviorReportPayload
-    BehaviorReportRepository ..> ReportedRequestRow
-    OrderRepository ..> OpenDisputeParams
+    BehaviorReportViewModel "1" --> "1" BehaviorReportRepository : submits via
+    BehaviorReportViewModel "1" --> "1" AuthService : reads session
+    BehaviorReportRepository ..> BehaviorReportPayload : sends
+    BehaviorReportRepository ..> ReportedRequestRow : returns
+    OrderRepository ..> OpenDisputeParams : sends
 
 ```
 
